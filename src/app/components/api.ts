@@ -11,13 +11,19 @@ function resolveApiBase(): string {
   const host = typeof window !== 'undefined' ? window.location.hostname : '';
   const onVercelOrDomain =
     host.endsWith('.vercel.app') ||
+    host === 'cr8w.com' ||
+    host.endsWith('.cr8w.com') ||
     host === 'createwell.monnyfest.co' ||
     host === 'localhost' ||
     host === '127.0.0.1';
   if (onVercelOrDomain) return '/api/server';
-  // Figma Make preview / any other origin — hit Supabase Edge Function directly.
-  // Vercel functions are same-origin only; the Edge Function has verify_jwt:false
-  // so the sb_publishable key in the Authorization header is sufficient.
+  // Figma Make preview / any other origin — hit the Supabase Edge Function directly,
+  // because Vercel functions are same-origin only.
+  // CAUTION: make-server-dabe1c74 is deployed with verify_jwt: true (verified live
+  // 2026-09-18). The sb_publishable_* key is NOT a JWT, so the gateway rejects it
+  // with 401 before any route runs. Any origin falling through to this branch will
+  // fail auth until either verify_jwt is turned off or a real user JWT is sent.
+  // Set VITE_API_BASE=/api/server on Vercel-hosted origins to avoid this path.
   return `https://${projectId}.supabase.co/functions/v1/make-server-dabe1c74`;
 }
 

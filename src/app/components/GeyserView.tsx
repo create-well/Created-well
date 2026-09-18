@@ -9,6 +9,10 @@ import type { Task, Station, ForumPost, Announcement, CalendarEventKV } from './
 import type { ForumReply as ApiForumReply, InviteCounts } from './api';
 import * as api from './api';
 import { HowWeFlowReference } from './HowWeFlowReference';
+import { whenLabel, WHEN_TONE_COLOR } from '../../lib/whenLabel';
+import {
+  InlineDate, InlineSelect, TOUCHPOINT_OPTIONS, MOVE_TYPE_OPTIONS,
+} from './InlineDate';
 
 type GeyserTab = 'overview' | 'journey' | 'stations' | 'tasks' | 'forum';
 
@@ -56,14 +60,12 @@ const statusColors: Record<string, { bg: string; color: string; dot: string }> =
   'TBD': { bg: '#F0F0F0', color: '#666', dot: '#A89888' }
 };
 
-// Due-soon / overdue helper
+// Due-soon / overdue helper. Same single rule as everywhere else: whenLabel
+// decides, this only names the CSS class.
 function getDueClass(due_date?: string, status?: string): string {
-  if (!due_date || status === 'done') return '';
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const due = new Date(due_date + 'T00:00:00');
-  const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return 'overdue';
-  if (diffDays <= 3) return 'due-soon';
+  const when = whenLabel(due_date, { done: status === 'done' || status === 'dropped' });
+  if (when.overdue) return 'overdue';
+  if (when.days !== null && when.days <= 3) return 'due-soon';
   return '';
 }
 
@@ -741,8 +743,25 @@ export function GeyserView({
                     />
                     <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                       <span className={`gcc-priority-badge ${task.priority}`} style={{ fontSize: '0.6rem', padding: '1px 6px' }}>{task.priority}</span>
-                      {task.due_date && <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: dueClass === 'overdue' ? '#D45050' : 'var(--text-muted)' }}>Due {formatDate(task.due_date)}</span>}
-                      {task.category && <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.6rem', color: 'var(--text-muted)', background: 'var(--sandstone)', padding: '1px 6px', borderRadius: 4 }}>{task.category}</span>}
+                      {/* Deadline: countdown inside two weeks, date beyond it, editable in place. */}
+                      <InlineDate
+                        value={task.due_date}
+                        done={task.status === 'done' || task.status === 'dropped'}
+                        onSave={v => onUpdateTask(task.id, { due_date: v || undefined } as Partial<Task>)}
+                      />
+                      {/* Touchpoint is the return rhythm. Nothing showed it before. */}
+                      <InlineSelect
+                        value={(task as any).touchpoint}
+                        options={TOUCHPOINT_OPTIONS}
+                        placeholder="🔁 touchpoint"
+                        onSave={v => onUpdateTask(task.id, { touchpoint: v || undefined } as Partial<Task>)}
+                      />
+                      <InlineSelect
+                        value={task.category}
+                        options={MOVE_TYPE_OPTIONS}
+                        placeholder="🏷 type"
+                        onSave={v => onUpdateTask(task.id, { category: v || undefined } as Partial<Task>)}
+                      />
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>

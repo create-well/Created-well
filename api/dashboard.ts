@@ -27,8 +27,8 @@ import {
   normalizeFlow,
   buildRelationIndex,
   type NotionPage,
-} from '../src/lib/notionNormalizer';
-import type { SyncData, SourceReport, SyncMeta } from '../src/types/contract';
+} from '../src/lib/notionNormalizer.js';
+import type { SyncData, SourceReport, SyncMeta } from '../src/types/contract.js';
 
 // ── Supabase KV helpers ───────────────────────────────────────────────────────
 

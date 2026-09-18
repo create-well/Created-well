@@ -19,7 +19,7 @@
  *     Notion so subsequent PUT/DELETE can target the correct Notion page.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from '../notionWriter';
+import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from '../notionWriter.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 // @supabase/supabase-js is loaded lazily, inside the request, on purpose.

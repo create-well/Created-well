@@ -118,16 +118,18 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     // Poll floor: 60s — respects the "no polling storms" constraint.
     async function fetchSync(silent = false) {
       try {
-        // Try Notion-backed /api/dashboard first; fall back to legacy KV sync
-        // on pure network failures (TypeError / AbortError) so local dev and
-        // environments where the Vercel function isn't deployed still work.
+        // /api/dashboard (Notion-backed) only exists on Vercel. Skip the attempt
+        // entirely when running against the Supabase Edge Function to avoid a
+        // guaranteed 404 on every poll cycle.
         let data: Awaited<ReturnType<typeof api.fetchDashboard>>;
-        try {
-          data = await api.fetchDashboard();
-        } catch (primary) {
-          // Always fall back — covers network errors, timeouts, and HTTP errors
-          // (401/404/503 when Vercel isn't deployed or route doesn't exist).
-          console.warn('fetchDashboard unreachable, falling back to api.sync():', (primary as Error)?.message);
+        if (api.isDashboardAvailable) {
+          try {
+            data = await api.fetchDashboard();
+          } catch (primary) {
+            console.warn('fetchDashboard unreachable, falling back to api.sync():', (primary as Error)?.message);
+            data = await api.sync();
+          }
+        } else {
           data = await api.sync();
         }
         setTasks(data.tasks || []);

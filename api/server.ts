@@ -23,7 +23,7 @@ function supabase() {
   return createClient(url, key);
 }
 
-const TABLE = 'kv_store_8dcd9693';
+const TABLE = 'kv_store_dabe1c74';
 
 // ── KV helpers ────────────────────────────────────────────────────────────────
 async function kvGet(key: string): Promise<any> {

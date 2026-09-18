@@ -22,6 +22,8 @@ function resolveApiBase(): string {
 }
 
 const BASE = resolveApiBase();
+// /api/dashboard only exists as a Vercel serverless function; not present on the Edge Function.
+export const isDashboardAvailable = BASE.endsWith('/server');
 
 // Auth header: required by Supabase edge function; Vercel routes ignore it.
 const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` };

@@ -35,6 +35,15 @@ export const PERSONS: Record<string, Person> = {
       detail: 'New Member: Every contribution counts. Ask questions, explore freely, and build at your own pace.'
     }
   },
+  pia: {
+    name: 'Pia', fullName: 'Pia', role: 'Reflector · Lunar Authority',
+    expression: 'Mirror / Emergent Expression', color: '#9B3A5A', emoji: '🌸', authority: 'lunar',
+    energyReminder: {
+      type: 'Lunar Check',
+      text: 'Give yourself the full lunar cycle before making major decisions. Sample, reflect, and wait for clarity through time.',
+      detail: 'Reflector: You are the rare mirror of the community. Your openness is your superpower — notice how spaces and people feel to you.'
+    }
+  },
 };
 
 export interface Person {
@@ -44,6 +53,15 @@ export interface Person {
 }
 
 export const WELLSHEET_PROMPTS: Record<string, string[]> = {
+  pia: [
+    "Where in the lunar cycle are you today, and what does that mirror back?",
+    "What have you sampled from others' energy this week that surprised you?",
+    "Which part of the community feels most alive to you right now?",
+    "What clarity emerged through waiting that wouldn't have come through rushing?",
+    "What does the space feel like to you today — what is it reflecting?",
+    "Who are you in this moment, without anyone else's energy in the room?",
+    "What decision is asking for your full lunar cycle before responding?"
+  ],
   sunshine: [
     "Where on your emotional wave are you right now?",
     "What download came through this morning?",
@@ -105,7 +123,8 @@ export const STATIONS_DEFAULT: Station[] = [];
 export const GOOGLE_ACCOUNTS: Record<string, { calendarSrc: string }> = {
   sunshine: { calendarSrc: '' },
   monny: { calendarSrc: '' },
-  bingle: { calendarSrc: '' }
+  bingle: { calendarSrc: '' },
+  pia: { calendarSrc: '' },
 };
 
 export const GUEST_JOURNEY: { step: number; icon: string; title: string; desc: string; status: string }[] = [];
@@ -156,6 +175,35 @@ export interface Announcement {
 export const DEFAULT_ANNOUNCEMENTS: Announcement[] = [];
 
 export const HD_PROFILES: Record<string, HDProfile> = {
+  pia: {
+    type: 'Reflector', typeShort: 'Reflector', profile: '1/3', profileName: 'Investigator / Martyr',
+    authority: 'Lunar', strategy: 'Wait a Lunar Cycle',
+    signature: 'Surprise', notSelf: 'Disappointment', definition: 'No Definition',
+    sacralDefined: false, auraType: 'Resistant & Sampling',
+    centers: { defined: [], undefined: ['Head', 'Ajna', 'Throat', 'G Center', 'Will/Heart', 'Solar Plexus', 'Sacral', 'Spleen', 'Root'] },
+    typeDescription: "Reflectors are the rarest type — only ~1% of the population. With all nine centers undefined, you are a pure mirror of the people and environments around you. You don't have fixed energy; instead, you sample and reflect the health of your community back to it. Your openness is not a weakness — it is your deepest wisdom.",
+    strategyDetail: "Wait a full lunar cycle (28–29 days) before making major decisions. As the moon transits each gate and activates your undefined centers in sequence, you'll get to sample each perspective. The clarity you seek comes through time, not urgency. Ask 'how do I feel about this at different times and in different spaces?'",
+    authorityDetail: "Lunar Authority means your decision-making unfolds over a complete moon cycle. Talk your decision through with trusted people — not for their opinion, but to hear yourself. Notice how the same decision feels different on different days. Clarity arrives as a stable, consistent knowing that persists across the full cycle.",
+    profileDetail: {
+      line1: "The Investigator — You need a solid foundation of knowledge before you feel secure enough to move forward. Research and investigation aren't procrastination; they're your process. Your insecurity when under-prepared is real and should be honored.",
+      line3: "The Martyr — You learn through trial and error, through what doesn't work. Each 'failure' is essential data. Your life is full of experiments, bonds made and broken, paths tried and abandoned. This is not instability — it's your design gathering wisdom."
+    },
+    definitionDetail: "No Definition means you have no fixed energy signature of your own. You are entirely conditioned by the people and environments around you. This makes you uniquely sensitive to collective energy — you literally feel the health of the group. A thriving community makes a Reflector thrive. A dysfunctional one depletes them.",
+    livingYourDesign: [
+      'Pay attention to how different environments and people make you feel — that IS data',
+      'For big decisions, give yourself the full lunar cycle before committing',
+      'Surround yourself with people who are living their design — you reflect their health',
+      'Talk decisions through with multiple trusted people over multiple days',
+      'Learn your correct environment — the right place amplifies your gifts exponentially',
+      "Your disappointment is the signal you've given up on the process too soon"
+    ],
+    hdQuotes: [
+      "You are the community's mirror. What you reflect back is the deepest truth.",
+      "Your openness is not emptiness — it's infinite capacity for wisdom.",
+      "Surprise is your signature: unexpected gifts emerge when you honor your timing.",
+      "The lunar cycle isn't a delay. It's the speed of your deepest intelligence."
+    ]
+  },
   sunshine: {
     type: 'Manifesting Generator', typeShort: 'ManiGen', profile: '5/1', profileName: 'Heretic / Investigator',
     authority: 'Emotional (Solar Plexus)', strategy: 'To Respond + Inform',
@@ -372,6 +420,10 @@ export const TASK_ROLES: Record<string, { name: string; emoji: string; color: st
   bingle: {
     name: 'Bingle', emoji: '✨', color: '#D4A771',
     short: 'In-Person', sub: 'space-holding · community · workshops',
+  },
+  pia: {
+    name: 'Pia', emoji: '🌸', color: '#9B3A5A',
+    short: 'Reflective', sub: 'feedback · community health · space-reading',
   },
   'event-support': {
     name: 'Event Support', emoji: '🎪', color: '#E8AF93',

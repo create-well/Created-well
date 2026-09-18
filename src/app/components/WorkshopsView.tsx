@@ -1467,11 +1467,16 @@ function CalendarSection({ workshops }: { workshops: Workshop[] }) {
   }, [kvCalEvents]);
 
   // ── Google Calendar state ────────────────────────────────────────────────
-  const [gcalConnected, setGcalConnected] = useState(() => !!localStorage.getItem('gcal_token_MONNY'));
+  const [gcalConnected, setGcalConnected] = useState(() =>
+    ['MONNY', 'SUNSHINE', 'BINGLE', 'OMAR', 'PIA'].some(k => !!localStorage.getItem(`gcal_token_${k}`))
+  );
   const [gcalEvents, setGcalEvents] = useState<GCalEvent[]>([]);
   const [gcalLoading, setGcalLoading] = useState(false);
   const [gcalError, setGcalError] = useState('');
-  const [gcalCalName, setGcalCalName] = useState(() => localStorage.getItem('gcal_name_MONNY') || '');
+  const [gcalCalName, setGcalCalName] = useState(() => {
+    const key = ['MONNY', 'SUNSHINE', 'BINGLE', 'OMAR', 'PIA'].find(k => localStorage.getItem(`gcal_token_${k}`));
+    return key ? (localStorage.getItem(`gcal_name_${key}`) || '') : '';
+  });
 
   // Event editor state
   const [editingEvent, setEditingEvent] = useState<GCalEvent | null>(null);
@@ -1483,9 +1488,10 @@ function CalendarSection({ workshops }: { workshops: Workshop[] }) {
   const mountFetchedRef = useRef(false);
 
   // ── Token helpers ────────────────────────────────────────────────────────
-  // Try all stored tokens (MONNY, SUNSHINE, BINGLE, or generic)
+  const GCAL_USER_KEYS = ['MONNY', 'SUNSHINE', 'BINGLE', 'OMAR', 'PIA'] as const;
+
   function getStoredToken(): string | null {
-    for (const k of ['MONNY', 'SUNSHINE', 'BINGLE']) {
+    for (const k of GCAL_USER_KEYS) {
       const t = localStorage.getItem(`gcal_token_${k}`);
       if (t) return t;
     }
@@ -1493,7 +1499,7 @@ function CalendarSection({ workshops }: { workshops: Workshop[] }) {
   }
 
   function getTokenUserKey(): string {
-    for (const k of ['MONNY', 'SUNSHINE', 'BINGLE']) {
+    for (const k of GCAL_USER_KEYS) {
       if (localStorage.getItem(`gcal_token_${k}`)) return k;
     }
     return 'MONNY';
@@ -1599,7 +1605,9 @@ function CalendarSection({ workshops }: { workshops: Workshop[] }) {
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = await generateCodeChallenge(codeVerifier);
     localStorage.setItem('gcal_pkce_verifier', codeVerifier);
-    localStorage.setItem('gcal_oauth_user', 'monny');
+    // Use the currently authenticated user for per-user token storage
+    const currentUser = localStorage.getItem('cr8w_user_profile') || 'monny';
+    localStorage.setItem('gcal_oauth_user', currentUser);
     const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
       + `?client_id=${encodeURIComponent(GCAL_CLIENT_ID)}`
       + `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`
@@ -1607,7 +1615,7 @@ function CalendarSection({ workshops }: { workshops: Workshop[] }) {
       + `&scope=${encodeURIComponent(SCOPES)}`
       + `&code_challenge=${encodeURIComponent(codeChallenge)}`
       + `&code_challenge_method=S256`
-      + `&access_type=online`
+      + `&access_type=offline`
       + `&prompt=consent`;
     window.location.href = authUrl;
   }
@@ -1620,7 +1628,7 @@ function CalendarSection({ workshops }: { workshops: Workshop[] }) {
         method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       }).catch(() => {});
     }
-    for (const k of ['MONNY', 'SUNSHINE', 'BINGLE']) {
+    for (const k of GCAL_USER_KEYS) {
       localStorage.removeItem(`gcal_token_${k}`);
       localStorage.removeItem(`gcal_name_${k}`);
     }

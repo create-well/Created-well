@@ -50,7 +50,7 @@ import { GCAL_CLIENT_ID } from "./components/data";
             string | undefined) ??
           (onVercelOrDomain
             ? "/api/server"
-            : "https://cr8w-home-v2.vercel.app/api/server");
+            : `https://${projectId}.supabase.co/functions/v1/make-server-dabe1c74`);
         const serverUrl = `${apiBase}/gcal-token-exchange`;
 
         fetch(serverUrl, {

@@ -151,7 +151,16 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowDates(data.coflowDates || []);
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
-        setSyncStatus(usedFallback ? 'stale' : 'fresh');
+        // A 200 from /api/dashboard can still be missing whole sections when a
+        // NOTION_DB_* or NOTION_SECRET env var is absent. meta.degraded says so.
+        const degraded = data.meta?.degraded === true;
+        if (degraded && data.meta) {
+          const bad = Object.entries(data.meta.sources)
+            .filter(([, s]) => s.status !== 'ok')
+            .map(([name, s]) => `${name}: ${s.status}${s.detail ? ` (${s.detail})` : ''}`);
+          console.warn('Dashboard payload is degraded:\n' + bad.join('\n'));
+        }
+        setSyncStatus(usedFallback || degraded ? 'stale' : 'fresh');
         setLastSynced(new Date());
         silentFailCount.current = 0;
         if (!dataLoadedRef.current) { dataLoadedRef.current = true; }

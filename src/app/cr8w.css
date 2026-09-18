@@ -680,6 +680,8 @@ a.gcc-pill-link:hover { background: rgba(255,255,255,0.52); transform: translate
 .status-in_progress { background: var(--camel-sun); }
 .status-done { background: #6BAF6B; }
 .status-blocked { background: #D46B6B; }
+/* Dropped: visible, and visibly not done. Muted rather than alarming. */
+.status-dropped { background: #9B8FA6; }
 
 .card-item-priority { font-family: var(--font-label); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 10px; }
 .priority-high { background: #E0F0EC; color: #5F8D82; }
@@ -788,6 +790,8 @@ a.gcc-pill-link:hover { background: rgba(255,255,255,0.52); transform: translate
 .action-status-btn.status-in_progress { border-color: var(--camel-sun); background: var(--camel-sun); }
 .action-status-btn.status-done { border-color: #6BAF6B; background: #6BAF6B; }
 .action-status-btn.status-blocked { border-color: #D46B6B; background: #D46B6B; }
+.action-status-btn.status-dropped { border-color: #9B8FA6; background: #9B8FA6; }
+.action-row.dropped-row .action-title { text-decoration: line-through; opacity: 0.6; }
 .action-info { flex: 1; min-width: 0; }
 .action-title { font-size: 14px; font-weight: 600; color: #2C1C10; margin-bottom: 4px; line-height: 1.4; }
 .action-meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px; color: #4A3020; font-weight: 500; }

@@ -236,7 +236,10 @@ export interface InviteCounts {
 
 export interface Task {
   id: number; person: string; title: string;
-  status: 'todo' | 'in_progress' | 'done' | 'blocked';
+  // 'dropped' exists because MOVES has a Dropped status and the Create Well
+  // governance rule is that Dropped stays visible as dropped. It is not
+  // collapsed into 'done' and not hidden as 'blocked'.
+  status: 'todo' | 'in_progress' | 'done' | 'blocked' | 'dropped';
   priority: 'high' | 'medium' | 'low';
   due_date?: string; source?: string; category?: string; created_at?: string;
   notionPageId?: string;
@@ -365,6 +368,30 @@ export interface SyncData {
   coflowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
   calendarEvents: CalendarEventKV[];
+  /**
+   * Per-section provenance. Present on /api/dashboard responses, absent on the
+   * KV-only /sync response. Read `degraded` before trusting any section:
+   * a 200 with empty Notion sections is not the same thing as "no rows".
+   */
+  meta?: SyncMeta;
+}
+
+export type SourceStatus = 'ok' | 'unconfigured' | 'error';
+
+export interface SourceReport {
+  /** Where this section came from: a Notion database, Supabase KV, or Google. */
+  source: string;
+  status: SourceStatus;
+  rows: number;
+  /** Set when status is 'error'. Set to the missing variable when 'unconfigured'. */
+  detail?: string;
+}
+
+export interface SyncMeta {
+  generatedAt: string;
+  /** True when any section is not 'ok'. The UI must not render 'fresh' then. */
+  degraded: boolean;
+  sources: Record<string, SourceReport>;
 }
 
 export interface CalendarEventKV {

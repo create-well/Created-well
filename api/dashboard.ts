@@ -26,9 +26,10 @@ import {
   normalizePerson,
   normalizeContent,
   normalizeFlow,
+  buildRelationIndex,
   type NotionPage,
 } from '../src/lib/notionNormalizer';
-import type { SyncData } from '../src/app/components/api';
+import type { SyncData, SourceReport, SyncMeta } from '../src/app/components/api';
 
 // ── Supabase KV helpers ───────────────────────────────────────────────────────
 
@@ -41,8 +42,8 @@ function supabaseClient() {
   return createClient(url, key);
 }
 
-async function kvGetList(key: string): Promise<unknown[]> {
-  const { data, error } = await supabaseClient()
+async function kvGetList(key: string, client: ReturnType<typeof supabaseClient>): Promise<unknown[]> {
+  const { data, error } = await client
     .from(KV_TABLE)
     .select('value')
     .eq('key', key)
@@ -132,6 +133,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const dbFlows    = process.env.NOTION_DB_FLOWS;
   const dbContent  = process.env.NOTION_DB_CONTENT;
 
+  // Every section reports where it came from and whether it actually arrived.
+  // A missing env var used to resolve to an empty array indistinguishable from
+  // "this database has no rows", which is how an empty dashboard looked healthy
+  // for weeks. Now it is reported as 'unconfigured' and the client shows stale.
+  const sources: Record<string, SourceReport> = {};
+
+  async function loadNotion(
+    section: string,
+    label: string,
+    dbId: string | undefined,
+    envVar: string,
+  ): Promise<NotionPage[]> {
+    if (!secret) {
+      sources[section] = { source: label, status: 'unconfigured', rows: 0, detail: 'NOTION_SECRET is not set' };
+      return [];
+    }
+    if (!dbId) {
+      sources[section] = { source: label, status: 'unconfigured', rows: 0, detail: `${envVar} is not set` };
+      return [];
+    }
+    try {
+      const pages = await queryNotionDatabase(dbId, secret);
+      sources[section] = { source: label, status: 'ok', rows: pages.length };
+      return pages;
+    } catch (err) {
+      sources[section] = {
+        source: label,
+        status: 'error',
+        rows: 0,
+        detail: err instanceof Error ? err.message.slice(0, 200) : String(err),
+      };
+      return [];
+    }
+  }
+
   // KV keys for data not yet migrated to Notion
   const KV_KEYS = [
     'cr8w_messages',
@@ -147,16 +183,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   ] as const;
 
   try {
-    // Fan-out: all Notion DB queries + all KV reads in parallel.
-    // Missing env vars resolve to empty arrays — never a hard failure.
+    const kv = supabaseClient();
+
+    // Fan-out: all Notion DB queries + all KV reads in parallel. Nothing in here
+    // throws; each section records its own outcome in `sources`.
     const [notionResults, kvResults] = await Promise.all([
       Promise.all([
-        secret && dbMoves   ? queryNotionDatabase(dbMoves, secret)   : Promise.resolve([]),
-        secret && dbPeople  ? queryNotionDatabase(dbPeople, secret)  : Promise.resolve([]),
-        secret && dbFlows   ? queryNotionDatabase(dbFlows, secret)   : Promise.resolve([]),
-        secret && dbContent ? queryNotionDatabase(dbContent, secret) : Promise.resolve([]),
+        loadNotion('tasks',       'Notion MOVES',   dbMoves,   'NOTION_DB_MOVES'),
+        loadNotion('stations',    'Notion PEOPLE',  dbPeople,  'NOTION_DB_PEOPLE'),
+        loadNotion('coflowDates', 'Notion FLOWS',   dbFlows,   'NOTION_DB_FLOWS'),
+        loadNotion('forum',       'Notion CONTENT', dbContent, 'NOTION_DB_CONTENT'),
       ]),
-      Promise.all(KV_KEYS.map(k => kvGetList(k))),
+      Promise.all(KV_KEYS.map(async (k) => {
+        const section = k.replace(/^cr8w_/, '');
+        try {
+          const list = await kvGetList(k, kv);
+          sources[section] = { source: `Supabase ${KV_TABLE}`, status: 'ok', rows: list.length };
+          return list;
+        } catch (err) {
+          sources[section] = {
+            source: `Supabase ${KV_TABLE}`,
+            status: 'error',
+            rows: 0,
+            detail: err instanceof Error ? err.message.slice(0, 200) : String(err),
+          };
+          return [];
+        }
+      })),
     ]);
 
     const [movesPages, peoplePages, flowsPages, contentPages] = notionResults;
@@ -166,12 +219,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       coflowCheckins, wellNotes, calendarEvents,
     ] = kvResults;
 
+    // Relations return page IDs. Index PEOPLE and FLOWS first so Owner, Person,
+    // Flow, and Flow Keeper resolve to names instead of rendering as UUIDs.
+    const peopleIndex = buildRelationIndex(peoplePages);
+    const flowsIndex  = buildRelationIndex(flowsPages);
+
+    const meta: SyncMeta = {
+      generatedAt: new Date().toISOString(),
+      degraded: Object.values(sources).some(s => s.status !== 'ok'),
+      sources,
+    };
+
     const payload: SyncData = {
       // Notion-backed
-      tasks:             movesPages.map(normalizeMove),
+      tasks:             movesPages.map(page => normalizeMove(page, peopleIndex, flowsIndex)),
       stations:          peoplePages.map(normalizePerson),
-      forum:             contentPages.map(normalizeContent),
-      coflowDates:       flowsPages.map(normalizeFlow),
+      forum:             contentPages.map(page => normalizeContent(page, flowsIndex)),
+      coflowDates:       flowsPages.map(page => normalizeFlow(page, peopleIndex)),
       // KV-backed (passed through; typed by trust — these were written by our own API)
       messages:          messages          as SyncData['messages'],
       braindumps:        braindumps        as SyncData['braindumps'],
@@ -183,12 +247,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       coflowCheckins:    coflowCheckins    as SyncData['coflowCheckins'],
       wellNotes:         wellNotes         as SyncData['wellNotes'],
       calendarEvents:    calendarEvents    as SyncData['calendarEvents'],
+      meta,
     };
 
     cache = { payload, ts: Date.now() };
 
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
     res.setHeader('X-Cache', 'MISS');
+    res.setHeader('X-Data-Degraded', meta.degraded ? '1' : '0');
     res.json(payload);
   } catch (err) {
     console.error('[/api/dashboard] Error building payload:', err);

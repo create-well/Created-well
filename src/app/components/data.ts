@@ -151,7 +151,7 @@ export const QUOTES = [
 ];
 
 export interface ActionItem {
-  id: number; person: string; title: string; status: 'todo' | 'in_progress' | 'done' | 'blocked';
+  id: number; person: string; title: string; status: 'todo' | 'in_progress' | 'done' | 'blocked' | 'dropped';
   priority: 'high' | 'medium' | 'low'; due_date?: string; source?: string; category?: string;
   created_at?: string;
 }

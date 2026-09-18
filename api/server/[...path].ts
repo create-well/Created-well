@@ -19,7 +19,7 @@
  *     Notion so subsequent PUT/DELETE can target the correct Notion page.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from '../notionWriter.js';
+import { syncToNotion, type NotionSyncResult } from '../notionWriter.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 // @supabase/supabase-js is loaded lazily, inside the request, on purpose.
@@ -290,27 +290,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    // ── Notion dual-write helper ───────────────────────────────────────────────
-    // Fires-and-forgets a Notion sync; never throws so KV writes always succeed.
-    async function syncToNotion(action: 'create' | 'update' | 'archive', item?: any): Promise<string | undefined> {
-      const cfg = NOTION_RESOURCES[resource];
-      if (!cfg) return undefined;
-      const dbId = process.env[cfg.dbIdEnvVar];
-      if (!dbId || !process.env.NOTION_SECRET) return undefined;
-      try {
-        if (action === 'create' && item) {
-          return await notionCreate(dbId, cfg.toProperties(item));
-        }
-        if (action === 'update' && item?.notionPageId) {
-          await notionUpdate(item.notionPageId, cfg.toProperties(item));
-        }
-        if (action === 'archive' && item?.notionPageId) {
-          await notionArchive(item.notionPageId);
-        }
-      } catch (err) {
-        console.error(`[notionWriter] ${action} failed for ${resource}:`, err);
+    // ── Notion dual-write ──────────────────────────────────────────────────────
+    //
+    // This used to be a fire-and-forget helper that caught every error and threw
+    // it at console. Because the property names it sent did not exist, every
+    // write 400'd, the KV store saved anyway, and the dashboard reported success.
+    // The team edited things for weeks that never left the browser.
+    //
+    // Now the result rides back on the response as `notionSync`, so the UI can
+    // say "saved here, not in Notion" out loud. Stale beats wrong, but silent is
+    // worse than both.
+    function logSync(action: string, result: NotionSyncResult): NotionSyncResult {
+      if (result.state === 'failed') {
+        console.error(`[notion] ${action} ${resource} FAILED:`, result.message);
+      } else if (result.state === 'partial') {
+        console.warn(`[notion] ${action} ${resource} partial, dropped:`, result.dropped);
       }
-      return undefined;
+      return result;
     }
 
     // ── Generic list CRUD (GET all / POST new / PUT :id / DELETE :id) ─────────
@@ -324,14 +320,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const list = await getList(kvKey);
         const item: Record<string, any> = { ...b, id: Date.now(), created_at: new Date().toISOString() };
         // Notion dual-write for the 4 CMS-backed types
-        const notionPageId = await syncToNotion('create', item);
-        if (notionPageId) item.notionPageId = notionPageId;
+        const notionSync = logSync('create', await syncToNotion(resource, 'create', item));
+        if (notionSync.pageId) item.notionPageId = notionSync.pageId;
         // Forum and messages prepend; others append
         if (resource === 'forum' || resource === 'braindumps' || resource === 'announcements') list.unshift(item);
         else if (resource === 'messages') { list.push(item); if (list.length > 500) list.splice(0, list.length - 500); }
         else list.push(item);
         await setList(kvKey, list);
-        res.status(201).json(item); return;
+        res.status(201).json({ ...item, notionSync }); return;
       }
       if (method === 'PUT' && id) {
         const b = await body(req);
@@ -340,17 +336,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (idx === -1) { res.status(404).json({ error: 'Not found' }); return; }
         list[idx] = { ...list[idx], ...b, id: list[idx].id, updated_at: new Date().toISOString() };
         // Notion dual-write: update if item has a notionPageId
-        await syncToNotion('update', list[idx]);
+        const notionSync = logSync('update', await syncToNotion(resource, 'update', list[idx]));
         await setList(kvKey, list);
-        res.json(list[idx]); return;
+        res.json({ ...list[idx], notionSync }); return;
       }
       if (method === 'DELETE' && id) {
         const list = await getList(kvKey);
         const target = list.find((x: any) => String(x.id) === String(id));
         // Notion dual-write: archive if item has a notionPageId
-        if (target) await syncToNotion('archive', target);
+        const notionSync = target
+          ? logSync('archive', await syncToNotion(resource, 'archive', target))
+          : undefined;
         await setList(kvKey, list.filter((x: any) => String(x.id) !== String(id)));
-        res.json({ ok: true }); return;
+        res.json({ ok: true, notionSync }); return;
       }
     }
 

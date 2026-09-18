@@ -20,7 +20,6 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
 import {
   normalizeMove,
   normalizePerson,
@@ -35,14 +34,18 @@ import type { SyncData, SourceReport, SyncMeta } from '../src/types/contract';
 
 const KV_TABLE = 'kv_store_dabe1c74';
 
-function supabaseClient() {
+// Loaded lazily for the same reason as api/server: a top-level import of
+// @supabase/supabase-js turns any resolution failure into
+// FUNCTION_INVOCATION_FAILED with no body, killing every route in the file.
+async function supabaseClient() {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  const { createClient } = await import('@supabase/supabase-js');
   return createClient(url, key);
 }
 
-async function kvGetList(key: string, client: ReturnType<typeof supabaseClient>): Promise<unknown[]> {
+async function kvGetList(key: string, client: Awaited<ReturnType<typeof supabaseClient>>): Promise<unknown[]> {
   const { data, error } = await client
     .from(KV_TABLE)
     .select('value')
@@ -183,7 +186,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   ] as const;
 
   try {
-    const kv = supabaseClient();
+    const kv = await supabaseClient();
 
     // Fan-out: all Notion DB queries + all KV reads in parallel. Nothing in here
     // throws; each section records its own outcome in `sources`.

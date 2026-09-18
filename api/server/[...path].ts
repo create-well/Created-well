@@ -19,14 +19,24 @@
  *     Notion so subsequent PUT/DELETE can target the correct Notion page.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
 import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from '../notionWriter';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
-function supabase() {
-  const url = process.env.SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// @supabase/supabase-js is loaded lazily, inside the request, on purpose.
+// A top-level import means any failure to resolve that package kills the whole
+// module and every route with it, including /health, and Vercel reports only
+// FUNCTION_INVOCATION_FAILED with no body. Loaded here, a resolution failure
+// becomes an ordinary 500 with a readable message and /health keeps answering.
+async function loadCreateClient() {
+  const mod = await import('@supabase/supabase-js');
+  return mod.createClient;
+}
+
+async function supabase() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  const createClient = await loadCreateClient();
   return createClient(url, key);
 }
 
@@ -34,13 +44,13 @@ const TABLE = 'kv_store_dabe1c74';
 
 // ── KV helpers ────────────────────────────────────────────────────────────────
 async function kvGet(key: string): Promise<any> {
-  const { data, error } = await supabase().from(TABLE).select('value').eq('key', key).maybeSingle();
+  const { data, error } = await (await supabase()).from(TABLE).select('value').eq('key', key).maybeSingle();
   if (error) throw new Error(error.message);
   return data?.value ?? null;
 }
 
 async function kvSet(key: string, value: any): Promise<void> {
-  const { error } = await supabase().from(TABLE).upsert({ key, value });
+  const { error } = await (await supabase()).from(TABLE).upsert({ key, value });
   if (error) throw new Error(error.message);
 }
 
@@ -121,7 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'cr8w_coflow_dates', 'cr8w_coflow_checkins', 'cr8w_well_notes',
         'cr8w_calendar_events',
       ];
-      const sb = supabase();
+      const sb = await supabase();
       const { data, error } = await sb.from(TABLE).select('key,value').in('key', SYNC_KEYS);
       if (error) { res.status(500).json({ error: error.message }); return; }
       const map: Record<string, any[]> = {};

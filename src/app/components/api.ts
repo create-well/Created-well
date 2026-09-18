@@ -275,11 +275,32 @@ export interface Announcement {
   id: number; text: string; priority: 'high' | 'medium' | 'low'; active?: number; created_at?: string;
 }
 
+/**
+ * The six internal role keys. Must stay in sync with TASK_ROLES in data.ts.
+ * Declared here rather than derived from TASK_ROLES to avoid an import cycle.
+ */
+export type TeamRoleKey =
+  | 'monny'
+  | 'sunshine'
+  | 'bingle'
+  | 'pia'
+  | 'omar'
+  | 'event-support';
+
+/**
+ * A Workshop is often led by an outside co-creator, not a team member, so a
+ * free-form name is valid. `string & {}` keeps autocomplete on the six keys
+ * while still accepting a guest name. Do NOT narrow this back to team keys:
+ * the previous union of monny/sunshine/bingle made pia, omar, and every
+ * guest co-creator unrepresentable.
+ */
+export type Facilitator = TeamRoleKey | (string & {});
+
 export interface Workshop {
   id: number;
   title: string;
   description: string;
-  facilitator: 'monny' | 'sunshine' | 'bingle';
+  facilitator: Facilitator;
   date: string;
   capacity: number;
   participants: number;
@@ -298,7 +319,7 @@ export interface WorkshopProgram {
   sessionOutline: { number: number; title: string; description: string }[];
   targetAudience: string;
   materialsNeeded: string[];
-  facilitator: string;
+  facilitator: Facilitator;
   created_at?: string;
 }
 

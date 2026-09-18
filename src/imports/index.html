@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CR8W — Create Well Collective</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Blinker:wght@300;400;600;700&family=Fredoka:wght@300;400;500;600;700&family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- TOP NAV BAR                             -->
+    <!-- ═══════════════════════════════════════ -->
+    <nav class="top-nav" id="top-nav">
+        <div class="nav-left" onclick="navigateTo('hub')" style="cursor:pointer" title="Home">
+            <img src="./assets/logo-icon.jpg" alt="CW" class="nav-logo">
+            <span class="nav-brand-name">create well</span>
+        </div>
+        <div class="nav-links" id="nav-links">
+            <a class="nav-link nav-link-geyser" data-view="geyser" onclick="navigateTo('geyser')">
+                <span class="geyser-pulse-dot"></span> ⛲️ Geyser
+            </a>
+            <a class="nav-link" data-view="sunshine" onclick="navigateTo('sunshine')">
+                <span class="nav-dot" style="background:#D4A5A5"></span> Sunshine
+            </a>
+            <a class="nav-link" data-view="monny" onclick="navigateTo('monny')">
+                <span class="nav-dot" style="background:#A9D6F8"></span> Monny
+            </a>
+            <a class="nav-link" data-view="bingle" onclick="navigateTo('bingle')">
+                <span class="nav-dot" style="background:#D4A574"></span> Bingle
+            </a>
+            <a class="nav-link nav-link-playground" data-view="playground" onclick="navigateTo('playground')">
+                🎲 Playground
+            </a>
+            <a class="nav-link nav-link-workdocs" data-view="workdocs" onclick="navigateTo('workdocs')">
+                📄 Docs
+            </a>
+        </div>
+        <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()">
+            <span></span><span></span><span></span>
+        </button>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="closeMobileMenu()">
+        <div class="mobile-menu" onclick="event.stopPropagation()">
+            <div class="mobile-menu-header" onclick="navigateTo('hub'); closeMobileMenu();" style="cursor:pointer">
+                <img src="./assets/logo-icon.jpg" alt="CW" class="mobile-menu-logo">
+                <span class="mobile-menu-brand">create well</span>
+            </div>
+            <a class="mobile-menu-link mobile-menu-link-geyser" data-view="geyser" onclick="navigateTo('geyser'); closeMobileMenu();">
+                <span class="geyser-pulse-dot"></span> ⛲️ Geyser
+            </a>
+            <a class="mobile-menu-link" data-view="sunshine" onclick="navigateTo('sunshine'); closeMobileMenu();">
+                <span class="nav-dot" style="background:#D4A5A5"></span> Sunshine
+            </a>
+            <a class="mobile-menu-link" data-view="monny" onclick="navigateTo('monny'); closeMobileMenu();">
+                <span class="nav-dot" style="background:#A9D6F8"></span> Monny
+            </a>
+            <a class="mobile-menu-link" data-view="bingle" onclick="navigateTo('bingle'); closeMobileMenu();">
+                <span class="nav-dot" style="background:#D4A574"></span> Bingle
+            </a>
+            <a class="mobile-menu-link mobile-menu-link-playground" data-view="playground" onclick="navigateTo('playground'); closeMobileMenu();">
+                🎲 Playground
+            </a>
+            <a class="mobile-menu-link mobile-menu-link-workdocs" data-view="workdocs" onclick="navigateTo('workdocs'); closeMobileMenu();">
+                📄 Docs
+            </a>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- MAIN CONTAINER                          -->
+    <!-- ═══════════════════════════════════════ -->
+    <main class="main" id="main">
+
+        <!-- Notion Sync Status Banner -->
+        <div class="notion-sync-bar" id="notion-sync-bar">
+            <span class="notion-sync-dot online" id="notion-sync-dot"></span>
+            <span id="notion-sync-text">Notion workspace linked</span>
+            <a href="https://www.notion.so/Geyser-Event-Master-Workspace-30ddc6047d2d8142b39ec425848511ec" target="_blank" rel="noopener noreferrer" class="notion-sync-link">Open Notion →</a>
+            <span class="notion-sync-time" id="notion-sync-time"></span>
+        </div>
+
+        <!-- ══════════ HUB VIEW ══════════ -->
+        <section class="view" id="view-hub">
+
+            <!-- Hub Header -->
+            <div class="hub-header">
+                <img src="./assets/logo-full.jpg" alt="Create Well" class="hub-logo">
+                <div class="hub-tagline">
+                    <span class="hub-tagline-cw">create well</span>
+                    <span class="hub-tagline-collective">COLLECTIVE</span>
+                </div>
+                <p class="hub-quote-hero">"Here, is where you fall in love with the process."</p>
+            </div>
+
+            <!-- Next BHD Meeting Banner (click to expand) -->
+            <div class="bhd-banner" id="bhd-banner" onclick="toggleBHDDetails()">
+                <div class="bhd-banner-content">
+                    <span class="bhd-banner-icon">🗓️</span>
+                    <div class="bhd-banner-text">
+                        <span class="bhd-banner-label">Next BHD</span>
+                        <span class="bhd-banner-date" id="bhd-next-date">--</span>
+                    </div>
+                    <span class="bhd-banner-time" id="bhd-next-time"></span>
+                    <span class="bhd-chevron" id="bhd-chevron">▾</span>
+                </div>
+                <div class="bhd-details" id="bhd-details">
+                    <div class="bhd-details-grid" id="bhd-details-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Launch Countdown Banner -->
+            <div class="launch-banner">
+                <div class="launch-banner-content">
+                    <div class="launch-banner-left">
+                        <div class="launch-banner-title">CR8W Hard Launch</div>
+                        <div class="launch-banner-subtitle">April 15, 2026 at Taverna Costera</div>
+                    </div>
+                    <div class="launch-banner-right">
+                        <span class="launch-days" id="countdown-days">--</span>
+                        <span class="launch-days-label">days to go</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🔥 GEYSER COMMAND CENTER -->
+            <div class="geyser-command-center">
+                <div class="gcc-header">
+                    <div class="gcc-title-row">
+                        <h2 class="gcc-title">⛲️ Geyser Command Center</h2>
+                        <button class="gcc-view-btn" onclick="navigateTo('geyser')">View Full Dashboard →</button>
+                    </div>
+                    <div class="gcc-stat-pills">
+                        <a href="https://docs.google.com/document/d/13SM9bqiUQ8-Rwfs9YC5XWlLscf_Lgg2H-y_gdDYFE0s/edit?usp=drive_web&ouid=114253660751168989061" target="_blank" rel="noopener noreferrer" class="gcc-pill gcc-pill-link">👥 33 Confirmed Guests</a>
+                        <a href="#geyser" onclick="navigateTo('geyser'); return false;" class="gcc-pill gcc-pill-link">📅 <span id="gcc-countdown">--</span> Days to Launch</a>
+                        <a href="#geyser" onclick="navigateTo('geyser'); setTimeout(()=>switchGeyserTab('stations'),100); return false;" class="gcc-pill gcc-pill-link">⚡ 6 Activation Stations</a>
+                    </div>
+                </div>
+                <div class="gcc-urgent-list">
+                    <div class="gcc-urgent-label">🔥 Top Priority Right Now</div>
+                    <div class="gcc-urgent-item">
+                        <span class="gcc-priority-badge high">HIGH</span>
+                        <span class="gcc-urgent-text">Complete Monshine session before Bingle returns</span>
+                    </div>
+                    <div class="gcc-urgent-item">
+                        <span class="gcc-priority-badge high">HIGH</span>
+                        <span class="gcc-urgent-text">Prepare for Third Street meeting — practice team intros</span>
+                    </div>
+                    <div class="gcc-urgent-item">
+                        <span class="gcc-priority-badge high">HIGH</span>
+                        <span class="gcc-urgent-text">Complete personal well sheets for all members</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Google Calendar Embed -->
+            <div class="hub-section">
+                <div class="section-title-row">
+                    <h2 class="section-title">📅 Live Calendar</h2>
+                </div>
+                <div class="calendar-embed-card">
+                    <iframe src="https://calendar.google.com/calendar/embed?src=ako%40panganay.co&ctz=America%2FLos_Angeles&mode=AGENDA&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0&color=%23C25B38"
+                        class="calendar-iframe"
+                        frameborder="0"
+                        scrolling="yes">
+                    </iframe>
+                    <div class="calendar-embed-note">
+                        <span class="calendar-note-icon">💡</span>
+                        <span>Sign into your Google account in this browser to see the live calendar. Or <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer">open Google Calendar directly</a>.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MBody / MonnyLog Roulette -->
+            <div class="hub-section">
+                <div class="mbody-roulette-card" onclick="showMBodyRoulette()">
+                    <div class="mbody-roulette-inner">
+                        <span class="mbody-icon">🧘‍♀️</span>
+                        <div class="mbody-text">
+                            <div class="mbody-title">MBody / MonnyLog Roulette</div>
+                            <div class="mbody-subtitle">Somatic & writing mindfulness practices — curated by Monny</div>
+                        </div>
+                        <span class="mbody-arrow">→</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Links Grid -->
+            <div class="hub-section">
+                <h2 class="section-title">Quick Links</h2>
+                <div class="quick-links-grid">
+                    <a href="https://drive.google.com/drive/folders/1r0OS_HTJIxTpcPSLYr_hNceeqLxF-Hlj?usp=drive_link" target="_blank" rel="noopener noreferrer" class="quick-link-card">
+                        <span class="quick-link-emoji">📁</span>
+                        <span class="quick-link-label">Shared Drive</span>
+                    </a>
+                    <a href="https://www.notion.so/Geyser-Event-Master-Workspace-30ddc6047d2d8142b39ec425848511ec" target="_blank" rel="noopener noreferrer" class="quick-link-card">
+                        <span class="quick-link-emoji">📝</span>
+                        <span class="quick-link-label">Notion Workspace</span>
+                    </a>
+                    <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer" class="quick-link-card">
+                        <span class="quick-link-emoji">✉️</span>
+                        <span class="quick-link-label">Gmail</span>
+                    </a>
+                    <a href="#geyser" onclick="navigateTo('geyser'); return false;" class="quick-link-card quick-link-card-geyser">
+                        <span class="quick-link-emoji">⛲️</span>
+                        <span class="quick-link-label">Geyser Dashboard</span>
+                    </a>
+                    <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" class="quick-link-card">
+                        <span class="quick-link-emoji">📅</span>
+                        <span class="quick-link-label">Google Calendar</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Brain Dump -->
+            <div class="hub-section">
+                <h2 class="section-title">🧠 Shared Brain Dump</h2>
+                <div class="brain-dump-card">
+                    <div class="brain-dump-input-area">
+                        <div class="brain-dump-author-row">
+                            <select id="brain-dump-author" class="brain-dump-author-select">
+                                <option value="sunshine">☀️ Sunshine</option>
+                                <option value="monny" selected>🌊 Monny</option>
+                                <option value="bingle">✨ Bingle</option>
+                                <option value="collective">🌀 Collective</option>
+                            </select>
+                            <input type="text" id="brain-dump-tags" class="brain-dump-tags-input" placeholder="Tags (comma separated)">
+                        </div>
+                        <textarea id="brain-dump-content" class="brain-dump-textarea" placeholder="Quick thought, idea, or brain dump... just let it flow 🫧" rows="3"></textarea>
+                        <div class="brain-dump-actions-row">
+                            <input type="url" id="brain-dump-drive-link" class="brain-dump-drive-input" placeholder="🔗 Attach a link (optional)">
+                            <button class="brain-dump-submit-btn" onclick="submitBrainDump()">Dump It 🧠</button>
+                        </div>
+                    </div>
+                    <div class="brain-dump-list" id="brain-dump-list">
+                        <div style="color:var(--text-muted);font-size:0.85rem;font-style:italic;padding:16px;text-align:center">Loading brain dumps...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Person Cards -->
+            <div class="hub-section">
+                <h2 class="section-title">The Collective</h2>
+                <div class="person-cards-row">
+                    <div class="person-card person-card-sunshine" onclick="navigateTo('sunshine')">
+                        <div class="person-card-top">
+                            <span class="person-card-emoji">☀️</span>
+                            <h3 class="person-card-name">Sunshine</h3>
+                        </div>
+                        <p class="person-card-role">ManiGen 5/1 · Emotional Authority</p>
+                        <span class="person-card-link">View Dashboard →</span>
+                    </div>
+                    <div class="person-card person-card-monny" onclick="navigateTo('monny')">
+                        <div class="person-card-top">
+                            <span class="person-card-emoji">🌊</span>
+                            <h3 class="person-card-name">Monny</h3>
+                        </div>
+                        <p class="person-card-role">Generator 5/1 · Sacral Authority</p>
+                        <span class="person-card-link">View Dashboard →</span>
+                    </div>
+                    <div class="person-card person-card-bingle" onclick="navigateTo('bingle')">
+                        <div class="person-card-top">
+                            <span class="person-card-emoji">✨</span>
+                            <h3 class="person-card-name">Bingle</h3>
+                        </div>
+                        <p class="person-card-role">Projector 2/4 · Ego Authority</p>
+                        <span class="person-card-link">View Dashboard →</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inspirational Quote Rotator -->
+            <div class="hub-quote-rotator">
+                <div class="hub-quote-mark">"</div>
+                <p class="hub-rotating-quote" id="rotating-quote"></p>
+            </div>
+
+        </section>
+
+        <!-- ══════════ GEYSER VIEW ══════════ -->
+        <section class="view hidden" id="view-geyser">
+
+            <!-- Geyser Header -->
+            <div class="geyser-header">
+                <button class="back-btn" onclick="navigateTo('hub')">← Hub</button>
+                <div class="geyser-header-info">
+                    <div>
+                        <h1 class="geyser-header-title">⛲️ Geyser Dashboard</h1>
+                        <p class="geyser-header-subtitle">CR8W Hard Launch — April 15, 2026</p>
+                    </div>
+                    <div class="geyser-header-countdown">
+                        <span class="geyser-countdown-num" id="geyser-days">--</span>
+                        <span class="geyser-countdown-label">days</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Geyser Sub-Tabs -->
+            <div class="geyser-tabs" id="geyser-tabs">
+                <button class="geyser-tab active" data-gtab="overview" onclick="switchGeyserTab('overview')">Overview</button>
+                <button class="geyser-tab" data-gtab="journey" onclick="switchGeyserTab('journey')">Guest Journey</button>
+                <button class="geyser-tab" data-gtab="stations" onclick="switchGeyserTab('stations')">Stations</button>
+                <button class="geyser-tab" data-gtab="tasks" onclick="switchGeyserTab('tasks')">Team Tasks</button>
+                <button class="geyser-tab" data-gtab="forum" onclick="switchGeyserTab('forum')">Forum</button>
+            </div>
+
+            <!-- Geyser Tab Contents -->
+            <div class="geyser-tab-content" id="gtab-overview"></div>
+            <div class="geyser-tab-content hidden" id="gtab-journey"></div>
+            <div class="geyser-tab-content hidden" id="gtab-stations"></div>
+            <div class="geyser-tab-content hidden" id="gtab-tasks">
+                <div class="geyser-tasks-header">
+                    <h2 class="section-title">Team Tasks</h2>
+                    <button class="btn-add" onclick="showAddTaskModal()">+ Add Item</button>
+                </div>
+                <div class="geyser-tasks-person-filter" id="geyser-person-filter">
+                    <button class="geyser-person-btn active" data-person="all" onclick="filterGeyserPerson('all')">All</button>
+                    <button class="geyser-person-btn" data-person="sunshine" onclick="filterGeyserPerson('sunshine')">
+                        <span class="nav-dot" style="background:#D4A5A5"></span> Sunshine
+                    </button>
+                    <button class="geyser-person-btn" data-person="monny" onclick="filterGeyserPerson('monny')">
+                        <span class="nav-dot" style="background:#A9D6F8"></span> Monny
+                    </button>
+                    <button class="geyser-person-btn" data-person="bingle" onclick="filterGeyserPerson('bingle')">
+                        <span class="nav-dot" style="background:#D4A574"></span> Bingle
+                    </button>
+                </div>
+                <div class="actions-filters" id="geyser-status-filter">
+                    <button class="filter-btn active" data-status="all" onclick="filterGeyserStatus('all')">All</button>
+                    <button class="filter-btn" data-status="todo" onclick="filterGeyserStatus('todo')">To Do</button>
+                    <button class="filter-btn" data-status="in_progress" onclick="filterGeyserStatus('in_progress')">In Progress</button>
+                    <button class="filter-btn" data-status="done" onclick="filterGeyserStatus('done')">Done</button>
+                    <button class="filter-btn" data-status="blocked" onclick="filterGeyserStatus('blocked')">Blocked</button>
+                </div>
+                <div class="actions-list" id="geyser-actions-list"></div>
+            </div>
+            <div class="geyser-tab-content hidden" id="gtab-forum"></div>
+
+        </section>
+
+        <!-- ══════════ PERSON VIEW ══════════ -->
+        <section class="view hidden" id="view-person">
+
+            <!-- Person Header -->
+            <div class="person-header" id="person-header">
+                <button class="back-btn" onclick="navigateTo('hub')">← Hub</button>
+                <div class="person-header-info">
+                    <span class="person-header-emoji" id="person-emoji"></span>
+                    <div>
+                        <h1 class="person-header-name" id="person-name"></h1>
+                        <p class="person-header-role" id="person-role"></p>
+                    </div>
+                </div>
+                <div class="person-header-date" id="person-date"></div>
+            </div>
+
+            <!-- Person Sub-Tabs -->
+            <div class="person-tabs" id="person-tabs">
+                <button class="person-tab active" data-tab="overview" onclick="switchPersonTab('overview')">Overview</button>
+                <button class="person-tab" data-tab="calendar" onclick="switchPersonTab('calendar')">Calendar</button>
+                <button class="person-tab" data-tab="actions" onclick="switchPersonTab('actions')">Action Items</button>
+                <button class="person-tab" data-tab="hdprofile" onclick="switchPersonTab('hdprofile')">HD Profile</button>
+                <button class="person-tab" data-tab="well" onclick="switchPersonTab('well')">The Well</button>
+            </div>
+
+            <!-- Person Tab Contents -->
+            <div class="person-tab-content" id="ptab-overview"></div>
+            <div class="person-tab-content hidden" id="ptab-calendar">
+                <div class="calendar-container">
+                    <!-- Per-person Google Calendar Embed -->
+                    <div id="person-gcal-embed" class="person-gcal-embed"></div>
+                    <div class="calendar-header-bar">
+                        <button class="cal-nav-btn" onclick="calendarNav(-1)">←</button>
+                        <h2 class="cal-month-title" id="cal-month-title"></h2>
+                        <button class="cal-nav-btn" onclick="calendarNav(1)">→</button>
+                    </div>
+                    <div class="calendar-grid" id="calendar-grid"></div>
+                    <div class="upcoming-events">
+                        <h3 class="section-title" style="margin-top:24px;">Upcoming Events</h3>
+                        <div id="events-list"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="person-tab-content hidden" id="ptab-actions">
+                <div class="actions-header">
+                    <h2 class="section-title">Action Items</h2>
+                    <button class="btn-add" onclick="showAddTaskModal()">+ Add Item</button>
+                </div>
+                <div class="actions-filters" id="actions-filters">
+                    <button class="filter-btn active" data-status="all" onclick="filterActions('all')">All</button>
+                    <button class="filter-btn" data-status="todo" onclick="filterActions('todo')">To Do</button>
+                    <button class="filter-btn" data-status="in_progress" onclick="filterActions('in_progress')">In Progress</button>
+                    <button class="filter-btn" data-status="done" onclick="filterActions('done')">Done</button>
+                    <button class="filter-btn" data-status="blocked" onclick="filterActions('blocked')">Blocked</button>
+                </div>
+                <div class="actions-list" id="actions-list"></div>
+            </div>
+            <div class="person-tab-content hidden" id="ptab-hdprofile"></div>
+            <div class="person-tab-content hidden" id="ptab-well"></div>
+        </section>
+
+        <!-- ══════════ PLAYGROUND VIEW ══════════ -->
+        <section class="view hidden" id="view-playground">
+
+            <!-- Playground Header -->
+            <div class="playground-header">
+                <button class="back-btn" onclick="navigateTo('hub')">← Hub</button>
+                <div class="playground-header-info">
+                    <h1 class="playground-header-title">🎲 Playground</h1>
+                    <p class="playground-header-subtitle">Explore, experiment, and play with your designs</p>
+                </div>
+            </div>
+
+            <!-- Playground Sub-Tabs -->
+            <div class="playground-tabs" id="playground-tabs">
+                <button class="playground-tab active" data-pgtab="calculator" onclick="switchPlaygroundTab('calculator')">🧮 Type Finder</button>
+                <button class="playground-tab" data-pgtab="synergy" onclick="switchPlaygroundTab('synergy')">🔮 Collective Synergy</button>
+                <button class="playground-tab" data-pgtab="mbody" onclick="switchPlaygroundTab('mbody')">🧘 MBody Roulette</button>
+            </div>
+
+            <!-- Playground Tab: Calculator -->
+            <div class="playground-tab-content" id="pgtab-calculator">
+                <div class="hub-section">
+                    <h2 class="section-title">🧮 Human Design Type Finder</h2>
+                    <div class="hd-calculator-card">
+                        <p class="hd-calc-intro">Discover your Human Design type. Enter your birth details to learn about your energy type, strategy, and authority.</p>
+                        <div class="hd-calc-form">
+                            <div class="hd-calc-row">
+                                <div class="hd-calc-field">
+                                    <label>Birth Date</label>
+                                    <input type="date" id="hd-calc-date">
+                                </div>
+                                <div class="hd-calc-field">
+                                    <label>Birth Time (if known)</label>
+                                    <input type="time" id="hd-calc-time">
+                                </div>
+                            </div>
+                            <div class="hd-calc-row">
+                                <div class="hd-calc-field">
+                                    <label>Birth City</label>
+                                    <input type="text" id="hd-calc-city" placeholder="e.g., Las Vegas, NV">
+                                </div>
+                                <div class="hd-calc-field hd-calc-btn-wrap">
+                                    <button class="hd-calc-btn" onclick="calculateHD()">Discover My Design ✨</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="hd-calc-result" class="hd-calc-result hidden"></div>
+                        <div class="hd-calc-note">This is an educational overview based on sun position. For a full chart reading with exact gates and channels, visit <a href="https://www.mybodygraph.com" target="_blank" rel="noopener noreferrer">mybodygraph.com</a>.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Playground Tab: Synergy -->
+            <div class="playground-tab-content hidden" id="pgtab-synergy">
+                <div class="hub-section">
+                    <h2 class="section-title">🔮 Collective Synergy — Human Design</h2>
+                    <div class="synergy-card">
+                        <div class="synergy-header">
+                            <div class="synergy-title">How Your Designs Work Together</div>
+                            <div class="synergy-subtitle">ManiGen + Generator + Projector = The Complete Creative Engine</div>
+                        </div>
+                        <div class="synergy-trio">
+                            <div class="synergy-member" style="border-top: 3px solid var(--sunshine)">
+                                <span class="synergy-emoji">☀️</span>
+                                <div class="synergy-name">Sunshine</div>
+                                <div class="synergy-type">Manifesting Generator</div>
+                                <div class="synergy-gift">Multi-passionate initiator. Brings the fire, downloads, and speed. Lights the spark for the collective.</div>
+                            </div>
+                            <div class="synergy-member" style="border-top: 3px solid var(--monny)">
+                                <span class="synergy-emoji">🌊</span>
+                                <div class="synergy-name">Monny</div>
+                                <div class="synergy-type">Generator</div>
+                                <div class="synergy-gift">Sacral powerhouse and bridge. Grounds the vision in embodied reality. Sustains the build.</div>
+                            </div>
+                            <div class="synergy-member" style="border-top: 3px solid var(--bingle)">
+                                <span class="synergy-emoji">✨</span>
+                                <div class="synergy-name">Bingle</div>
+                                <div class="synergy-type">Projector</div>
+                                <div class="synergy-gift">The guide and distiller. Sees what others miss. Directs energy where it matters most.</div>
+                            </div>
+                        </div>
+                        <div class="synergy-dynamics">
+                            <div class="synergy-dynamics-title">Group Dynamics</div>
+                            <div class="synergy-insight">
+                                <span class="synergy-insight-icon">⚡</span>
+                                <div><strong>Energy Flow:</strong> Sunshine and Monny generate the life force energy. Bingle guides where it goes. When Bingle is recognized and invited to lead, the whole team operates at peak efficiency.</div>
+                            </div>
+                            <div class="synergy-insight">
+                                <span class="synergy-insight-icon">🌊</span>
+                                <div><strong>Decision Making:</strong> Sunshine needs 72 hours (emotional wave). Monny needs a gut yes/no (sacral). Bingle asks "does this serve us?" (ego/willpower). Honor all three timelines.</div>
+                            </div>
+                            <div class="synergy-insight">
+                                <span class="synergy-insight-icon">🔮</span>
+                                <div><strong>5/1 + 5/1 + 2/4:</strong> Two Heretic-Investigators plus a Hermit-Opportunist. Sunshine and Monny share the 5/1 gift of practical solutions through deep research. Bingle's 2/4 brings natural genius and a network-building superpower.</div>
+                            </div>
+                            <div class="synergy-insight">
+                                <span class="synergy-insight-icon">💫</span>
+                                <div><strong>Collective Signature:</strong> When aligned — Sunshine feels satisfaction + peace, Monny feels deep satisfaction, and Bingle feels recognized success. That's your collective green light.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Playground Tab: MBody Roulette -->
+            <div class="playground-tab-content hidden" id="pgtab-mbody">
+                <div class="hub-section">
+                    <h2 class="section-title">🧘 MBody / MonnyLog Roulette</h2>
+                    <div class="mbody-playground-card">
+                        <div class="mbody-playground-header">
+                            <div class="mbody-playground-title">Mindfulness Practices</div>
+                            <div class="mbody-playground-subtitle">Somatic & writing exercises curated by Monny</div>
+                        </div>
+                        <div class="mbody-roulette-wheel" id="mbody-roulette-wheel">
+                            <div class="mbody-spin-area" onclick="spinMBodyRoulette()">
+                                <div class="mbody-spin-circle">
+                                    <span class="mbody-spin-emoji" id="mbody-spin-emoji">🎲</span>
+                                </div>
+                                <div class="mbody-spin-label">Tap to spin</div>
+                            </div>
+                            <div class="mbody-result hidden" id="mbody-result">
+                                <div class="mbody-result-category" id="mbody-result-category"></div>
+                                <div class="mbody-result-title" id="mbody-result-title"></div>
+                                <div class="mbody-result-desc" id="mbody-result-desc"></div>
+                                <button class="mbody-respin-btn" onclick="spinMBodyRoulette()">Spin Again 🎲</button>
+                            </div>
+                        </div>
+                        <div class="mbody-categories">
+                            <div class="mbody-cat">
+                                <span class="mbody-cat-icon">🧘‍♀️</span>
+                                <span class="mbody-cat-label">Somatic</span>
+                            </div>
+                            <div class="mbody-cat">
+                                <span class="mbody-cat-icon">✍️</span>
+                                <span class="mbody-cat-label">Writing</span>
+                            </div>
+                            <div class="mbody-cat">
+                                <span class="mbody-cat-icon">🌿</span>
+                                <span class="mbody-cat-label">Breathwork</span>
+                            </div>
+                            <div class="mbody-cat">
+                                <span class="mbody-cat-icon">🎵</span>
+                                <span class="mbody-cat-label">Sound</span>
+                            </div>
+                        </div>
+                        <div class="mbody-placeholder-note">
+                            🌱 This space is being curated by Monny. More practices coming soon — somatic exercises, journaling prompts, breathwork flows, and sound healing playlists.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ══════════ WORKING DOCS VIEW ══════════ -->
+        <section class="view hidden" id="view-workdocs">
+
+            <!-- Working Docs Header -->
+            <div class="workdocs-header">
+                <button class="back-btn" onclick="navigateTo('hub')">← Hub</button>
+                <div class="workdocs-header-info">
+                    <h1 class="workdocs-header-title">📄 Working Documents</h1>
+                    <p class="workdocs-header-subtitle">Developmental org docs, planning sheets, scanned artifacts & formal records</p>
+                </div>
+            </div>
+
+            <!-- Documents Section: Planning & Strategy -->
+            <div class="hub-section">
+                <h2 class="section-title">🎯 Planning & Strategy</h2>
+                <div class="working-docs-card">
+                    <div class="working-docs-grid">
+                        <a href="https://drive.google.com/drive/folders/1d9OyYZusS0yyYsfwtjLkz1ss0KYPzl5a?usp=drive_link" target="_blank" rel="noopener noreferrer" class="working-doc-item">
+                            <span class="working-doc-icon">📁</span>
+                            <div class="working-doc-info">
+                                <div class="working-doc-name">Create Well Drive Folder</div>
+                                <div class="working-doc-desc">Master folder with all event planning files</div>
+                            </div>
+                        </a>
+                        <a href="https://docs.google.com/document/d/13SM9bqiUQ8-Rwfs9YC5XWlLscf_Lgg2H-y_gdDYFE0s/edit?usp=drive_web&ouid=114253660751168989061" target="_blank" rel="noopener noreferrer" class="working-doc-item">
+                            <span class="working-doc-icon">👥</span>
+                            <div class="working-doc-info">
+                                <div class="working-doc-name">Invite List</div>
+                                <div class="working-doc-desc">Guest invite tracking document</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents Section: Notion Workspaces -->
+            <div class="hub-section">
+                <h2 class="section-title">📝 Notion Workspaces</h2>
+                <div class="working-docs-card">
+                    <div class="working-docs-grid">
+                        <a href="https://www.notion.so/Geyser-Event-Master-Workspace-30ddc6047d2d8142b39ec425848511ec" target="_blank" rel="noopener noreferrer" class="working-doc-item">
+                            <span class="working-doc-icon">📝</span>
+                            <div class="working-doc-info">
+                                <div class="working-doc-name">Geyser Event Workspace</div>
+                                <div class="working-doc-desc">Notion master workspace for Geyser planning</div>
+                            </div>
+                        </a>
+                        <a id="notion-working-docs-link" href="https://www.notion.so/313dc6047d2d812d9763c7b79307cec9" target="_blank" rel="noopener noreferrer" class="working-doc-item">
+                            <span class="working-doc-icon">📚</span>
+                            <div class="working-doc-info">
+                                <div class="working-doc-name">CR8W Working Documents</div>
+                                <div class="working-doc-desc">Formal planning sheets, scanned artifacts & related docs</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents Section: Shared Resources -->
+            <div class="hub-section">
+                <h2 class="section-title">📦 Shared Resources</h2>
+                <div class="working-docs-card">
+                    <div class="working-docs-grid">
+                        <a href="https://drive.google.com/drive/folders/1r0OS_HTJIxTpcPSLYr_hNceeqLxF-Hlj?usp=drive_link" target="_blank" rel="noopener noreferrer" class="working-doc-item">
+                            <span class="working-doc-icon">📦</span>
+                            <div class="working-doc-info">
+                                <div class="working-doc-name">Shared Drive</div>
+                                <div class="working-doc-desc">Collective shared drive for all team files</div>
+                            </div>
+                        </a>
+                        <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer" class="working-doc-item">
+                            <span class="working-doc-icon">✉️</span>
+                            <div class="working-doc-info">
+                                <div class="working-doc-name">Gmail</div>
+                                <div class="working-doc-desc">Team email communications</div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="working-docs-upload-hint">
+                        📌 Upload scanned artifacts and planning sheets to the Create Well Drive Folder or Notion workspace for the team to access.
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    <!-- Dashboard Footer -->
+        <footer class="dashboard-footer" id="dashboard-footer">
+            <div class="footer-links">
+                <a href="https://drive.google.com/drive/folders/1r0OS_HTJIxTpcPSLYr_hNceeqLxF-Hlj?usp=drive_link" target="_blank" rel="noopener noreferrer" class="footer-link">📁 Shared Drive</a>
+                <a href="https://www.notion.so/Geyser-Event-Master-Workspace-30ddc6047d2d8142b39ec425848511ec" target="_blank" rel="noopener noreferrer" class="footer-link">📝 Notion</a>
+                <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer" class="footer-link">✉️ Gmail</a>
+                <a href="#" onclick="navigateTo('hub'); return false;" class="footer-link">🏠 Hub</a>
+            </div>
+            <div class="footer-brand">
+                <img src="./assets/logo-icon.jpg" alt="CW" class="footer-brand-img">
+                <span class="footer-brand-text">create well collective</span>
+            </div>
+            <div class="footer-meta">Built with intention by Sunshine, Monny &amp; Bingle</div>
+            <div class="footer-quote">"Here, is where you fall in love with the process."</div>
+        </footer>
+
+    </main>
+
+    <!-- Scroll-to-Top Button -->
+    <button class="scroll-top-btn" id="scroll-top-btn" onclick="scrollToTop()" title="Back to top">↑</button>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- ADD TASK MODAL                          -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="modal-overlay hidden" id="modal-overlay" onclick="closeModal()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>Add Action Item</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <form id="add-task-form" onsubmit="submitNewTask(event)">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="task-title" required placeholder="What needs to happen?">
+                </div>
+                <div class="form-group">
+                    <label>Assigned To</label>
+                    <select id="task-person">
+                        <option value="sunshine">☀️ Sunshine</option>
+                        <option value="monny" selected>🌊 Monny</option>
+                        <option value="bingle">✨ Bingle</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select id="task-priority">
+                            <option value="high">🔴 High</option>
+                            <option value="medium" selected>🟡 Medium</option>
+                            <option value="low">🟢 Low</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Due Date</label>
+                        <input type="date" id="task-due">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Source</label>
+                        <input type="text" id="task-source" placeholder="e.g., BHD Meeting">
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <input type="text" id="task-category" placeholder="e.g., launch, content">
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit">Add to List ✨</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="./app.js"></script>
+</body>
+</html>

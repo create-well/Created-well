@@ -1,0 +1,416 @@
+draft 1
+🌿 CO-CREATE WELL WORKSHOP TASK FLOW
+Last updated: Jul 3, 2025
+We can adapt the timeline for shorter notice, but the intention of this working structure ensures sustainability, content quality, and strong turnout.
+Based on: ​​Posing Workshop Logistics + Marketing Template 
+
+
+________________
+
+
+🌀 PHASE 0: ALIGNMENT & INTENTIONAL CURATION
+Timeline: 6–8 weeks before event/workshop
+A. Mission + Values Alignment with Co-Hoes & Co-Creator(s)/Facilitator(s)
+* Share our Create Well Mission & Values Doc (Future Deck)
+   * CREATE WELL CO-CREATOR MANUAL
+   * Clarify pillars like flowing over forcing, creative restoration, intuition, community care, and anti-hustle values and shitttttt
+   * Clarify what Create Well is and isn’t (e.g. Not productivity coaching, not over-structured, not a place for healing - but instead a place for nurturing)
+* Host an Alignment Call with each potential co-creator (facilitator or collaborator)
+   * Clarify energetic compatibility, shared intentions, and spaceholding style
+   * Ask: “What does creative wellness mean to you?” and “What do you want participants to feel after your workshop?”
+   * How does the workshop embody Creative Wellness? Practical takeaways and application after the workshop etc.
+B. Workshop Intent + Role Clarity
+* Invite them to submit a Workshop Vision Outline/Sketch (Email or Google Doc?)
+   * Draft title/theme + core transformation statement (inner/outer expression?)
+   * Workshop format 
+   * Target audience + core takeaway, practical application
+   * Optional: upsell or CTA (e.g. 1:1 sessions, membership, product)
+* Define role expectations and co-creation boundaries:
+   * Who is lead vs support (content creation, setup, teaching, follow-up)
+   * Who owns/creates visual assets, deck design, worksheet creation
+   * Identify needed support from Create Well (AV, photographer, budget, etc.)
+________________
+
+
+C. Capacity, Boundaries, and Agreements
+* Clarify mutual capacity and timing preferences:
+   * Discuss calendar compatibility and emotional availability
+   * Include soft boundaries for energy protection and pacing (e.g. “no last-minute marketing rush”)
+* Confirm revenue model and deliverables:
+   * Profit split for Muse In Motion, 
+   * In-kind barter/gift-based exchange (studio included)
+      * Added special/upsell for facilitators: photoshoot with Muse In Motion or video services from Angela (brand video)
+      * Facilitator exchange included: studio time + content/marketing type shit
+   * Marketing contribution (e.g. 2 IG posts + 1 email minimum)
+   * Deadlines for materials (slides, images, worksheets) - outlined later in this doc
+* Finalize Agreement in writing/documented somewhere for clarity:
+   * Include workshop logistics, expectations, and timeline summary
+   * Add to internal workshop tracker with facilitator bio + contact info
+   * Determine how to handle cancellations and/or postponements[a]
+      * Hard start for marketing ~4 weeks out
+         * Secure date at LEAST one month before
+      * Swap? Reschedule? Define
+________________
+
+
+🔮 PHASE 1: STRATEGY + CONCEPT DEVELOPMENT
+Timeline: 5–6 weeks before event/workshop
+1. Create Well Workshop Alignment & Audience Clarity
+* Write a 1-liner transformation statement:
+Ex: “From camera-shy to confidently captured.”
+   * (Is “transformation” the right word? I don’t want people feeling like who they are rn isn’t worthy or valuable. Maybe something like “metamorphosis” LOL that’s the same. But something STICKYYYYY)[b]
+   * Define top 2–3 ideal participant profiles:
+   * Creative entrepreneur in transition
+   * Business owner rebranding themselves
+   * Corporate professional seeking embodiment & presence
+   * Draft 2 pain point statements per profile to use in marketing copy
+2. Format, Theme & Structure
+   * Set preliminary date & backup date
+   * Decide:
+   * Duration (e.g. 2.5 or 3 hrs)
+   * Capacity cap (e.g. 12 max)
+   * Format: 60% teaching, 30% activity, 10% CTA
+   * E.g. posing presentation, posing practice, mini shoot
+   * Confirm if food/drinks are included[c] (if so, outline sourcing plan)
+3. Venue Prep: Sunshine Digital Content Studios
+   * Prep studio with lighting, seating, content A/V
+   * Prepare standard info:
+   * Parking instructions
+   * Entrance process
+   * Set-up/clean-up needs
+________________
+
+
+🎯 PHASE 2: MARKETING + FUNNEL PREP
+Timeline: 4–5 weeks before event
+4. Set Up Registration & Ticketing
+   * Create registration page on:
+   * Posh (main platform)
+   * Eventbrite (for further reach & SEO)
+   * Partiful (for mass text invites)
+   * Website
+   * Add RSVP email + mobile collection
+   * Standardized questions: 
+- “What are you hoping to gain?”
+- “Do you consent to photos/videos being taken for marketing purposes?”
+      * Confirm connection to payment processor: Stripe / Venmo / PayPal
+      * Set early bird deadline with automatic price increase
+      * Optional: Offer “Pay it forward” or sponsored slot ticket
+5. Design Marketing Materials
+      * Align and write copy:
+      * Workshop name + subtitle
+      * 2–3 hook/tagline options (“Not a model? Perfect.”)
+      * 150-word event description (optimized and easily used/repurposed for Posh, Instagram, Eventbrite, LinkedIn, etc)
+      * Design:
+      * Instagram posts (square + vertical)
+      * Reel script outline (introduce workshop in under 30s)
+      * Countdown story templates (Canva / IG)
+      * “Meet the Facilitators” posts
+      * Other Create Well coded templates?
+      * Export visuals with alt text, file names for SEO (e.g. “confident_on_camera_workshop.jpg”) - suggestion from AI fwends
+6. Draft Launch Content Plan
+      * Email: 1 announcement, 1 reminder, 1 final call
+      * Social:
+      * IG feed post (launch)
+      * Reel (hook or teaser)
+      * Countdown stories (every 5–7 days)
+      * Threads/X: Quote tweets about workshop themes
+      * LinkedIn post (for professional tone)
+      * Facebook Event page if relevant
+7. Direct Outreach Strategy
+      * DM / email past attendees: personalized invite with link
+      * Outreach to 3 complementary businesses or communities to cross-share
+      * Ex: local coworking space, mental health collective, photography group
+      * Let’s make a list!
+      * Add event to local FB groups, Meetup, Substack community posts
+________________
+
+
+🛠️ PHASE 3: OPERATIONS + EVENT LOGISTICS
+Timeline: 2–4 weeks before event
+8. Assign Team Roles
+      * Lead facilitator (co-creator)
+      * Co-creators, co-facilitators or vibe support (besides us)
+      * Video/Photographer / AV support
+      * Door / check-in person
+      * Tech (laptop, tethering, speaker if relevant)
+      * TestiMONNY moments?
+9. Set Up Internal Folder System (Google Drive)
+      * Folder structure:
+      * [WORKSHOP NAME]
+      * Marketing
+      * Photos
+      * Feedback
+      * Registration/RSVPs
+      * Decks / Worksheets / Resources
+      * Share folder with team + create file submission deadlines
+10. Prep Materials + Tech
+      * Print/Export:
+      * Worksheets
+      * Name tags
+      * Pose cards or cue decks (if relevant)
+      * Feedback forms (QR and/or paper)
+
+         * Tech needs:
+         * Prep any needs according to workshop co-creator
+         * E.g. tethering software test (if using live photo)
+         * Lighting or ring light test, mic/video set-up
+11. Confirm Reminders + Communication
+         * Send reminder emails:
+         * 5 days before (what to bring, parking, what to expect)
+         * 1 day before (logistics + how to prep mentally)
+         * Set SMS reminder via Posh (if poss) / Eventbrite / Partiful 
+________________
+
+
+📸 PHASE 4: WORKSHOP DAY
+Timeline: Event day!!!
+12. Example Run-of-Show Structure
+         * 30 min early arrival for setup
+         * Check-in with photo consent form (name tags?)
+         * Monny leads opening grounding exercise (somatic, breath, optional name-share & transition to lead)
+         * Workshop flow:
+         * Intro / values
+         * Core content (slide + story)
+         * Pair activity or embodied reflection
+         * Final integration activity (e.g. mini shoots, journaling)
+         * CTA or upsell (membership, follow-up session, etc.)
+         * Collect feedback via QR or physical forms
+13. Capture Content
+         * Have a shot list for:
+         * Behind the scenes (setup, interaction)
+         * Activity in motion
+         * Reflection moments
+         * Testimonnyyyy moments post-activity or wherever relebant
+         * Capture 3–5 short vertical videos for post-Reels & youtube shorts
+________________
+
+
+🎞️ PHASE 5: POST-PRODUCTION + CO-HOES LEGACY
+Timeline: 1–7 days after
+14. Deliver Value to Participants
+         * Send thank-you email (w/ feedback link)
+         * Deliver:
+         * Headshots or digital downloads
+         * Any handouts or replays
+         * Special invite to next offering or discount
+         * Perhaps we consider: Add participants to a private group/chat[d] (Discord has been a game changer for FE!) 
+15. Edit & Schedule Post-Event Content
+         * Schedule:
+         * Workshop recap post with photo highlights
+         * 2 Reels (1 serious, 1 humorous silly cute “What do I do with my hands?”)
+         * Written reflection post (from you or a participant)
+16. Archive & Reflect
+         * Add notes from workshop in feedback tracker
+         * Debrief with team: what worked, what to change
+         * Record metrics:
+         * Total registered vs attended
+         * Profit/loss breakdown
+         * Clicks and conversion (optional)
+________________
+
+
+
+
+
+
+Speaker Roster
+Last updated Date
+Speaker Roster
+
+
+
+
+Projects
+Add a brief description for each project
+
+
+Who
+	Contact
+	What
+	Project lead
+	Progress
+	Ava
+	
+
+	Storytelling - July 29 or 30 
+	Person
+	0%
+	Ashley + Laila
+	
+
+	Makeup / Astrology Workshop - August?
+	Person
+	25%
+	Elle Hope 
+	ellehopethepoet@gmai.com
+	Writer Play - July or August?
+	Person
+	0%
+	FilEx - Audrey
+	
+
+	
+
+	Person
+	0%
+	Ilona Pamplona
+	
+
+	Human Design for Creatives - September
+	Person
+	25%
+	Monny 
+	
+
+	Somatic Sumn - October
+	Person
+	0%
+	Bingle
+	
+
+	Posing W-Shop - November
+	Person
+	50%
+	Danii 
+	
+
+	Sound Related - December - Dysregulated
+	Person
+	0%
+	
+
+
+
+Tasks
+Assign tasks for each project
+
+
+Project 1
+Task
+	Status
+	Owner
+	Due date
+	Add task
+	Completed
+	Person
+	Date
+	Add task
+	Completed
+	Person
+	Date
+	
+
+Project 2
+Task
+	Status
+	Owner
+	Due date
+	Add task
+	Completed
+	Person
+	Date
+	Add task
+	Not started
+	Person
+	Date
+	
+
+Project 3
+Task
+	Status
+	Owner
+	Due date
+	Add task
+	Blocked
+	Person
+	Date
+	Add task
+	In progress
+	Person
+	Date
+	
+
+
+
+Decision log and issue tracker
+Decision log
+Document project-related decisions
+
+
+#
+	Status
+	Project
+	Decision & impact
+	Proposed by
+	Date
+	Result
+	1
+	Approved
+	Project 1
+	Add decision
+	Person
+	Date
+	Add outcome
+	2
+	Pending
+	Project 2
+	Add decision
+	Person
+	Date
+	Add outcome
+	3
+	Pending
+	Project 3
+	Add decision
+	Person
+	Date
+	Add outcome
+	
+
+
+
+Issue tracker
+Report and track any problems, challenges, and issues
+
+
+#
+	Status
+	Project
+	Issue
+	Reported by
+	Assigned to
+	Due date
+	Notes
+	1
+	New
+	Project 1
+	Add issue
+	Person
+	Person
+	Date
+	Add notes
+	2
+	In progress
+	Project 2
+	Add issue
+	Person
+	Person
+	Date
+	Add notes
+	3
+	Unresolved
+	Project 3
+	Add issue
+	Person
+	Person
+	Date
+	Add notes
+	
+
+
+
+[a]adding here to consider
+[b]transformation is fine! I don't think people will be offended.
+[c]this is a great opportunity to justify a higher ticket price
+[d]I know a lot of people including myself, who get overwhelmed with too many apps... if we have them on an email newsletter or Substack I think it's a good start

@@ -1,0 +1,4 @@
+@import 'tailwindcss' source(none);
+@source '../app/**/*.{ts,tsx}';
+
+@import 'tw-animate-css';

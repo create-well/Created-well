@@ -29,7 +29,7 @@ import {
   buildRelationIndex,
   type NotionPage,
 } from '../src/lib/notionNormalizer';
-import type { SyncData, SourceReport, SyncMeta } from '../src/app/components/api';
+import type { SyncData, SourceReport, SyncMeta } from '../src/types/contract';
 
 // ── Supabase KV helpers ───────────────────────────────────────────────────────
 

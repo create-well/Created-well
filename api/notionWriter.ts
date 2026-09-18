@@ -12,7 +12,7 @@
  *   NOTION_SECRET, NOTION_DB_MOVES, NOTION_DB_PEOPLE, NOTION_DB_FLOWS, NOTION_DB_CONTENT
  */
 
-import type { Task, Station, ForumPost, CoFlowDate } from '../src/app/components/api';
+import type { Task, Station, ForumPost, CoFlowDate } from '../src/types/contract';
 
 const NOTION_API     = 'https://api.notion.com/v1';
 const NOTION_VERSION = '2022-06-28';

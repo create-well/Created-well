@@ -12,7 +12,7 @@
 //   CONTENT: Name, Flow (Relation→FLOWS), Content Type, Audience,
 //             Status, Final?, Publish Date, URL, Where
 
-import type { Task, Station, ForumPost, CoFlowDate } from '../app/components/api';
+import type { Task, Station, ForumPost, CoFlowDate } from '../types/contract';
 
 // ── Notion property value types ───────────────────────────────────────────────
 

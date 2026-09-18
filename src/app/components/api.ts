@@ -1,23 +1,28 @@
 import { projectId, publicAnonKey } from '/utils/supabase/info';
-// Supabase publishable key — safe to embed (not a secret, designed for public clients)
-const API_KEY = 'sb_publishable_9iKcrLqFPwPnKmZ4JC3RIg_C15YWSbk' || publicAnonKey;
+// Supabase publishable key — safe to embed (not a secret, designed for public clients).
+// Read from env var first so the literal can be rotated without a code change.
+const API_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)
+  || 'sb_publishable_9iKcrLqFPwPnKmZ4JC3RIg_C15YWSbk'
+  || publicAnonKey;
 
 // Pick API base at runtime so the same build works everywhere:
 //   • VITE_API_BASE env var  → explicit override (highest priority)
-//   • Vercel / custom domain → same-origin /api/server route
-//   • Figma Make preview     → must use absolute Supabase URL
+//   • dash.cr8w.com / *.vercel.app / localhost → same-origin /api/server
+//   • Figma Make preview → Supabase Edge Function (degraded — verify_jwt:true
+//     means the sb_publishable key does NOT authenticate; requests return 401)
 function resolveApiBase(): string {
   if (import.meta.env.VITE_API_BASE) return import.meta.env.VITE_API_BASE as string;
   const host = typeof window !== 'undefined' ? window.location.hostname : '';
-  const onVercelOrDomain =
+  const isFirstParty =
     host.endsWith('.vercel.app') ||
+    host === 'cr8w.com' ||
+    host.endsWith('.cr8w.com') ||
     host === 'createwell.monnyfest.co' ||
+    host.endsWith('.monnyfest.co') ||
     host === 'localhost' ||
     host === '127.0.0.1';
-  if (onVercelOrDomain) return '/api/server';
-  // Figma Make preview / any other origin — hit Supabase Edge Function directly.
-  // Vercel functions are same-origin only; the Edge Function has verify_jwt:false
-  // so the sb_publishable key in the Authorization header is sufficient.
+  if (isFirstParty) return '/api/server';
+  // Figma Make preview / any other origin — Edge Function path, degraded (401s).
   return `https://${projectId}.supabase.co/functions/v1/make-server-dabe1c74`;
 }
 
@@ -230,7 +235,7 @@ export interface InviteCounts {
 
 export interface Task {
   id: number; person: string; title: string;
-  status: 'todo' | 'in_progress' | 'done' | 'blocked';
+  status: 'todo' | 'in_progress' | 'done' | 'blocked' | 'dropped';
   priority: 'high' | 'medium' | 'low';
   due_date?: string; source?: string; category?: string; created_at?: string;
   notionPageId?: string;
@@ -270,7 +275,7 @@ export interface Workshop {
   id: number;
   title: string;
   description: string;
-  facilitator: 'monny' | 'sunshine' | 'bingle';
+  facilitator: 'monny' | 'sunshine' | 'bingle' | 'pia' | 'omar' | 'event-support';
   date: string;
   capacity: number;
   participants: number;

@@ -121,16 +121,21 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         // /api/dashboard (Notion-backed) only exists on Vercel. Skip the attempt
         // entirely when running against the Supabase Edge Function to avoid a
         // guaranteed 404 on every poll cycle.
+        // usedFallback: true means the primary Notion source was unavailable.
+        // A fallback path may never report 'fresh' — stale beats wrong.
         let data: Awaited<ReturnType<typeof api.fetchDashboard>>;
+        let usedFallback = false;
         if (api.isDashboardAvailable) {
           try {
             data = await api.fetchDashboard();
           } catch (primary) {
             console.warn('fetchDashboard unreachable, falling back to api.sync():', (primary as Error)?.message);
             data = await api.sync();
+            usedFallback = true;
           }
         } else {
           data = await api.sync();
+          usedFallback = true;
         }
         setTasks(data.tasks || []);
         setStations(data.stations?.length ? data.stations : DEFAULT_STATIONS_MAPPED);
@@ -145,17 +150,20 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowDates(data.coflowDates || []);
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
-        setSyncStatus('fresh');
+        setSyncStatus(usedFallback ? 'stale' : 'fresh');
         setLastSynced(new Date());
         silentFailCount.current = 0;
         if (!dataLoadedRef.current) { dataLoadedRef.current = true; }
       } catch (e) {
         silentFailCount.current += 1;
         console.error('Dashboard sync error:', e);
-        // Show stale data if we've ever loaded; fail hard only on first load.
+        // On first load: show empty data as stale rather than hard-failing.
+        // The UI stays usable; the status bar tells the team the backend is unreachable.
+        // On subsequent failures (≥2): degrade to failed so the persistent
+        // banner appears, but only after the team has seen real data at least once.
         if (!dataLoadedRef.current) {
           dataLoadedRef.current = true;
-          setSyncStatus('failed');
+          setSyncStatus('stale');
         } else if (silentFailCount.current >= 2) {
           setSyncStatus('failed');
         }

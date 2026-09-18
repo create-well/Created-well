@@ -20,7 +20,6 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
 import {
   normalizeMove,
   normalizePerson,
@@ -28,21 +27,25 @@ import {
   normalizeFlow,
   buildRelationIndex,
   type NotionPage,
-} from '../src/lib/notionNormalizer';
-import type { SyncData, SourceReport, SyncMeta } from '../src/types/contract';
+} from '../src/lib/notionNormalizer.js';
+import type { SyncData, SourceReport, SyncMeta } from '../src/types/contract.js';
 
 // ── Supabase KV helpers ───────────────────────────────────────────────────────
 
 const KV_TABLE = 'kv_store_dabe1c74';
 
-function supabaseClient() {
+// Loaded lazily for the same reason as api/server: a top-level import of
+// @supabase/supabase-js turns any resolution failure into
+// FUNCTION_INVOCATION_FAILED with no body, killing every route in the file.
+async function supabaseClient() {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  const { createClient } = await import('@supabase/supabase-js');
   return createClient(url, key);
 }
 
-async function kvGetList(key: string, client: ReturnType<typeof supabaseClient>): Promise<unknown[]> {
+async function kvGetList(key: string, client: Awaited<ReturnType<typeof supabaseClient>>): Promise<unknown[]> {
   const { data, error } = await client
     .from(KV_TABLE)
     .select('value')
@@ -67,36 +70,89 @@ interface NotionQueryResponse {
   next_cursor: string | null;
 }
 
-// Fetch all pages from a Notion database, following pagination cursors.
-async function queryNotionDatabase(databaseId: string, secret: string): Promise<NotionPage[]> {
+const NOTION_LEGACY_VERSION = '2022-06-28';
+const NOTION_DS_VERSION     = '2025-09-03';
+
+/**
+ * Notion now distinguishes a database from its data sources, and the two ids are
+ * different values. For MOVES, the database is 3da8c564... and its single data
+ * source is 5597e583..., and each one is rejected by the other's endpoint. Rather
+ * than making the env vars depend on knowing which is which, accept either:
+ *
+ *   1. POST /v1/databases/:id/query      (legacy, database id)
+ *   2. POST /v1/data_sources/:id/query   (current, data source id)
+ *   3. GET  /v1/databases/:id -> data_sources[0].id, then query that
+ *
+ * The path that worked is reported in meta.sources so the response says which
+ * id shape is configured, instead of leaving it to be guessed.
+ */
+async function notionPost(
+  path: string,
+  version: string,
+  secret: string,
+  body: Record<string, unknown>,
+): Promise<{ ok: boolean; status: number; json: NotionQueryResponse | null; text: string }> {
+  const res = await fetch(`https://api.notion.com/v1${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      'Notion-Version': version,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) return { ok: false, status: res.status, json: null, text: (await res.text()).slice(0, 300) };
+  return { ok: true, status: res.status, json: (await res.json()) as NotionQueryResponse, text: '' };
+}
+
+async function paginate(
+  path: string,
+  version: string,
+  secret: string,
+): Promise<{ pages: NotionPage[] } | { error: string; status: number }> {
   const pages: NotionPage[] = [];
   let cursor: string | undefined;
-
   do {
     const body: Record<string, unknown> = { page_size: 100 };
     if (cursor) body.start_cursor = cursor;
-
-    const res = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${secret}`,
-        'Notion-Version': '2022-06-28',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Notion DB ${databaseId} → ${res.status}: ${text.slice(0, 300)}`);
-    }
-
-    const payload = (await res.json()) as NotionQueryResponse;
-    pages.push(...payload.results);
-    cursor = payload.has_more && payload.next_cursor ? payload.next_cursor : undefined;
+    const r = await notionPost(path, version, secret, body);
+    if (!r.ok || !r.json) return { error: r.text, status: r.status };
+    pages.push(...r.json.results);
+    cursor = r.json.has_more && r.json.next_cursor ? r.json.next_cursor : undefined;
   } while (cursor);
+  return { pages };
+}
 
-  return pages;
+async function queryNotionDatabase(
+  id: string,
+  secret: string,
+): Promise<{ pages: NotionPage[]; via: string }> {
+  // 1. Treat the id as a database id on the legacy endpoint.
+  const legacy = await paginate(`/databases/${id}/query`, NOTION_LEGACY_VERSION, secret);
+  if ('pages' in legacy) return { pages: legacy.pages, via: 'database id' };
+
+  // 2. Treat it as a data source id.
+  const ds = await paginate(`/data_sources/${id}/query`, NOTION_DS_VERSION, secret);
+  if ('pages' in ds) return { pages: ds.pages, via: 'data source id' };
+
+  // 3. Resolve the database to its first data source, then query that.
+  const meta = await fetch(`https://api.notion.com/v1/databases/${id}`, {
+    headers: { Authorization: `Bearer ${secret}`, 'Notion-Version': NOTION_DS_VERSION },
+  });
+  if (meta.ok) {
+    const body = (await meta.json()) as { data_sources?: Array<{ id: string; name?: string }> };
+    const first = body.data_sources?.[0]?.id;
+    if (first) {
+      const resolved = await paginate(`/data_sources/${first}/query`, NOTION_DS_VERSION, secret);
+      if ('pages' in resolved) return { pages: resolved.pages, via: `resolved data source ${first}` };
+      throw new Error(`Notion ${id} -> data source ${first} -> ${resolved.status}: ${resolved.error}`);
+    }
+  }
+
+  throw new Error(
+    `Notion ${id}: database query ${legacy.status} (${legacy.error}); ` +
+    `data source query ${ds.status} (${ds.error})`,
+  );
 }
 
 // ── In-process cache (warm-start optimisation; CDN cache is the primary gate) ─
@@ -154,8 +210,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return [];
     }
     try {
-      const pages = await queryNotionDatabase(dbId, secret);
-      sources[section] = { source: label, status: 'ok', rows: pages.length };
+      const { pages, via } = await queryNotionDatabase(dbId, secret);
+      sources[section] = { source: `${label} (${via})`, status: 'ok', rows: pages.length };
       return pages;
     } catch (err) {
       sources[section] = {
@@ -183,7 +239,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   ] as const;
 
   try {
-    const kv = supabaseClient();
+    const kv = await supabaseClient();
 
     // Fan-out: all Notion DB queries + all KV reads in parallel. Nothing in here
     // throws; each section records its own outcome in `sources`.

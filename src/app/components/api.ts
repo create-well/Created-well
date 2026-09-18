@@ -186,6 +186,22 @@ export async function fetchDashboard(): Promise<SyncData> {
   }
 }
 
+// Username ↔ email resolution (server-side KV map; enables username sign-in)
+export async function lookupUsername(username: string): Promise<string> {
+  const res = await fetch(`${BASE}/username-lookup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: username.trim().toLowerCase() }),
+  });
+  if (!res.ok) throw new Error('Username not found');
+  const data = await res.json();
+  return data.email as string;
+}
+
+export async function registerUsername(username: string, email: string): Promise<void> {
+  await req<{ ok: boolean }>('POST', '/register-username', { username, email });
+}
+
 // Parking Lot (quick-capture from Playground, KV-backed)
 export interface ParkingLotItem {
   id: string;

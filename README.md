@@ -1,7 +1,7 @@
 
-  # createdwell
+  # created-well
 
-  This is a code bundle for createdwell. The original project is available at https://www.figma.com/design/H5p9jZz5h7VwzE0WzbBQ5G/createdwell.
+  This is a code bundle for created-well. The original project is available at https://www.figma.com/design/H5p9jZz5h7VwzE0WzbBQ5G/created-well.
 
   ## Running the code
 

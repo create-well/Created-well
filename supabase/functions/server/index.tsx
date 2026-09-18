@@ -54,17 +54,17 @@ async function setList(key: string, list: any[]): Promise<void> {
 }
 
 // ── Health ────────────────────────────────────────────────────────────────────
-app.get("/make-server-8dcd9693/health", (c) => c.json({ status: "ok" }));
+app.get("/make-server-dabe1c74/health", (c) => c.json({ status: "ok" }));
 
 // ── Sync — single query for all keys to avoid timeout on cold starts ─────
-app.get("/make-server-8dcd9693/sync", async (c) => {
+app.get("/make-server-dabe1c74/sync", async (c) => {
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
     const { data, error } = await supabase
-      .from("kv_store_8dcd9693")
+      .from("kv_store_dabe1c74")
       .select("key, value")
       .in("key", SYNC_KEYS as unknown as string[]);
 
@@ -102,11 +102,11 @@ app.get("/make-server-8dcd9693/sync", async (c) => {
 });
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────
-app.get("/make-server-8dcd9693/tasks", async (c) => {
+app.get("/make-server-dabe1c74/tasks", async (c) => {
   return c.json(await getList("cr8w_tasks"));
 });
 
-app.post("/make-server-8dcd9693/tasks", async (c) => {
+app.post("/make-server-dabe1c74/tasks", async (c) => {
   try {
     const body = await c.req.json();
     const tasks = await getList("cr8w_tasks");
@@ -120,7 +120,7 @@ app.post("/make-server-8dcd9693/tasks", async (c) => {
   }
 });
 
-app.put("/make-server-8dcd9693/tasks/:id", async (c) => {
+app.put("/make-server-dabe1c74/tasks/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const body = await c.req.json();
@@ -136,7 +136,7 @@ app.put("/make-server-8dcd9693/tasks/:id", async (c) => {
   }
 });
 
-app.delete("/make-server-8dcd9693/tasks/:id", async (c) => {
+app.delete("/make-server-dabe1c74/tasks/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const tasks = await getList("cr8w_tasks");
@@ -149,11 +149,11 @@ app.delete("/make-server-8dcd9693/tasks/:id", async (c) => {
 });
 
 // ── Stations ──────────────────────────────────────────────────────────────────
-app.get("/make-server-8dcd9693/stations", async (c) => {
+app.get("/make-server-dabe1c74/stations", async (c) => {
   return c.json(await getList("cr8w_stations"));
 });
 
-app.post("/make-server-8dcd9693/stations", async (c) => {
+app.post("/make-server-dabe1c74/stations", async (c) => {
   try {
     const body = await c.req.json();
     const stations = await getList("cr8w_stations");
@@ -167,7 +167,7 @@ app.post("/make-server-8dcd9693/stations", async (c) => {
   }
 });
 
-app.put("/make-server-8dcd9693/stations/:id", async (c) => {
+app.put("/make-server-dabe1c74/stations/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const body = await c.req.json();
@@ -183,7 +183,7 @@ app.put("/make-server-8dcd9693/stations/:id", async (c) => {
   }
 });
 
-app.delete("/make-server-8dcd9693/stations/:id", async (c) => {
+app.delete("/make-server-dabe1c74/stations/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const stations = await getList("cr8w_stations");
@@ -196,11 +196,11 @@ app.delete("/make-server-8dcd9693/stations/:id", async (c) => {
 });
 
 // ── Forum ─────────────────────────────────────────────────────────────────────
-app.get("/make-server-8dcd9693/forum", async (c) => {
+app.get("/make-server-dabe1c74/forum", async (c) => {
   return c.json(await getList("cr8w_forum"));
 });
 
-app.post("/make-server-8dcd9693/forum", async (c) => {
+app.post("/make-server-dabe1c74/forum", async (c) => {
   try {
     const body = await c.req.json();
     const forum = await getList("cr8w_forum");
@@ -214,7 +214,7 @@ app.post("/make-server-8dcd9693/forum", async (c) => {
   }
 });
 
-app.delete("/make-server-8dcd9693/forum/:id", async (c) => {
+app.delete("/make-server-dabe1c74/forum/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const forum = await getList("cr8w_forum");
@@ -227,7 +227,7 @@ app.delete("/make-server-8dcd9693/forum/:id", async (c) => {
 });
 
 // Update a Well post (content, tag, etc.)
-app.put("/make-server-8dcd9693/forum/:id", async (c) => {
+app.put("/make-server-dabe1c74/forum/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const body = await c.req.json();
@@ -245,7 +245,7 @@ app.put("/make-server-8dcd9693/forum/:id", async (c) => {
 });
 
 // ── Forum Replies (threaded) ──────────────────────────────────────────────────
-app.get("/make-server-8dcd9693/forum/replies/all", async (c) => {
+app.get("/make-server-dabe1c74/forum/replies/all", async (c) => {
   try {
     return c.json(await getList("cr8w_forum_replies"));
   } catch (e) {
@@ -254,7 +254,7 @@ app.get("/make-server-8dcd9693/forum/replies/all", async (c) => {
   }
 });
 
-app.get("/make-server-8dcd9693/forum/:id/replies", async (c) => {
+app.get("/make-server-dabe1c74/forum/:id/replies", async (c) => {
   try {
     const postId = c.req.param("id");
     const all = await getList("cr8w_forum_replies");
@@ -265,7 +265,7 @@ app.get("/make-server-8dcd9693/forum/:id/replies", async (c) => {
   }
 });
 
-app.post("/make-server-8dcd9693/forum/:id/replies", async (c) => {
+app.post("/make-server-dabe1c74/forum/:id/replies", async (c) => {
   try {
     const postId = c.req.param("id");
     const body = await c.req.json();
@@ -286,7 +286,7 @@ app.post("/make-server-8dcd9693/forum/:id/replies", async (c) => {
 });
 
 // Delete a forum reply
-app.delete("/make-server-8dcd9693/forum/replies/:replyId", async (c) => {
+app.delete("/make-server-dabe1c74/forum/replies/:replyId", async (c) => {
   try {
     const replyId = c.req.param("replyId");
     const all = await getList("cr8w_forum_replies");
@@ -299,11 +299,11 @@ app.delete("/make-server-8dcd9693/forum/replies/:replyId", async (c) => {
 });
 
 // ── Messages (iMessage-style) ─────────────────────────────────────────────────
-app.get("/make-server-8dcd9693/messages", async (c) => {
+app.get("/make-server-dabe1c74/messages", async (c) => {
   return c.json(await getList("cr8w_messages"));
 });
 
-app.post("/make-server-8dcd9693/messages", async (c) => {
+app.post("/make-server-dabe1c74/messages", async (c) => {
   try {
     const body = await c.req.json();
     const messages = await getList("cr8w_messages");
@@ -319,7 +319,7 @@ app.post("/make-server-8dcd9693/messages", async (c) => {
   }
 });
 
-app.delete("/make-server-8dcd9693/messages/:id", async (c) => {
+app.delete("/make-server-dabe1c74/messages/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const messages = await getList("cr8w_messages");
@@ -331,7 +331,7 @@ app.delete("/make-server-8dcd9693/messages/:id", async (c) => {
   }
 });
 
-app.put("/make-server-8dcd9693/messages/:id", async (c) => {
+app.put("/make-server-dabe1c74/messages/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const body = await c.req.json();
@@ -348,11 +348,11 @@ app.put("/make-server-8dcd9693/messages/:id", async (c) => {
 });
 
 // ── Brain Dumps ───────────────────────────────────────────────────────────────
-app.get("/make-server-8dcd9693/braindumps", async (c) => {
+app.get("/make-server-dabe1c74/braindumps", async (c) => {
   return c.json(await getList("cr8w_braindumps"));
 });
 
-app.post("/make-server-8dcd9693/braindumps", async (c) => {
+app.post("/make-server-dabe1c74/braindumps", async (c) => {
   try {
     const body = await c.req.json();
     const dumps = await getList("cr8w_braindumps");
@@ -366,7 +366,7 @@ app.post("/make-server-8dcd9693/braindumps", async (c) => {
   }
 });
 
-app.delete("/make-server-8dcd9693/braindumps/:id", async (c) => {
+app.delete("/make-server-dabe1c74/braindumps/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const dumps = await getList("cr8w_braindumps");
@@ -379,11 +379,11 @@ app.delete("/make-server-8dcd9693/braindumps/:id", async (c) => {
 });
 
 // ── Announcements ─────────────────────────────────────────────────────────────
-app.get("/make-server-8dcd9693/announcements", async (c) => {
+app.get("/make-server-dabe1c74/announcements", async (c) => {
   return c.json(await getList("cr8w_announcements"));
 });
 
-app.post("/make-server-8dcd9693/announcements", async (c) => {
+app.post("/make-server-dabe1c74/announcements", async (c) => {
   try {
     const body = await c.req.json();
     const anns = await getList("cr8w_announcements");
@@ -397,7 +397,7 @@ app.post("/make-server-8dcd9693/announcements", async (c) => {
   }
 });
 
-app.delete("/make-server-8dcd9693/announcements/:id", async (c) => {
+app.delete("/make-server-dabe1c74/announcements/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const anns = await getList("cr8w_announcements");
@@ -410,11 +410,11 @@ app.delete("/make-server-8dcd9693/announcements/:id", async (c) => {
 });
 
 // ── Workshops ─────────────────────────────────────────────────────────────────
-app.get("/make-server-8dcd9693/workshops", async (c) => {
+app.get("/make-server-dabe1c74/workshops", async (c) => {
   return c.json(await getList("cr8w_workshops"));
 });
 
-app.post("/make-server-8dcd9693/workshops", async (c) => {
+app.post("/make-server-dabe1c74/workshops", async (c) => {
   try {
     const body = await c.req.json();
     const list = await getList("cr8w_workshops");
@@ -428,7 +428,7 @@ app.post("/make-server-8dcd9693/workshops", async (c) => {
   }
 });
 
-app.put("/make-server-8dcd9693/workshops/:id", async (c) => {
+app.put("/make-server-dabe1c74/workshops/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const body = await c.req.json();
@@ -444,7 +444,7 @@ app.put("/make-server-8dcd9693/workshops/:id", async (c) => {
   }
 });
 
-app.delete("/make-server-8dcd9693/workshops/:id", async (c) => {
+app.delete("/make-server-dabe1c74/workshops/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const list = await getList("cr8w_workshops");
@@ -457,11 +457,11 @@ app.delete("/make-server-8dcd9693/workshops/:id", async (c) => {
 });
 
 // ── Workshop Programs ─────────────────────────────────────────────────────────
-app.get("/make-server-8dcd9693/workshop-programs", async (c) => {
+app.get("/make-server-dabe1c74/workshop-programs", async (c) => {
   return c.json(await getList("cr8w_workshop_programs"));
 });
 
-app.post("/make-server-8dcd9693/workshop-programs", async (c) => {
+app.post("/make-server-dabe1c74/workshop-programs", async (c) => {
   try {
     const body = await c.req.json();
     const list = await getList("cr8w_workshop_programs");
@@ -475,7 +475,7 @@ app.post("/make-server-8dcd9693/workshop-programs", async (c) => {
   }
 });
 
-app.put("/make-server-8dcd9693/workshop-programs/:id", async (c) => {
+app.put("/make-server-dabe1c74/workshop-programs/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const body = await c.req.json();
@@ -491,7 +491,7 @@ app.put("/make-server-8dcd9693/workshop-programs/:id", async (c) => {
   }
 });
 
-app.delete("/make-server-8dcd9693/workshop-programs/:id", async (c) => {
+app.delete("/make-server-dabe1c74/workshop-programs/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const list = await getList("cr8w_workshop_programs");
@@ -504,11 +504,11 @@ app.delete("/make-server-8dcd9693/workshop-programs/:id", async (c) => {
 });
 
 // ── Workshop Resources ────────────────────────────────────────────────────────
-app.get("/make-server-8dcd9693/workshop-resources", async (c) => {
+app.get("/make-server-dabe1c74/workshop-resources", async (c) => {
   return c.json(await getList("cr8w_workshop_resources"));
 });
 
-app.post("/make-server-8dcd9693/workshop-resources", async (c) => {
+app.post("/make-server-dabe1c74/workshop-resources", async (c) => {
   try {
     const body = await c.req.json();
     const list = await getList("cr8w_workshop_resources");
@@ -522,7 +522,7 @@ app.post("/make-server-8dcd9693/workshop-resources", async (c) => {
   }
 });
 
-app.delete("/make-server-8dcd9693/workshop-resources/:id", async (c) => {
+app.delete("/make-server-dabe1c74/workshop-resources/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const list = await getList("cr8w_workshop_resources");
@@ -535,11 +535,11 @@ app.delete("/make-server-8dcd9693/workshop-resources/:id", async (c) => {
 });
 
 // ── CoFlow Dates (behind h0es doors meetings) ───────────────────────────────────────────────
-app.get("/make-server-8dcd9693/coflow-dates", async (c) => {
+app.get("/make-server-dabe1c74/coflow-dates", async (c) => {
   return c.json(await getList("cr8w_coflow_dates"));
 });
 
-app.post("/make-server-8dcd9693/coflow-dates", async (c) => {
+app.post("/make-server-dabe1c74/coflow-dates", async (c) => {
   try {
     const body = await c.req.json();
     const list = await getList("cr8w_coflow_dates");
@@ -553,7 +553,7 @@ app.post("/make-server-8dcd9693/coflow-dates", async (c) => {
   }
 });
 
-app.put("/make-server-8dcd9693/coflow-dates/:id", async (c) => {
+app.put("/make-server-dabe1c74/coflow-dates/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const body = await c.req.json();
@@ -569,7 +569,7 @@ app.put("/make-server-8dcd9693/coflow-dates/:id", async (c) => {
   }
 });
 
-app.delete("/make-server-8dcd9693/coflow-dates/:id", async (c) => {
+app.delete("/make-server-dabe1c74/coflow-dates/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const list = await getList("cr8w_coflow_dates");
@@ -582,11 +582,11 @@ app.delete("/make-server-8dcd9693/coflow-dates/:id", async (c) => {
 });
 
 // ── CoFlow Check-ins ──────────────────────────────────────────────────────────
-app.get("/make-server-8dcd9693/coflow-checkins", async (c) => {
+app.get("/make-server-dabe1c74/coflow-checkins", async (c) => {
   return c.json(await getList("cr8w_coflow_checkins"));
 });
 
-app.post("/make-server-8dcd9693/coflow-checkins", async (c) => {
+app.post("/make-server-dabe1c74/coflow-checkins", async (c) => {
   try {
     const body = await c.req.json();
     const list = await getList("cr8w_coflow_checkins");
@@ -600,7 +600,7 @@ app.post("/make-server-8dcd9693/coflow-checkins", async (c) => {
   }
 });
 
-app.delete("/make-server-8dcd9693/coflow-checkins/:id", async (c) => {
+app.delete("/make-server-dabe1c74/coflow-checkins/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const list = await getList("cr8w_coflow_checkins");
@@ -613,11 +613,11 @@ app.delete("/make-server-8dcd9693/coflow-checkins/:id", async (c) => {
 });
 
 // ── Well Notes (Notes from the Well — anonymous community exchange) ────────────
-app.get("/make-server-8dcd9693/well-notes", async (c) => {
+app.get("/make-server-dabe1c74/well-notes", async (c) => {
   return c.json(await getList("cr8w_well_notes"));
 });
 
-app.post("/make-server-8dcd9693/well-notes", async (c) => {
+app.post("/make-server-dabe1c74/well-notes", async (c) => {
   try {
     const body = await c.req.json();
     const list = await getList("cr8w_well_notes");
@@ -631,7 +631,7 @@ app.post("/make-server-8dcd9693/well-notes", async (c) => {
   }
 });
 
-app.put("/make-server-8dcd9693/well-notes/:id", async (c) => {
+app.put("/make-server-dabe1c74/well-notes/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const body = await c.req.json();
@@ -648,7 +648,7 @@ app.put("/make-server-8dcd9693/well-notes/:id", async (c) => {
 });
 
 // ── Google Calendar OAuth Token Exchange
-app.post("/make-server-8dcd9693/gcal-token-exchange", async (c) => {
+app.post("/make-server-dabe1c74/gcal-token-exchange", async (c) => {
   try {
     const { code, code_verifier, redirect_uri, client_id } = await c.req.json();
 
@@ -705,7 +705,7 @@ app.post("/make-server-8dcd9693/gcal-token-exchange", async (c) => {
 // ══════════════════════════════════════════════════════════════════════════════
 const INVITE_COUNTS_KEY = "cr8w_invite_counts";
 
-app.get("/make-server-8dcd9693/invite-counts", async (c) => {
+app.get("/make-server-dabe1c74/invite-counts", async (c) => {
   try {
     const raw = await kv.get(INVITE_COUNTS_KEY);
     if (!raw) return c.json({ confirmed: 0, pending: 0, declined: 0, maybe: 0, total: 0 });
@@ -720,7 +720,7 @@ app.get("/make-server-8dcd9693/invite-counts", async (c) => {
   }
 });
 
-app.post("/make-server-8dcd9693/invite-counts", async (c) => {
+app.post("/make-server-dabe1c74/invite-counts", async (c) => {
   try {
     const body = await c.req.json();
     const counts = {
@@ -744,7 +744,7 @@ app.post("/make-server-8dcd9693/invite-counts", async (c) => {
 // ══════════════════════════════════════════════════════════════════════════════
 const SETTINGS_PREFIX = "cr8w_settings_";
 
-app.get("/make-server-8dcd9693/settings/:key", async (c) => {
+app.get("/make-server-dabe1c74/settings/:key", async (c) => {
   try {
     const key = c.req.param("key");
     const raw = await kv.get(`${SETTINGS_PREFIX}${key}`);
@@ -760,7 +760,7 @@ app.get("/make-server-8dcd9693/settings/:key", async (c) => {
   }
 });
 
-app.put("/make-server-8dcd9693/settings/:key", async (c) => {
+app.put("/make-server-dabe1c74/settings/:key", async (c) => {
   try {
     const key = c.req.param("key");
     const body = await c.req.json();
@@ -777,7 +777,7 @@ app.put("/make-server-8dcd9693/settings/:key", async (c) => {
 // ══════════════════════════════════════════════════════════════════════════════
 const CALENDAR_EVENTS_KEY = "cr8w_calendar_events";
 
-app.get("/make-server-8dcd9693/calendar-events", async (c) => {
+app.get("/make-server-dabe1c74/calendar-events", async (c) => {
   try {
     return c.json(await getList(CALENDAR_EVENTS_KEY));
   } catch (e) {
@@ -786,7 +786,7 @@ app.get("/make-server-8dcd9693/calendar-events", async (c) => {
   }
 });
 
-app.post("/make-server-8dcd9693/calendar-events", async (c) => {
+app.post("/make-server-dabe1c74/calendar-events", async (c) => {
   try {
     const body = await c.req.json();
     const events = Array.isArray(body) ? body : (body.events || []);
@@ -813,7 +813,7 @@ app.post("/make-server-8dcd9693/calendar-events", async (c) => {
 // ══════════════════════════════════════════════════════════════════════════════
 const PARKING_LOT_KEY = "cr8w_parking_lot";
 
-app.get("/make-server-8dcd9693/parking-lot", async (c) => {
+app.get("/make-server-dabe1c74/parking-lot", async (c) => {
   try {
     return c.json(await getList(PARKING_LOT_KEY));
   } catch (e) {
@@ -822,7 +822,7 @@ app.get("/make-server-8dcd9693/parking-lot", async (c) => {
   }
 });
 
-app.post("/make-server-8dcd9693/parking-lot", async (c) => {
+app.post("/make-server-dabe1c74/parking-lot", async (c) => {
   try {
     const body = await c.req.json();
     // If body is an array, replace entire list; if single item, append
@@ -848,7 +848,7 @@ app.post("/make-server-8dcd9693/parking-lot", async (c) => {
   }
 });
 
-app.delete("/make-server-8dcd9693/parking-lot/:id", async (c) => {
+app.delete("/make-server-dabe1c74/parking-lot/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const existing = await getList(PARKING_LOT_KEY);
@@ -858,6 +858,24 @@ app.delete("/make-server-8dcd9693/parking-lot/:id", async (c) => {
   } catch (e) {
     console.log("Parking lot DELETE error:", e);
     return c.json({ error: `Failed to delete parking lot item: ${e}` }, 500);
+  }
+});
+
+
+app.post("/make-server-dabe1c74/resolve-username", async (c) => {
+  try {
+    const { username } = await c.req.json();
+    if (!username || typeof username !== "string") {
+      return c.json({ error: "username required" }, 400);
+    }
+    const raw = await kv.get("cr8w_username_map");
+    const map = typeof raw === "string" ? JSON.parse(raw) : (raw || {});
+    const email = map[username.trim().toLowerCase()];
+    if (!email) return c.json({ error: "unknown username" }, 404);
+    return c.json({ email });
+  } catch (e) {
+    console.log("resolve-username error:", e);
+    return c.json({ error: "resolve failed" }, 500);
   }
 });
 

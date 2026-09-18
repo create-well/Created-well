@@ -322,6 +322,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // ── Username ↔ email resolution (supports username sign-in) ──────────────
+    if (resource === 'username-lookup' && method === 'POST') {
+      const { username } = await body(req);
+      if (!username) { res.status(400).json({ error: 'username required' }); return; }
+      const raw = await kvGet('cr8w_username_map');
+      const map: Record<string, string> = raw
+        ? (typeof raw === 'string' ? JSON.parse(raw) : raw)
+        : {};
+      const email = map[String(username).toLowerCase()];
+      if (!email) { res.status(404).json({ error: 'Username not found' }); return; }
+      res.json({ email });
+      return;
+    }
+
+    if (resource === 'register-username' && method === 'POST') {
+      const { username, email } = await body(req);
+      if (!username || !email) { res.status(400).json({ error: 'username and email required' }); return; }
+      const key = String(username).toLowerCase().replace(/[^a-z0-9_-]/g, '');
+      if (key.length < 2 || key.length > 30) {
+        res.status(400).json({ error: 'Username must be 2–30 alphanumeric/underscore/dash characters' }); return;
+      }
+      const raw = await kvGet('cr8w_username_map');
+      const map: Record<string, string> = raw
+        ? (typeof raw === 'string' ? JSON.parse(raw) : raw)
+        : {};
+      const existing = map[key];
+      if (existing && existing !== email.trim().toLowerCase()) {
+        res.status(409).json({ error: 'Username already taken' }); return;
+      }
+      map[key] = email.trim().toLowerCase();
+      await kvSet('cr8w_username_map', JSON.stringify(map));
+      res.json({ ok: true });
+      return;
+    }
+
     // ── 404 fallback ──────────────────────────────────────────────────────────
     res.status(404).json({ error: `Unknown route: ${method} /${rawPath}` });
   } catch (e: any) {

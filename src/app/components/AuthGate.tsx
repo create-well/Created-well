@@ -12,13 +12,16 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { lookupUsername, registerUsername } from './api';
 import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 
 // ── Supabase browser client ───────────────────────────────────────────────────
-// publicAnonKey is the JWT anon key — the only format Supabase Auth accepts.
-// The sb_publishable_ string is a Figma Make proxy key, NOT a valid JWT.
-const SUPABASE_URL = 'https://axntibrdivccycxdwlzk.supabase.co';
+// SUPABASE_ANON_JWT: JWT anon key required by Supabase Auth (signIn, signUp, etc.)
+// publicAnonKey from info.tsx is the sb_publishable key used for Edge Function calls.
+const SUPABASE_URL = `https://${projectId}.supabase.co`;
+const SUPABASE_ANON_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlydHFjeWdyaWVkdmRpanBwbnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjMwOTEsImV4cCI6MjEwNDczOTA5MX0.tmItTHhTcsV7yLNUv7XiECJ4wY6_sA87PUIcD4hYU5Y";
+const BASE = `https://${projectId}.supabase.co/functions/v1/make-server-dabe1c74`;
 
 // Persist on window so HMR module re-evaluations reuse the same GoTrueClient
 // and avoid the "Multiple GoTrueClient instances" warning.
@@ -26,7 +29,7 @@ declare global { interface Window { __cr8w_supabase__?: SupabaseClient } }
 
 function client(): SupabaseClient {
   if (!window.__cr8w_supabase__) {
-    window.__cr8w_supabase__ = createClient(SUPABASE_URL, publicAnonKey, {
+    window.__cr8w_supabase__ = createClient(SUPABASE_URL, SUPABASE_ANON_JWT, {
       auth: { persistSession: true, autoRefreshToken: true, storageKey: 'cr8w_supabase_auth' },
     });
   }
@@ -128,6 +131,7 @@ export function AuthGate({ onAuthenticated }: Props) {
   const [newPwConfirm, setNewPwConfirm] = useState('');
   const [showNewPw, setShowNewPw]     = useState(false);
   const [displayName, setDisplayName] = useState('');
+  const [username, setUsername]       = useState('');
   const [profile, setProfile]         = useState('monny');
   const [error, setError]             = useState('');
   const [notice, setNotice]           = useState('');
@@ -176,12 +180,25 @@ export function AuthGate({ onAuthenticated }: Props) {
     e.preventDefault();
     if (!email.trim() || !password) return;
     setBusy(true); setError(''); setNotice('');
+
+    // Resolve username → email via Edge Function before Supabase auth
+    let resolvedEmail = email.trim().toLowerCase();
+    if (!resolvedEmail.includes('@')) {
+      const res = await fetch(`${BASE}/resolve-username`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
+        body: JSON.stringify({ username: resolvedEmail }),
+      });
+      if (!res.ok) { setError('Sign in failed'); triggerShake(); setBusy(false); return; }
+      resolvedEmail = (await res.json()).email;
+    }
+
     const { data, error: err } = await client().auth.signInWithPassword({
-      email: email.trim().toLowerCase(), password,
+      email: resolvedEmail, password,
     });
     setBusy(false);
     if (err || !data.session) {
-      setError(friendlyError(err?.message ?? 'Sign in failed — check your email and password.'));
+      setError(friendlyError(err?.message ?? 'Sign in failed — check your credentials.'));
       triggerShake();
       return;
     }
@@ -198,14 +215,23 @@ export function AuthGate({ onAuthenticated }: Props) {
     e.preventDefault();
     if (!email.trim() || !password || !displayName.trim()) return;
     if (password.length < 6) { setError('Password must be at least 6 characters.'); triggerShake(); return; }
+    const uname = username.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    if (username.trim() && uname.length < 2) {
+      setError('Username must be at least 2 characters (letters, numbers, _ or -).');
+      triggerShake(); return;
+    }
     setBusy(true); setError(''); setNotice('');
     const { data, error: err } = await client().auth.signUp({
       email: email.trim().toLowerCase(),
       password,
-      options: { data: { cr8w_profile: profile, display_name: displayName.trim() } },
+      options: { data: { cr8w_profile: profile, display_name: displayName.trim(), cr8w_username: uname || undefined } },
     });
     setBusy(false);
     if (err) { setError(friendlyError(err.message)); triggerShake(); return; }
+    // Register username → email mapping server-side so sign-in by username works
+    if (uname && data.user?.email) {
+      registerUsername(uname, data.user.email).catch(() => {}); // non-blocking
+    }
     localStorage.setItem('cr8w_user_profile', profile);
     if (data.session) {
       // Email confirmation is OFF — session returned immediately.
@@ -337,20 +363,36 @@ export function AuthGate({ onAuthenticated }: Props) {
         {/* ── Sign in / Register / Reset forms ── */}
         {mode !== 'newpassword' && (
           <form onSubmit={mode === 'signin' ? handleSignIn : mode === 'reset' ? handleReset : handleRegister} noValidate>
-            {/* Register-only: display name */}
+            {/* Register-only: display name + username */}
             {mode === 'register' && (
-              <div style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>Your Name</label>
-                <input value={displayName} onChange={e => { setDisplayName(e.target.value); setError(''); }} placeholder="e.g. Monica" autoFocus style={inputStyle}
-                  onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = 'rgba(212,167,113,0.4)'} />
-              </div>
+              <>
+                <div style={{ marginBottom: 14 }}>
+                  <label style={labelStyle}>Your Name</label>
+                  <input value={displayName} onChange={e => { setDisplayName(e.target.value); setError(''); }} placeholder="e.g. Monica" autoFocus style={inputStyle}
+                    onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = 'rgba(212,167,113,0.4)'} />
+                </div>
+                <div style={{ marginBottom: 14 }}>
+                  <label style={labelStyle}>Username <span style={{ fontWeight: 400, opacity: 0.65, textTransform: 'none', letterSpacing: 0 }}>(optional — lets you sign in without email)</span></label>
+                  <input value={username} onChange={e => { setUsername(e.target.value); setError(''); }} placeholder="e.g. sunnyray" autoComplete="username" style={inputStyle}
+                    onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = 'rgba(212,167,113,0.4)'} />
+                </div>
+              </>
             )}
 
-            {/* Email */}
+            {/* Email / Username */}
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Email</label>
-              <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }} placeholder="you@example.com" autoComplete="email" autoFocus={mode === 'signin'} style={inputStyle}
-                onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = 'rgba(212,167,113,0.4)'} />
+              <label style={labelStyle}>{mode === 'signin' ? 'Email or Username' : 'Email'}</label>
+              <input
+                type={mode === 'signin' ? 'text' : 'email'}
+                value={email}
+                onChange={e => { setEmail(e.target.value); setError(''); }}
+                placeholder={mode === 'signin' ? 'you@example.com or yourname' : 'you@example.com'}
+                autoComplete="email"
+                autoFocus={mode === 'signin'}
+                style={inputStyle}
+                onFocus={e => e.currentTarget.style.borderColor = '#C25B38'}
+                onBlur={e => e.currentTarget.style.borderColor = 'rgba(212,167,113,0.4)'}
+              />
             </div>
 
             {/* Password — hidden in reset mode */}

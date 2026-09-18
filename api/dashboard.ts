@@ -32,7 +32,7 @@ import type { SyncData } from '../src/app/components/api';
 
 // ── Supabase KV helpers ───────────────────────────────────────────────────────
 
-const KV_TABLE = 'kv_store_8dcd9693';
+const KV_TABLE = 'kv_store_dabe1c74';
 
 function supabaseClient() {
   const url = process.env.SUPABASE_URL;

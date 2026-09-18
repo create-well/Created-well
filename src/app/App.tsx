@@ -40,15 +40,18 @@ import { GCAL_CLIENT_ID } from "./components/data";
     import("/utils/supabase/info").then(
       ({ projectId, publicAnonKey }) => {
         const host = window.location.hostname;
-        const onVercelOrDomain =
+        const isFirstParty =
           host.endsWith(".vercel.app") ||
+          host === "cr8w.com" ||
+          host.endsWith(".cr8w.com") ||
           host === "createwell.monnyfest.co" ||
+          host.endsWith(".monnyfest.co") ||
           host === "localhost" ||
           host === "127.0.0.1";
         const apiBase =
           (import.meta.env.VITE_API_BASE as
             string | undefined) ??
-          (onVercelOrDomain
+          (isFirstParty
             ? "/api/server"
             : `https://${projectId}.supabase.co/functions/v1/make-server-dabe1c74`);
         const serverUrl = `${apiBase}/gcal-token-exchange`;

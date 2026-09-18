@@ -1,6 +1,13 @@
 /**
  * CR8W Create Well — Vercel API handler
- * Single catch-all route that replaces the Supabase edge function.
+ * Catch-all route for /api/server/*, e.g. /api/server/sync, /api/server/health,
+ * /api/server/tasks/123. Vercel populates req.query.path with the segments.
+ *
+ * Filename note: this used to be [[...path]].ts, the OPTIONAL catch-all form.
+ * That syntax is a Next.js convention; plain Vercel Node functions support
+ * [param] and [...param]. The optional double-bracket form produced a function
+ * that routed but died with FUNCTION_INVOCATION_FAILED on every request.
+ * [...path].ts requires at least one segment, which every client call has.
  *
  * Write strategy:
  *   • All 14 resource types are persisted in Supabase KV (primary, fast, always-on).
@@ -87,7 +94,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // ── Health ────────────────────────────────────────────────────────────────
     if (resource === 'health') {
-      res.json({ status: 'ok', runtime: 'vercel' }); return;
+      res.json({
+        status: 'ok',
+        runtime: 'vercel',
+        fn: 'api/server/[...path].ts',
+        node: process.version,
+        kvTable: TABLE,
+        // Presence only, never values.
+        env: {
+          SUPABASE_URL: Boolean(process.env.SUPABASE_URL),
+          SUPABASE_SERVICE_ROLE_KEY: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+          SUPABASE_SECRET_KEY: Boolean(process.env.SUPABASE_SECRET_KEY),
+          NOTION_SECRET: Boolean(process.env.NOTION_SECRET),
+        },
+        at: new Date().toISOString(),
+      });
+      return;
     }
 
     // ── Sync ──────────────────────────────────────────────────────────────────

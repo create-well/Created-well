@@ -15,10 +15,10 @@ function resolveApiBase(): string {
     host === 'localhost' ||
     host === '127.0.0.1';
   if (onVercelOrDomain) return '/api/server';
-  // Figma Make preview iframe — relative URLs don't resolve here
-  // Absolute Vercel URL — works from any origin including Figma Make preview.
-  // Override with VITE_API_BASE env var if you use a custom domain or alias.
-  return 'https://cr8w-home-v2.vercel.app/api/server';
+  // Figma Make preview / any other origin — hit Supabase Edge Function directly.
+  // Vercel functions are same-origin only; the Edge Function has verify_jwt:false
+  // so the sb_publishable key in the Authorization header is sufficient.
+  return `https://${projectId}.supabase.co/functions/v1/make-server-dabe1c74`;
 }
 
 const BASE = resolveApiBase();
@@ -159,8 +159,10 @@ export const setCalendarEvents = (events: CalendarEventKV[]) => req<{ ok: boolea
 // Derives the dashboard URL from the same hostname logic as BASE so that
 // Vercel / production / localhost / Figma-preview all resolve correctly.
 const DASHBOARD_URL: string = (() => {
-  // resolveApiBase() returns e.g. '/api/server' or 'https://cr8w-home-v2.vercel.app/api/server'
-  // Drop the '/server' suffix to reach '/api' (the Vercel functions root).
+  // On Vercel/localhost: resolveApiBase() = '/api/server' → '/api/dashboard' (Vercel function).
+  // On Figma Make / other origins: resolveApiBase() = Supabase Edge Function URL (no /server
+  // suffix), so this resolves to a non-existent route — fetchDashboard() fails gracefully and
+  // the caller falls back to api.sync() against the Edge Function.
   return resolveApiBase().replace(/\/server$/, '') + '/dashboard';
 })();
 
@@ -169,7 +171,7 @@ export async function fetchDashboard(): Promise<SyncData> {
   const timeoutId = setTimeout(() => controller.abort(), 10_000);
   try {
     const res = await fetch(DASHBOARD_URL, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
       signal: controller.signal,
     });
     if (!res.ok) {

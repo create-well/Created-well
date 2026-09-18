@@ -125,11 +125,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         try {
           data = await api.fetchDashboard();
         } catch (primary) {
-          const isNetworkErr =
-            primary instanceof TypeError ||
-            (primary as Error)?.name === 'AbortError' ||
-            (primary as Error)?.message?.includes('timed out');
-          if (!isNetworkErr) throw primary;
+          // Always fall back — covers network errors, timeouts, and HTTP errors
+          // (401/404/503 when Vercel isn't deployed or route doesn't exist).
           console.warn('fetchDashboard unreachable, falling back to api.sync():', (primary as Error)?.message);
           data = await api.sync();
         }

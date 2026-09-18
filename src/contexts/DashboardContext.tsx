@@ -122,20 +122,14 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         // entirely when running against the Supabase Edge Function to avoid a
         // guaranteed 404 on every poll cycle.
         let data: Awaited<ReturnType<typeof api.fetchDashboard>>;
-        // usedFallback = the Notion-backed source did not answer. The payload that
-        // follows is KV-only, so it must never be reported as 'fresh'.
-        let usedFallback = false;
         if (api.isDashboardAvailable) {
           try {
             data = await api.fetchDashboard();
           } catch (primary) {
             console.warn('fetchDashboard unreachable, falling back to api.sync():', (primary as Error)?.message);
-            usedFallback = true;
             data = await api.sync();
           }
         } else {
-          // No Notion-backed endpoint on this origin at all. KV-only by definition.
-          usedFallback = true;
           data = await api.sync();
         }
         setTasks(data.tasks || []);
@@ -151,16 +145,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowDates(data.coflowDates || []);
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
-        // A 200 from /api/dashboard can still be missing whole sections when a
-        // NOTION_DB_* or NOTION_SECRET env var is absent. meta.degraded says so.
-        const degraded = data.meta?.degraded === true;
-        if (degraded && data.meta) {
-          const bad = Object.entries(data.meta.sources)
-            .filter(([, s]) => s.status !== 'ok')
-            .map(([name, s]) => `${name}: ${s.status}${s.detail ? ` (${s.detail})` : ''}`);
-          console.warn('Dashboard payload is degraded:\n' + bad.join('\n'));
-        }
-        setSyncStatus(usedFallback || degraded ? 'stale' : 'fresh');
+        setSyncStatus('fresh');
         setLastSynced(new Date());
         silentFailCount.current = 0;
         if (!dataLoadedRef.current) { dataLoadedRef.current = true; }
@@ -543,14 +528,10 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
 
   // ── Compute stale status ─────────────────────────────────────────────────────
   const STALE_THRESHOLD = 5 * 60 * 1000;
-  // An explicit 'stale' from fetchSync means the payload came from the KV-only
-  // fallback. Age cannot upgrade that back to 'fresh'.
   const computedSyncStatus: SyncStatus = syncStatus === 'failed'
     ? 'failed'
     : syncStatus === 'loading'
     ? 'loading'
-    : syncStatus === 'stale'
-    ? 'stale'
     : lastSynced && (Date.now() - lastSynced.getTime() > STALE_THRESHOLD)
     ? 'stale'
     : 'fresh';

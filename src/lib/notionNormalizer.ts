@@ -12,7 +12,7 @@
 //   CONTENT: Name, Flow (Relation→FLOWS), Content Type, Audience,
 //             Status, Final?, Publish Date, URL, Where
 
-import type { Task, Station, ForumPost, CoFlowDate } from '../types/contract.js';
+import type { Task, Station, ForumPost, CoFlowDate } from '../app/components/api';
 
 // ── Notion property value types ───────────────────────────────────────────────
 
@@ -90,35 +90,6 @@ function getRelationFirstId(p: NotionPropValue | undefined): string {
   return (p as NPropRelation).relation[0]?.id ?? '';
 }
 
-// ── Relation resolution ───────────────────────────────────────────────────────
-// Relations return page IDs, not names. Without this index Owner, Person, Flow,
-// and Flow Keeper all render as raw UUIDs. Build the index once per sync from
-// the already-fetched PEOPLE and FLOWS pages, then pass it to the normalizers.
-
-export type RelationIndex = Map<string, string>;
-
-function normalizeUuid(id: string): string {
-  return id.replace(/-/g, '').toLowerCase();
-}
-
-/** Map every page's id (dashed and undashed) to its title. */
-export function buildRelationIndex(pages: NotionPage[]): RelationIndex {
-  const index: RelationIndex = new Map();
-  for (const page of pages) {
-    const name = getText(pick(page.properties, 'Name', 'Title'));
-    if (!name) continue;
-    index.set(page.id, name);
-    index.set(normalizeUuid(page.id), name);
-  }
-  return index;
-}
-
-/** Resolve a relation page id to a display name; returns '' when unresolvable. */
-function resolveRelation(id: string, index?: RelationIndex): string {
-  if (!id || !index) return '';
-  return index.get(id) ?? index.get(normalizeUuid(id)) ?? '';
-}
-
 function getUrl(p: NotionPropValue | undefined): string {
   if (!p || p.type !== 'url') return '';
   return (p as NPropUrl).url ?? '';
@@ -127,28 +98,6 @@ function getUrl(p: NotionPropValue | undefined): string {
 function getCheckbox(p: NotionPropValue | undefined): boolean {
   if (!p || p.type !== 'checkbox') return false;
   return (p as NPropCheckbox).checkbox;
-}
-
-function getNumber(p: NotionPropValue | undefined): number | undefined {
-  if (!p || p.type !== 'number') return undefined;
-  const n = (p as { number: number | null }).number;
-  return typeof n === 'number' ? n : undefined;
-}
-
-/** Every relation page id, not just the first. Needed for Support and Guests. */
-function getRelationAllIds(p: NotionPropValue | undefined): string[] {
-  if (!p || p.type !== 'relation') return [];
-  return (p as NPropRelation).relation.map(r => r.id).filter(Boolean);
-}
-
-/** Resolve a whole relation list to display names, dropping what will not resolve. */
-function resolveRelationList(
-  p: NotionPropValue | undefined,
-  index?: RelationIndex,
-): string[] {
-  return getRelationAllIds(p)
-    .map(id => resolveRelation(id, index))
-    .filter(Boolean);
 }
 
 // Try property name aliases in order; return first found.
@@ -173,17 +122,13 @@ export function stableId(notionId: string): number {
 //   Now → actively being worked on → in_progress
 //   Next → queued, ready to pick up → todo
 //   Done → completed → done
-//   Dropped → consciously let go → dropped (stays visible as dropped)
+//   Dropped → cancelled/deprioritised → done (no separate client state)
 const TASK_STATUS_MAP: Record<string, Task['status']> = {
   // Create Well MOVES canonical values
   'now':          'in_progress',
   'next':         'todo',
   'done':         'done',
-  'dropped':      'dropped',
-  // Shadow-schema values, kept so a stray row still lands somewhere sensible
-  'cancelled':    'dropped',
-  'canceled':     'dropped',
-  'deprioritized':'dropped',
+  'dropped':      'done',
   // Legacy / generic fallbacks
   'todo':         'todo',
   'not started':  'todo',
@@ -213,15 +158,8 @@ const TASK_PRIORITY_MAP: Record<string, Task['priority']> = {
 
 // FLOWS Status values (Create Well OS canonical): Scheduled, Planning, Confirmed, Wrapped, Cancelled
 const FLOW_STATUS_MAP: Record<string, CoFlowDate['status']> = {
-  // Create Well FLOWS canonical values. All seven real options are here now.
-  // Idea, Ready and Approved were missing, so any flow in those states fell
-  // through to the default and was silently reported as 'upcoming' by accident
-  // rather than by rule. Same answer, but now it is a decision.
-  'idea':       'upcoming',
+  // Create Well FLOWS canonical values
   'scheduled':  'upcoming',
-  'ready':      'upcoming',
-  'approved':   'upcoming',
-  'happened':   'archived',
   'planning':   'upcoming',
   'confirmed':  'upcoming',
   'wrapped':    'archived',
@@ -253,7 +191,7 @@ const FLOW_STATUS_MAP: Record<string, CoFlowDate['status']> = {
 //   Person      : Relation → PEOPLE (relationship follow-up, secondary)
 //   Touchpoint  : Select
 
-export function normalizeMove(page: NotionPage, people?: RelationIndex, flows?: RelationIndex): Task {
+export function normalizeMove(page: NotionPage): Task {
   const p = page.properties;
 
   const rawStatus   = getSelect(pick(p, 'Status', 'Task Status')).toLowerCase();
@@ -261,28 +199,15 @@ export function normalizeMove(page: NotionPage, people?: RelationIndex, flows?: 
 
   // Owner is a Relation in MOVES (operational schema). Hub CMS schema uses a
   // Select named "Person". We try all aliases; store relation ID as last resort.
-  const ownerRelationId  = getRelationFirstId(pick(p, 'Owner'));
-  const personRelationId = getRelationFirstId(pick(p, 'Person'));
+  const ownerRelationId = getRelationFirstId(pick(p, 'Owner'));
   const ownerText =
     getSelect(pick(p, 'Person', 'Assigned To', 'Assignee')) ||
     getPeople(pick(p, 'Person', 'Assigned To', 'Assignee', 'Owner'));
-  // Prefer a name already in the property, then a resolved relation. A raw UUID
-  // is only used when PEOPLE could not be indexed at all, and never silently:
-  // it means the caller did not pass an index.
-  const personRaw =
-    ownerText ||
-    resolveRelation(ownerRelationId, people) ||
-    resolveRelation(personRelationId, people) ||
-    ownerRelationId ||
-    personRelationId;
+  // Prefer text if present (it's already a name), else store relation ID
+  const personRaw = ownerText || ownerRelationId;
 
-  // Flow gives a Move its container. Resolve it so 'source' reads as a name.
-  const flowName = resolveRelation(getRelationFirstId(pick(p, 'Flow')), flows);
-
-  // Blocked By is the CR8W canonical name for what blocks this Move. It used to
-  // fall back to Notes, so a note about a Move looked like a blocker on it.
-  const blockedBy = getText(pick(p, 'Blocked By', 'Blocked by'));
-  const notes     = getText(pick(p, 'Notes', 'Description'));
+  // Blocked By is the CR8W canonical name for what blocks this Move
+  const blockedBy = getText(pick(p, 'Blocked By', 'Source', 'Notes', 'Description'));
 
   return {
     id:           stableId(page.id),
@@ -293,16 +218,8 @@ export function normalizeMove(page: NotionPage, people?: RelationIndex, flows?: 
     priority:     TASK_PRIORITY_MAP[rawPriority] ?? 'medium',
     due_date:     getDate(pick(p, 'Due', 'Due Date', 'Deadline')) || undefined,
     category:     getSelect(pick(p, 'Type', 'Category', 'Label'))  || undefined,
-    source:       blockedBy || flowName || undefined,
+    source:       blockedBy || undefined,
     created_at:   page.created_time,
-
-    // ── Real MOVES properties, now carried instead of collapsed into `source` ─
-    owner:        resolveRelation(ownerRelationId, people) || undefined,
-    flow:         flowName || undefined,
-    /** The 14-day return rhythm. Read but never shown until now. */
-    touchpoint:   (getSelect(pick(p, 'Touchpoint')) || undefined) as Task['touchpoint'],
-    blockedBy:    blockedBy || undefined,
-    notes:        notes || undefined,
   };
 }
 
@@ -363,9 +280,8 @@ export function normalizePerson(page: NotionPage): Station {
 // ForumPost is an imperfect mapping. content = Name, tag = Content Type.
 // author is empty for CONTENT (no author field); falls back to 'team'.
 
-export function normalizeContent(page: NotionPage, flows?: RelationIndex): ForumPost {
+export function normalizeContent(page: NotionPage): ForumPost {
   const p = page.properties;
-  const flowName = resolveRelation(getRelationFirstId(pick(p, 'Flow')), flows);
 
   // CONTENT has no author field; use Audience as a rough proxy
   const audienceRaw = getSelect(pick(p, 'Audience', 'Author', 'Posted By', 'Person', 'By'));
@@ -382,10 +298,7 @@ export function normalizeContent(page: NotionPage, flows?: RelationIndex): Forum
     notionPageId: page.id,
     author:       audienceRaw.toLowerCase() || 'team',
     content:      (name || 'Untitled') + extra,
-    tag:
-      getSelect(pick(p, 'Content Type', 'Type', 'Tag', 'Category')) ||
-      flowName ||
-      undefined,
+    tag:          getSelect(pick(p, 'Content Type', 'Type', 'Tag', 'Category')) || undefined,
     created_at:   page.created_time,
   };
 }
@@ -403,7 +316,7 @@ export function normalizeContent(page: NotionPage, flows?: RelationIndex): Forum
 //   Public URL      : URL
 //   Retro           : Text (short Depanty return)
 
-export function normalizeFlow(page: NotionPage, people?: RelationIndex): CoFlowDate {
+export function normalizeFlow(page: NotionPage): CoFlowDate {
   const p = page.properties;
 
   // Flow Keeper is a Relation → PEOPLE. Fall back to text/select for legacy.
@@ -411,52 +324,36 @@ export function normalizeFlow(page: NotionPage, people?: RelationIndex): CoFlowD
   const keeperText =
     getPeople(pick(p, 'Flow Keeper', 'Host', 'Facilitator', 'Lead')) ||
     getSelect(pick(p, 'Flow Keeper', 'Host', 'Facilitator', 'Lead'));
-  const hostRaw =
-    keeperText || resolveRelation(keeperRelationId, people) || keeperRelationId;
+  const hostRaw = keeperText || keeperRelationId;
 
-  // Status and Phase are two different vocabularies and used to be read through
-  // the same `pick`. A flow sitting in Phase 'Day of' with no Status would take
-  // its Status from Phase, match nothing, and land on 'upcoming' on the day it
-  // was happening. They are read separately now.
-  const rawStatus = getSelect(pick(p, 'Status', 'State')).toLowerCase();
-  const phase     = getSelect(pick(p, 'Phase'));
+  const rawStatus = getSelect(pick(p, 'Status', 'State', 'Phase')).toLowerCase();
 
   // Type describes the kind of gathering; use as theme when no theme field exists
   const typeRaw  = getSelect(pick(p, 'Type', 'Kind', 'Category'));
   const themeRaw = getText(pick(p, 'Theme', 'Topic')) || typeRaw;
 
-  // One field, one home. These used to be pasted into `notes` joined by a pipe,
-  // which made a hard stop and a retro look like the same kind of thing.
-  const hardStop = getText(pick(p, 'Hard Stop', 'Hard stop'));
+  // Notes: combine Hard Stop and Retro as supplementary context
+  const hardStop = getText(pick(p, 'Hard Stop', 'Hard stop', 'Notes', 'Description'));
   const retro    = getText(pick(p, 'Retro', 'Recap', 'Session Notes'));
-  const notesRaw = getText(pick(p, 'Notes', 'Description'));
+  const notesRaw = [hardStop, retro].filter(Boolean).join(' | ') || '';
 
-  // FLOWS has no Start Time, End Time or Time Range property. It never did, so
-  // every one of those reads returned empty and every flow rendered timeless.
-  // The real clock lives on `Date`, which is a Notion datetime. Split it here.
-  const dateRaw   = getDate(pick(p, 'Date', 'Session Date', 'Meeting Date'));
-  const hasClock  = dateRaw.includes('T');
-  const startTime = hasClock
-    ? new Date(dateRaw).toLocaleTimeString('en-US', {
-        hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles',
-      })
-    : '';
-  // No end time exists in Notion, so a hard stop is the only honest end signal.
-  const timeRange = startTime && hardStop
-    ? `${startTime} · hard stop ${hardStop}`
-    : startTime;
+  const startTime = getText(pick(p, 'Start Time', 'Start'));
+  const endTime   = getText(pick(p, 'End Time', 'End'));
+  const timeRange =
+    getText(pick(p, 'Time Range', 'Time')) ||
+    (startTime && endTime ? `${startTime} – ${endTime}` : '');
 
   return {
     id:           stableId(page.id),
     notionPageId: page.id,
-    name:         getText(pick(p, 'Name', 'Title')) || undefined,
-    date:         dateRaw,
+    date:         getDate(pick(p, 'Date', 'Session Date', 'Meeting Date')),
     timeRange,
     startTime:    startTime || undefined,
-    endTime:      undefined,
+    endTime:      endTime   || undefined,
     location:
-      getText(pick(p, 'Venue', 'Location', 'Place')) ||
-      getSelect(pick(p, 'Venue', 'Location', 'Place')) ||
+      getText(pick(p, 'Location', 'Place', 'Venue')) ||
+      getSelect(pick(p, 'Location', 'Place', 'Venue')) ||
+      getUrl(pick(p, 'Public URL', 'Public Url', 'Link')) ||
       'TBD',
     host:         hostRaw.toLowerCase() || undefined,
     theme:        themeRaw || undefined,
@@ -466,27 +363,8 @@ export function normalizeFlow(page: NotionPage, people?: RelationIndex): CoFlowD
     notes:        notesRaw,
     vibeCheck:    getSelect(pick(p, 'Water state', 'Water State', 'Vibe')) || '',
     sessionNotes: retro || undefined,
-    attendees:    resolveRelationList(pick(p, 'Attended'), people),
+    attendees:    [],
     status:       FLOW_STATUS_MAP[rawStatus] ?? 'upcoming',
     created_at:   page.created_time,
-
-    // ── Fields Notion has always held and the dashboard never showed ────────
-    type:               (typeRaw || undefined) as CoFlowDate['type'],
-    phase:              (phase || undefined) as CoFlowDate['phase'],
-    offeringArc:        (getSelect(pick(p, 'Offering Arc')) || undefined) as CoFlowDate['offeringArc'],
-    readinessOutcome:   (getSelect(pick(p, 'Readiness Outcome')) || undefined) as CoFlowDate['readinessOutcome'],
-    /** Omar's deadline. Nothing read this before today. */
-    mediaCutoff:        getDate(pick(p, 'Media Cutoff')) || undefined,
-    thankYouDue:        getDate(pick(p, 'Thank-you Due', 'Thank-You Due')) || undefined,
-    hardStop:           hardStop || undefined,
-    retro:              retro || undefined,
-    primaryInvitation:  getText(pick(p, 'Primary Invitation')) || undefined,
-    desiredBodyFeel:    getText(pick(p, 'Desired Body-Feel', 'Desired Body Feel')) || undefined,
-    capacity:           getNumber(pick(p, 'Capacity')),
-    isPublic:           getCheckbox(pick(p, 'Public?', 'Public')),
-    publicUrl:          getUrl(pick(p, 'Public URL', 'Public Url')) || undefined,
-    driveFolder:        getUrl(pick(p, 'Drive Folder')) || undefined,
-    support:            resolveRelationList(pick(p, 'Support'), people),
-    guests:             resolveRelationList(pick(p, 'Guests'), people),
   };
 }

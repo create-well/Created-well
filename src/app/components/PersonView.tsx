@@ -5,7 +5,6 @@ import {
   getDaysToLaunch, formatDate, formatEventDate, formatTimestamp, getEventColor, truncate, capitalize, getDayOfYear,
   type ActionItem, type MomentumItem, type NoteItem, type Station
 } from './data';
-import { whenLabel, WHEN_TONE_COLOR } from '../../lib/whenLabel';
 
 type PersonTab = 'flow' | 'work' | 'depth';
 
@@ -22,25 +21,16 @@ interface PersonViewProps {
   onAddNote: (content: string, author: string) => void;
 }
 
-// Click order for the status button. 'dropped' is included so a Move can be
-// consciously let go from the UI, and it stays visible as dropped rather than
-// being collapsed into done.
-const STATUS_ORDER = ['todo', 'in_progress', 'done', 'dropped', 'blocked'];
+const STATUS_ORDER = ['todo', 'in_progress', 'done', 'blocked'];
 
-// Due-soon / overdue helper.
-//
-// One rule decides how every date in this dashboard reads, and it lives in
-// whenLabel. This function only translates that rule into the CSS class names
-// the stylesheet already uses. It used to do its own date maths, which meant a
-// row could be tinted 'due-soon' while the text next to it said something else.
-//
-// It also used `new Date(due_date + 'T00:00:00')`, which is right, while other
-// places in the app used `new Date(due_date)`, which is UTC midnight and shows
-// the wrong day in Las Vegas. whenLabel settles that too.
+// Due-soon / overdue helper
 function getDueClass(due_date?: string, status?: string): string {
-  const when = whenLabel(due_date, { done: status === 'done' || status === 'dropped' });
-  if (when.overdue) return 'overdue';
-  if (when.days !== null && when.days <= 3) return 'due-soon';
+  if (!due_date || status === 'done') return '';
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const due = new Date(due_date + 'T00:00:00');
+  const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return 'overdue';
+  if (diffDays <= 3) return 'due-soon';
   return '';
 }
 
@@ -111,7 +101,7 @@ export function PersonView({
     .filter(e => e.persons.includes(person) && new Date(e.date + 'T00:00:00') >= todayDate)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const urgentItems = personItems.filter(i => i.status !== 'done' && i.status !== 'dropped').sort((a, b) => {
+  const urgentItems = personItems.filter(i => i.status !== 'done').sort((a, b) => {
     if (a.priority === 'high' && b.priority !== 'high') return -1;
     if (a.priority !== 'high' && b.priority === 'high') return 1;
     if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
@@ -406,7 +396,6 @@ export function PersonView({
               { key: 'todo', label: 'To Do' },
               { key: 'in_progress', label: 'In Progress' },
               { key: 'done', label: 'Done' },
-              { key: 'dropped', label: 'Dropped' },
               { key: 'blocked', label: 'Blocked' }
             ].map(s => (
               <button key={s.key} className={`filter-btn ${filter === s.key ? 'active' : ''}`} onClick={() => setFilter(s.key)}>
@@ -424,7 +413,7 @@ export function PersonView({
                 </div>
               </div>
             ) : filteredItems.map((item, idx) => (
-              <div key={item.id} className={`action-row ${item.status === 'done' ? 'done-row' : ''} ${item.status === 'dropped' ? 'dropped-row' : ''} ${getDueClass(item.due_date, item.status)}`} style={{ animationDelay: `${idx * 0.03}s` }}>
+              <div key={item.id} className={`action-row ${item.status === 'done' ? 'done-row' : ''} ${getDueClass(item.due_date, item.status)}`} style={{ animationDelay: `${idx * 0.03}s` }}>
                 <button
                   className={`action-status-btn status-${item.status}`}
                   onClick={() => {
@@ -432,42 +421,15 @@ export function PersonView({
                     onUpdateTaskStatus(item.id, next);
                   }}
                 >
-                  {item.status === 'done' ? '✓' : item.status === 'in_progress' ? '◐' : item.status === 'blocked' ? '✕' : item.status === 'dropped' ? '⌀' : ''}
+                  {item.status === 'done' ? '✓' : item.status === 'in_progress' ? '◐' : item.status === 'blocked' ? '✕' : ''}
                 </button>
                 <div className="action-info">
                   <div className="action-title">{item.title}</div>
                   <div className="action-meta">
                     <span><span className={`action-priority-dot dot-${item.priority}`}></span> {item.priority}</span>
                     {item.source && <span>📎 {item.source}</span>}
-                    {/*
-                      Countdown inside two weeks, plain date beyond it. The full
-                      date is always in the tooltip, so shortening the label
-                      never hides anything.
-                    */}
-                    {(() => {
-                      const when = whenLabel(item.due_date, {
-                        done: item.status === 'done' || item.status === 'dropped',
-                      });
-                      if (when.days === null) return null;
-                      return (
-                        <span
-                          className={`action-due-date ${getDueClass(item.due_date, item.status)}`}
-                          title={when.absolute}
-                          style={{ color: WHEN_TONE_COLOR[when.tone] }}
-                        >
-                          📅 {when.text}
-                        </span>
-                      );
-                    })()}
+                    {item.due_date && <span className={`action-due-date ${getDueClass(item.due_date, item.status)}`} >📅 {formatDate(item.due_date)}</span>}
                     {item.category && <span>🏷 {item.category}</span>}
-                    {/* The 14-day return rhythm, which Notion has always held and nothing showed. */}
-                    {(item as any).touchpoint && <span>🔁 {(item as any).touchpoint}</span>}
-                    {/* A blocker is only useful if you can read what it is. */}
-                    {(item as any).blockedBy && (
-                      <span style={{ color: WHEN_TONE_COLOR.late }} title={(item as any).blockedBy}>
-                        ⛔ {(item as any).blockedBy}
-                      </span>
-                    )}
                   </div>
                 </div>
                 <select className="action-status-select" value={item.status} onChange={e => onUpdateTaskStatus(item.id, e.target.value as any)}>

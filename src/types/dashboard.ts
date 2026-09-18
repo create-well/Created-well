@@ -2,7 +2,7 @@ import type {
   Task, Station, ForumPost, ForumReply, Message, BrainDump,
   Announcement, Workshop, WorkshopProgram, WorkshopResource,
   CoFlowDate, CoFlowCheckin, WellNote,
-} from './contract';
+} from '../app/components/api';
 
 export type {
   Task, Station, ForumPost, ForumReply, Message, BrainDump,

@@ -3,10 +3,6 @@ import { Plus, X, MapPin, Clock, Users, ChevronDown, ChevronUp, Lock, Unlock, Ed
 import { PERSONS, capitalize, formatTimestamp } from './data';
 import type { CoFlowDate, CoFlowCheckin, CalendarEventKV } from './api';
 import * as api from './api';
-import { whenLabel } from '../../lib/whenLabel';
-import {
-  InlineDate, InlineSelect, FLOW_TYPE_OPTIONS, FLOW_PHASE_OPTIONS,
-} from './InlineDate';
 
 type D8Tab = 'upcoming' | 'checkin' | 'archive' | 'agenda';
 
@@ -67,14 +63,14 @@ function getDayOfWeekLabel(dateStr: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 }
 
-// One date rule for the whole dashboard. This used to do its own maths and its
-// own wording, which is why a Move and a Flow on the same day read differently.
 function getCountdown(dateStr: string): { label: string; urgent: boolean } {
-  const when = whenLabel(dateStr);
-  return {
-    label: when.text.toUpperCase(),
-    urgent: when.tone === 'today' || when.tone === 'tomorrow' || when.tone === 'late',
-  };
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr + 'T00:00:00');
+  const diffDays = Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return { label: 'TODAY!', urgent: true };
+  if (diffDays === 1) return { label: 'TOMORROW', urgent: true };
+  if (diffDays < 0) return { label: `${Math.abs(diffDays)} days ago`, urgent: false };
+  return { label: `${diffDays} days away`, urgent: diffDays <= 3 };
 }
 
 function isUpcoming(dateStr: string): boolean {
@@ -469,51 +465,6 @@ function NextD8Card({ d8, onUpdate, onDelete, onEdit }: {
             </span>
           )}
         </div>
-        {/* -- Deadlines that come BEFORE the day itself --------------------
-            Media Cutoff is Omar's deadline, Thursday for Podyaps. It has been
-            sitting in the database this whole time with nothing reading it, so
-            the person it belongs to had no way to see it coming. */}
-        <div style={{
-          marginTop: 12, display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center',
-          padding: '8px 12px', borderRadius: 'var(--cr-radius-sm)',
-          background: 'var(--sandstone)', border: '1px solid var(--border-soft)',
-        }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Media cutoff
-            </span>
-            <InlineDate
-              value={d8.mediaCutoff}
-              prefix=""
-              emptyLabel="set Omar's date"
-              onSave={v => onUpdate(d8.id, { mediaCutoff: v || undefined } as Partial<CoFlowDate>)}
-            />
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Thank-yous
-            </span>
-            <InlineDate
-              value={d8.thankYouDue}
-              prefix=""
-              emptyLabel="not set"
-              onSave={v => onUpdate(d8.id, { thankYouDue: v || undefined } as Partial<CoFlowDate>)}
-            />
-          </span>
-          <InlineSelect
-            value={d8.type}
-            options={FLOW_TYPE_OPTIONS}
-            placeholder="kind of flow"
-            onSave={v => onUpdate(d8.id, { type: v || undefined } as Partial<CoFlowDate>)}
-          />
-          <InlineSelect
-            value={d8.phase}
-            options={FLOW_PHASE_OPTIONS}
-            placeholder="phase"
-            onSave={v => onUpdate(d8.id, { phase: v || undefined } as Partial<CoFlowDate>)}
-          />
-        </div>
-
         {d8.theme && (
           <div style={{
             marginTop: 10, padding: '6px 14px', borderRadius: 'var(--cr-radius-sm)',

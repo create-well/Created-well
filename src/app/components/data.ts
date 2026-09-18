@@ -120,17 +120,11 @@ export interface Station {
 
 export const STATIONS_DEFAULT: Station[] = [];
 
-// One entry per TASK_ROLES key so a per-person calendar lookup can never miss.
-// All srcs are intentionally empty: the real source is the shared Create Well
-// calendar, which the server reads via CR8W_ICAL_URL. Do not paste a calendar
-// id here, it belongs in env.
 export const GOOGLE_ACCOUNTS: Record<string, { calendarSrc: string }> = {
   sunshine: { calendarSrc: '' },
   monny: { calendarSrc: '' },
   bingle: { calendarSrc: '' },
   pia: { calendarSrc: '' },
-  omar: { calendarSrc: '' },
-  'event-support': { calendarSrc: '' },
 };
 
 export const GUEST_JOURNEY: { step: number; icon: string; title: string; desc: string; status: string }[] = [];
@@ -157,7 +151,7 @@ export const QUOTES = [
 ];
 
 export interface ActionItem {
-  id: number; person: string; title: string; status: 'todo' | 'in_progress' | 'done' | 'blocked' | 'dropped';
+  id: number; person: string; title: string; status: 'todo' | 'in_progress' | 'done' | 'blocked';
   priority: 'high' | 'medium' | 'low'; due_date?: string; source?: string; category?: string;
   created_at?: string;
 }
@@ -430,10 +424,6 @@ export const TASK_ROLES: Record<string, { name: string; emoji: string; color: st
   pia: {
     name: 'Pia', emoji: '🌸', color: '#9B3A5A',
     short: 'Reflective', sub: 'feedback · community health · space-reading',
-  },
-  omar: {
-    name: 'Omar', emoji: '🎛️', color: '#5C4A9A',
-    short: 'Tech Anchor', sub: 'Podyap production · media cutoff · publish',
   },
   'event-support': {
     name: 'Event Support', emoji: '🎪', color: '#E8AF93',

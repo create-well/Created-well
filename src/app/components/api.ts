@@ -11,19 +11,13 @@ function resolveApiBase(): string {
   const host = typeof window !== 'undefined' ? window.location.hostname : '';
   const onVercelOrDomain =
     host.endsWith('.vercel.app') ||
-    host === 'cr8w.com' ||
-    host.endsWith('.cr8w.com') ||
     host === 'createwell.monnyfest.co' ||
     host === 'localhost' ||
     host === '127.0.0.1';
   if (onVercelOrDomain) return '/api/server';
-  // Figma Make preview / any other origin — hit the Supabase Edge Function directly,
-  // because Vercel functions are same-origin only.
-  // CAUTION: make-server-dabe1c74 is deployed with verify_jwt: true (verified live
-  // 2026-09-18). The sb_publishable_* key is NOT a JWT, so the gateway rejects it
-  // with 401 before any route runs. Any origin falling through to this branch will
-  // fail auth until either verify_jwt is turned off or a real user JWT is sent.
-  // Set VITE_API_BASE=/api/server on Vercel-hosted origins to avoid this path.
+  // Figma Make preview / any other origin — hit Supabase Edge Function directly.
+  // Vercel functions are same-origin only; the Edge Function has verify_jwt:false
+  // so the sb_publishable key in the Authorization header is sufficient.
   return `https://${projectId}.supabase.co/functions/v1/make-server-dabe1c74`;
 }
 
@@ -213,22 +207,167 @@ export async function registerUsername(username: string, email: string): Promise
 }
 
 // Parking Lot (quick-capture from Playground, KV-backed)
-// Local import so this module's own signatures can use the contract types,
-// plus a re-export so every existing `from './api'` import keeps working.
-import type {
-  ParkingLotItem, InviteCounts, Task, Station, ForumPost, ForumReply, Message,
-  BrainDump, Announcement, TeamRoleKey, Facilitator, Workshop, WorkshopProgram,
-  WorkshopResource, CoFlowDate, CoFlowCheckin, WellNote, SyncData, SourceStatus,
-  SourceReport, SyncMeta, CalendarEventKV,
-} from '../../types/contract';
-
-// Entity and payload types live in src/types/contract.ts so the api/ functions
-// can import them without pulling in this module's vite-only imports.
-export type {
-  ParkingLotItem, InviteCounts, Task, Station, ForumPost, ForumReply, Message, BrainDump, Announcement, TeamRoleKey, Facilitator, Workshop, WorkshopProgram, WorkshopResource, CoFlowDate, CoFlowCheckin, WellNote, SyncData, SourceStatus, SourceReport, SyncMeta, CalendarEventKV,
-} from '../../types/contract';
-
-// Parking lot endpoints (kept here: they need the module-local `req` helper).
+export interface ParkingLotItem {
+  id: string;
+  text: string;
+  category: 'spark' | 'question' | 'resource' | 'wild card';
+  author: string;
+  created_at: string;
+}
 export const getParkingLot = () => req<ParkingLotItem[]>('GET', '/parking-lot');
 export const addParkingLotItem = (item: Omit<ParkingLotItem, 'id' | 'created_at'>) => req<{ ok: boolean; item: ParkingLotItem }>('POST', '/parking-lot', item);
 export const deleteParkingLotItem = (id: string) => req<{ ok: boolean }>('DELETE', `/parking-lot/${id}`);
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+export interface InviteCounts {
+  confirmed: number;
+  pending: number;
+  declined: number;
+  maybe: number;
+  total: number;
+  updated_at?: string;
+}
+
+export interface Task {
+  id: number; person: string; title: string;
+  status: 'todo' | 'in_progress' | 'done' | 'blocked';
+  priority: 'high' | 'medium' | 'low';
+  due_date?: string; source?: string; category?: string; created_at?: string;
+  notionPageId?: string;
+}
+
+export interface Station {
+  id: number; emoji: string; name: string; status: string;
+  description: string; owner: string; created_at?: string;
+  notionPageId?: string;
+}
+
+export interface ForumPost {
+  id: number; author: string; content: string; tag?: string; created_at?: string;
+  notionPageId?: string;
+}
+
+export interface ForumReply {
+  id: number; postId: number; author: string; content: string; created_at?: string;
+}
+
+export interface Message {
+  id: number; author: string; content: string;
+  tag?: 'urgent' | 'important' | 'pinned' | null;
+  reactions?: Record<string, string[]>; // emoji → array of person keys who reacted
+  reaction?: string; edited?: boolean; created_at?: string;
+}
+
+export interface BrainDump {
+  id: number; author: string; content: string; tags?: string; drive_link?: string; created_at?: string;
+}
+
+export interface Announcement {
+  id: number; text: string; priority: 'high' | 'medium' | 'low'; active?: number; created_at?: string;
+}
+
+export interface Workshop {
+  id: number;
+  title: string;
+  description: string;
+  facilitator: 'monny' | 'sunshine' | 'bingle';
+  date: string;
+  capacity: number;
+  participants: number;
+  location: string;
+  tags: string[];
+  googleDocLink?: string;
+  status: 'ideation' | 'planning' | 'scheduled' | 'completed';
+  created_at?: string;
+}
+
+export interface WorkshopProgram {
+  id: number;
+  seriesName: string;
+  description: string;
+  learningObjectives: string[];
+  sessionOutline: { number: number; title: string; description: string }[];
+  targetAudience: string;
+  materialsNeeded: string[];
+  facilitator: string;
+  created_at?: string;
+}
+
+export interface WorkshopResource {
+  id: number;
+  title: string;
+  type: 'google-doc' | 'meeting-notes' | 'template' | 'recording';
+  url: string;
+  lastUpdated: string;
+  author: string;
+  created_at?: string;
+}
+
+export interface CoFlowDate {
+  id: number;
+  notionPageId?: string;
+  date: string;
+  timeRange: string;
+  startTime?: string;
+  endTime?: string;
+  location: string;
+  host?: string;
+  theme?: string;
+  rsvp: Record<string, string>;
+  agendaItems: { id: number; text: string; lead: string; timeEstimate: number; done: boolean }[];
+  agendaLocked?: boolean;
+  notes: string;
+  vibeCheck: string;
+  sessionNotes?: string;
+  attendees?: string[];
+  status: 'upcoming' | 'active' | 'archived';
+  created_at?: string;
+}
+
+export interface CoFlowCheckin {
+  id: number;
+  weekOf: string;
+  author: string;
+  confirmTime: boolean;
+  locationSuggestion: string;
+  agendaItems: string[];
+  mood?: string;
+  timePreference?: string;
+  notes?: string;
+  created_at?: string;
+}
+
+export interface WellNote {
+  id: number;
+  content: string;
+  landed: number;
+  created_at?: string;
+}
+
+export interface SyncData {
+  tasks: Task[];
+  stations: Station[];
+  forum: ForumPost[];
+  messages: Message[];
+  braindumps: BrainDump[];
+  announcements: Announcement[];
+  forumReplies: ForumReply[];
+  workshops: Workshop[];
+  workshopPrograms: WorkshopProgram[];
+  workshopResources: WorkshopResource[];
+  coflowDates: CoFlowDate[];
+  coflowCheckins: CoFlowCheckin[];
+  wellNotes: WellNote[];
+  calendarEvents: CalendarEventKV[];
+}
+
+export interface CalendarEventKV {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  location: string;
+  description: string;
+  creator: string;
+  synced_at?: string;
+}

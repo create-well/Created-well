@@ -1,13 +1,6 @@
 /**
  * CR8W Create Well — Vercel API handler
- * Catch-all route for /api/server/*, e.g. /api/server/sync, /api/server/health,
- * /api/server/tasks/123. Vercel populates req.query.path with the segments.
- *
- * Filename note: this used to be [[...path]].ts, the OPTIONAL catch-all form.
- * That syntax is a Next.js convention; plain Vercel Node functions support
- * [param] and [...param]. The optional double-bracket form produced a function
- * that routed but died with FUNCTION_INVOCATION_FAILED on every request.
- * [...path].ts requires at least one segment, which every client call has.
+ * Single catch-all route that replaces the Supabase edge function.
  *
  * Write strategy:
  *   • All 14 resource types are persisted in Supabase KV (primary, fast, always-on).
@@ -19,24 +12,14 @@
  *     Notion so subsequent PUT/DELETE can target the correct Notion page.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { syncToNotion, type NotionSyncResult } from '../notionWriter.js';
+import { createClient } from '@supabase/supabase-js';
+import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './notionWriter';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
-// @supabase/supabase-js is loaded lazily, inside the request, on purpose.
-// A top-level import means any failure to resolve that package kills the whole
-// module and every route with it, including /health, and Vercel reports only
-// FUNCTION_INVOCATION_FAILED with no body. Loaded here, a resolution failure
-// becomes an ordinary 500 with a readable message and /health keeps answering.
-async function loadCreateClient() {
-  const mod = await import('@supabase/supabase-js');
-  return mod.createClient;
-}
-
-async function supabase() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
+function supabase() {
+  const url = process.env.SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   if (!url || !key) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
-  const createClient = await loadCreateClient();
   return createClient(url, key);
 }
 
@@ -44,13 +27,13 @@ const TABLE = 'kv_store_dabe1c74';
 
 // ── KV helpers ────────────────────────────────────────────────────────────────
 async function kvGet(key: string): Promise<any> {
-  const { data, error } = await (await supabase()).from(TABLE).select('value').eq('key', key).maybeSingle();
+  const { data, error } = await supabase().from(TABLE).select('value').eq('key', key).maybeSingle();
   if (error) throw new Error(error.message);
   return data?.value ?? null;
 }
 
 async function kvSet(key: string, value: any): Promise<void> {
-  const { error } = await (await supabase()).from(TABLE).upsert({ key, value });
+  const { error } = await supabase().from(TABLE).upsert({ key, value });
   if (error) throw new Error(error.message);
 }
 
@@ -104,22 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // ── Health ────────────────────────────────────────────────────────────────
     if (resource === 'health') {
-      res.json({
-        status: 'ok',
-        runtime: 'vercel',
-        fn: 'api/server/[...path].ts',
-        node: process.version,
-        kvTable: TABLE,
-        // Presence only, never values.
-        env: {
-          SUPABASE_URL: Boolean(process.env.SUPABASE_URL),
-          SUPABASE_SERVICE_ROLE_KEY: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-          SUPABASE_SECRET_KEY: Boolean(process.env.SUPABASE_SECRET_KEY),
-          NOTION_SECRET: Boolean(process.env.NOTION_SECRET),
-        },
-        at: new Date().toISOString(),
-      });
-      return;
+      res.json({ status: 'ok', runtime: 'vercel' }); return;
     }
 
     // ── Sync ──────────────────────────────────────────────────────────────────
@@ -131,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'cr8w_coflow_dates', 'cr8w_coflow_checkins', 'cr8w_well_notes',
         'cr8w_calendar_events',
       ];
-      const sb = await supabase();
+      const sb = supabase();
       const { data, error } = await sb.from(TABLE).select('key,value').in('key', SYNC_KEYS);
       if (error) { res.status(500).json({ error: error.message }); return; }
       const map: Record<string, any[]> = {};
@@ -290,23 +258,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    // ── Notion dual-write ──────────────────────────────────────────────────────
-    //
-    // This used to be a fire-and-forget helper that caught every error and threw
-    // it at console. Because the property names it sent did not exist, every
-    // write 400'd, the KV store saved anyway, and the dashboard reported success.
-    // The team edited things for weeks that never left the browser.
-    //
-    // Now the result rides back on the response as `notionSync`, so the UI can
-    // say "saved here, not in Notion" out loud. Stale beats wrong, but silent is
-    // worse than both.
-    function logSync(action: string, result: NotionSyncResult): NotionSyncResult {
-      if (result.state === 'failed') {
-        console.error(`[notion] ${action} ${resource} FAILED:`, result.message);
-      } else if (result.state === 'partial') {
-        console.warn(`[notion] ${action} ${resource} partial, dropped:`, result.dropped);
+    // ── Notion dual-write helper ───────────────────────────────────────────────
+    // Fires-and-forgets a Notion sync; never throws so KV writes always succeed.
+    async function syncToNotion(action: 'create' | 'update' | 'archive', item?: any): Promise<string | undefined> {
+      const cfg = NOTION_RESOURCES[resource];
+      if (!cfg) return undefined;
+      const dbId = process.env[cfg.dbIdEnvVar];
+      if (!dbId || !process.env.NOTION_SECRET) return undefined;
+      try {
+        if (action === 'create' && item) {
+          return await notionCreate(dbId, cfg.toProperties(item));
+        }
+        if (action === 'update' && item?.notionPageId) {
+          await notionUpdate(item.notionPageId, cfg.toProperties(item));
+        }
+        if (action === 'archive' && item?.notionPageId) {
+          await notionArchive(item.notionPageId);
+        }
+      } catch (err) {
+        console.error(`[notionWriter] ${action} failed for ${resource}:`, err);
       }
-      return result;
+      return undefined;
     }
 
     // ── Generic list CRUD (GET all / POST new / PUT :id / DELETE :id) ─────────
@@ -320,14 +292,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const list = await getList(kvKey);
         const item: Record<string, any> = { ...b, id: Date.now(), created_at: new Date().toISOString() };
         // Notion dual-write for the 4 CMS-backed types
-        const notionSync = logSync('create', await syncToNotion(resource, 'create', item));
-        if (notionSync.pageId) item.notionPageId = notionSync.pageId;
+        const notionPageId = await syncToNotion('create', item);
+        if (notionPageId) item.notionPageId = notionPageId;
         // Forum and messages prepend; others append
         if (resource === 'forum' || resource === 'braindumps' || resource === 'announcements') list.unshift(item);
         else if (resource === 'messages') { list.push(item); if (list.length > 500) list.splice(0, list.length - 500); }
         else list.push(item);
         await setList(kvKey, list);
-        res.status(201).json({ ...item, notionSync }); return;
+        res.status(201).json(item); return;
       }
       if (method === 'PUT' && id) {
         const b = await body(req);
@@ -336,19 +308,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (idx === -1) { res.status(404).json({ error: 'Not found' }); return; }
         list[idx] = { ...list[idx], ...b, id: list[idx].id, updated_at: new Date().toISOString() };
         // Notion dual-write: update if item has a notionPageId
-        const notionSync = logSync('update', await syncToNotion(resource, 'update', list[idx]));
+        await syncToNotion('update', list[idx]);
         await setList(kvKey, list);
-        res.json({ ...list[idx], notionSync }); return;
+        res.json(list[idx]); return;
       }
       if (method === 'DELETE' && id) {
         const list = await getList(kvKey);
         const target = list.find((x: any) => String(x.id) === String(id));
         // Notion dual-write: archive if item has a notionPageId
-        const notionSync = target
-          ? logSync('archive', await syncToNotion(resource, 'archive', target))
-          : undefined;
+        if (target) await syncToNotion('archive', target);
         await setList(kvKey, list.filter((x: any) => String(x.id) !== String(id)));
-        res.json({ ok: true, notionSync }); return;
+        res.json({ ok: true }); return;
       }
     }
 

@@ -12,7 +12,7 @@
 //   CONTENT: Name, Flow (Relation→FLOWS), Content Type, Audience,
 //             Status, Final?, Publish Date, URL, Where
 
-import type { Task, Station, ForumPost, CoFlowDate } from '../app/components/api';
+import type { Task, Station, ForumPost, CoFlowDate } from '../types/contract';
 
 // ── Notion property value types ───────────────────────────────────────────────
 
@@ -90,6 +90,35 @@ function getRelationFirstId(p: NotionPropValue | undefined): string {
   return (p as NPropRelation).relation[0]?.id ?? '';
 }
 
+// ── Relation resolution ───────────────────────────────────────────────────────
+// Relations return page IDs, not names. Without this index Owner, Person, Flow,
+// and Flow Keeper all render as raw UUIDs. Build the index once per sync from
+// the already-fetched PEOPLE and FLOWS pages, then pass it to the normalizers.
+
+export type RelationIndex = Map<string, string>;
+
+function normalizeUuid(id: string): string {
+  return id.replace(/-/g, '').toLowerCase();
+}
+
+/** Map every page's id (dashed and undashed) to its title. */
+export function buildRelationIndex(pages: NotionPage[]): RelationIndex {
+  const index: RelationIndex = new Map();
+  for (const page of pages) {
+    const name = getText(pick(page.properties, 'Name', 'Title'));
+    if (!name) continue;
+    index.set(page.id, name);
+    index.set(normalizeUuid(page.id), name);
+  }
+  return index;
+}
+
+/** Resolve a relation page id to a display name; returns '' when unresolvable. */
+function resolveRelation(id: string, index?: RelationIndex): string {
+  if (!id || !index) return '';
+  return index.get(id) ?? index.get(normalizeUuid(id)) ?? '';
+}
+
 function getUrl(p: NotionPropValue | undefined): string {
   if (!p || p.type !== 'url') return '';
   return (p as NPropUrl).url ?? '';
@@ -122,13 +151,17 @@ export function stableId(notionId: string): number {
 //   Now → actively being worked on → in_progress
 //   Next → queued, ready to pick up → todo
 //   Done → completed → done
-//   Dropped → cancelled/deprioritised → done (no separate client state)
+//   Dropped → consciously let go → dropped (stays visible as dropped)
 const TASK_STATUS_MAP: Record<string, Task['status']> = {
   // Create Well MOVES canonical values
   'now':          'in_progress',
   'next':         'todo',
   'done':         'done',
-  'dropped':      'done',
+  'dropped':      'dropped',
+  // Shadow-schema values, kept so a stray row still lands somewhere sensible
+  'cancelled':    'dropped',
+  'canceled':     'dropped',
+  'deprioritized':'dropped',
   // Legacy / generic fallbacks
   'todo':         'todo',
   'not started':  'todo',
@@ -191,7 +224,7 @@ const FLOW_STATUS_MAP: Record<string, CoFlowDate['status']> = {
 //   Person      : Relation → PEOPLE (relationship follow-up, secondary)
 //   Touchpoint  : Select
 
-export function normalizeMove(page: NotionPage): Task {
+export function normalizeMove(page: NotionPage, people?: RelationIndex, flows?: RelationIndex): Task {
   const p = page.properties;
 
   const rawStatus   = getSelect(pick(p, 'Status', 'Task Status')).toLowerCase();
@@ -199,12 +232,23 @@ export function normalizeMove(page: NotionPage): Task {
 
   // Owner is a Relation in MOVES (operational schema). Hub CMS schema uses a
   // Select named "Person". We try all aliases; store relation ID as last resort.
-  const ownerRelationId = getRelationFirstId(pick(p, 'Owner'));
+  const ownerRelationId  = getRelationFirstId(pick(p, 'Owner'));
+  const personRelationId = getRelationFirstId(pick(p, 'Person'));
   const ownerText =
     getSelect(pick(p, 'Person', 'Assigned To', 'Assignee')) ||
     getPeople(pick(p, 'Person', 'Assigned To', 'Assignee', 'Owner'));
-  // Prefer text if present (it's already a name), else store relation ID
-  const personRaw = ownerText || ownerRelationId;
+  // Prefer a name already in the property, then a resolved relation. A raw UUID
+  // is only used when PEOPLE could not be indexed at all, and never silently:
+  // it means the caller did not pass an index.
+  const personRaw =
+    ownerText ||
+    resolveRelation(ownerRelationId, people) ||
+    resolveRelation(personRelationId, people) ||
+    ownerRelationId ||
+    personRelationId;
+
+  // Flow gives a Move its container. Resolve it so 'source' reads as a name.
+  const flowName = resolveRelation(getRelationFirstId(pick(p, 'Flow')), flows);
 
   // Blocked By is the CR8W canonical name for what blocks this Move
   const blockedBy = getText(pick(p, 'Blocked By', 'Source', 'Notes', 'Description'));
@@ -218,7 +262,7 @@ export function normalizeMove(page: NotionPage): Task {
     priority:     TASK_PRIORITY_MAP[rawPriority] ?? 'medium',
     due_date:     getDate(pick(p, 'Due', 'Due Date', 'Deadline')) || undefined,
     category:     getSelect(pick(p, 'Type', 'Category', 'Label'))  || undefined,
-    source:       blockedBy || undefined,
+    source:       blockedBy || flowName || undefined,
     created_at:   page.created_time,
   };
 }
@@ -280,8 +324,9 @@ export function normalizePerson(page: NotionPage): Station {
 // ForumPost is an imperfect mapping. content = Name, tag = Content Type.
 // author is empty for CONTENT (no author field); falls back to 'team'.
 
-export function normalizeContent(page: NotionPage): ForumPost {
+export function normalizeContent(page: NotionPage, flows?: RelationIndex): ForumPost {
   const p = page.properties;
+  const flowName = resolveRelation(getRelationFirstId(pick(p, 'Flow')), flows);
 
   // CONTENT has no author field; use Audience as a rough proxy
   const audienceRaw = getSelect(pick(p, 'Audience', 'Author', 'Posted By', 'Person', 'By'));
@@ -298,7 +343,10 @@ export function normalizeContent(page: NotionPage): ForumPost {
     notionPageId: page.id,
     author:       audienceRaw.toLowerCase() || 'team',
     content:      (name || 'Untitled') + extra,
-    tag:          getSelect(pick(p, 'Content Type', 'Type', 'Tag', 'Category')) || undefined,
+    tag:
+      getSelect(pick(p, 'Content Type', 'Type', 'Tag', 'Category')) ||
+      flowName ||
+      undefined,
     created_at:   page.created_time,
   };
 }
@@ -316,7 +364,7 @@ export function normalizeContent(page: NotionPage): ForumPost {
 //   Public URL      : URL
 //   Retro           : Text (short Depanty return)
 
-export function normalizeFlow(page: NotionPage): CoFlowDate {
+export function normalizeFlow(page: NotionPage, people?: RelationIndex): CoFlowDate {
   const p = page.properties;
 
   // Flow Keeper is a Relation → PEOPLE. Fall back to text/select for legacy.
@@ -324,7 +372,8 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
   const keeperText =
     getPeople(pick(p, 'Flow Keeper', 'Host', 'Facilitator', 'Lead')) ||
     getSelect(pick(p, 'Flow Keeper', 'Host', 'Facilitator', 'Lead'));
-  const hostRaw = keeperText || keeperRelationId;
+  const hostRaw =
+    keeperText || resolveRelation(keeperRelationId, people) || keeperRelationId;
 
   const rawStatus = getSelect(pick(p, 'Status', 'State', 'Phase')).toLowerCase();
 

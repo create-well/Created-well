@@ -21,7 +21,10 @@ interface PersonViewProps {
   onAddNote: (content: string, author: string) => void;
 }
 
-const STATUS_ORDER = ['todo', 'in_progress', 'done', 'blocked'];
+// Click order for the status button. 'dropped' is included so a Move can be
+// consciously let go from the UI, and it stays visible as dropped rather than
+// being collapsed into done.
+const STATUS_ORDER = ['todo', 'in_progress', 'done', 'dropped', 'blocked'];
 
 // Due-soon / overdue helper
 function getDueClass(due_date?: string, status?: string): string {
@@ -101,7 +104,7 @@ export function PersonView({
     .filter(e => e.persons.includes(person) && new Date(e.date + 'T00:00:00') >= todayDate)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const urgentItems = personItems.filter(i => i.status !== 'done').sort((a, b) => {
+  const urgentItems = personItems.filter(i => i.status !== 'done' && i.status !== 'dropped').sort((a, b) => {
     if (a.priority === 'high' && b.priority !== 'high') return -1;
     if (a.priority !== 'high' && b.priority === 'high') return 1;
     if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
@@ -396,6 +399,7 @@ export function PersonView({
               { key: 'todo', label: 'To Do' },
               { key: 'in_progress', label: 'In Progress' },
               { key: 'done', label: 'Done' },
+              { key: 'dropped', label: 'Dropped' },
               { key: 'blocked', label: 'Blocked' }
             ].map(s => (
               <button key={s.key} className={`filter-btn ${filter === s.key ? 'active' : ''}`} onClick={() => setFilter(s.key)}>
@@ -413,7 +417,7 @@ export function PersonView({
                 </div>
               </div>
             ) : filteredItems.map((item, idx) => (
-              <div key={item.id} className={`action-row ${item.status === 'done' ? 'done-row' : ''} ${getDueClass(item.due_date, item.status)}`} style={{ animationDelay: `${idx * 0.03}s` }}>
+              <div key={item.id} className={`action-row ${item.status === 'done' ? 'done-row' : ''} ${item.status === 'dropped' ? 'dropped-row' : ''} ${getDueClass(item.due_date, item.status)}`} style={{ animationDelay: `${idx * 0.03}s` }}>
                 <button
                   className={`action-status-btn status-${item.status}`}
                   onClick={() => {
@@ -421,7 +425,7 @@ export function PersonView({
                     onUpdateTaskStatus(item.id, next);
                   }}
                 >
-                  {item.status === 'done' ? '✓' : item.status === 'in_progress' ? '◐' : item.status === 'blocked' ? '✕' : ''}
+                  {item.status === 'done' ? '✓' : item.status === 'in_progress' ? '◐' : item.status === 'blocked' ? '✕' : item.status === 'dropped' ? '⌀' : ''}
                 </button>
                 <div className="action-info">
                   <div className="action-title">{item.title}</div>

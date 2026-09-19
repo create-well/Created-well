@@ -80,6 +80,44 @@ function resolveRawPath(req: VercelRequest): string {
     .replace(/^\/+/, '');
 }
 
+// ── Shared Google Calendar iCalendar sync ───────────────────────────────────
+const TEAM_CALENDAR_ID = '852831a7508dafc2e0b3ab728fdc731e7bd45b568b4ab8b0fd7657a5e5771934@group.calendar.google.com';
+
+function unescapeIcal(value: string): string {
+  return value.replace(/\n/gi, '\n').replace(/\,/g, ',').replace(/\;/g, ';').replace(/\\/g, '\\');
+}
+
+function parseIcalDate(value: string | undefined): string {
+  if (!value) return '';
+  if (/^\d{8}$/.test(value)) return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
+  const match = value.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/);
+  if (!match) return value;
+  const [, year, month, day, hour, minute, second, utc] = match;
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}${utc}`;
+}
+
+function parseIcalEvents(ical: string): Array<Record<string, string>> {
+  const lines = ical.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const unfolded = lines.reduce<string[]>((result, line) => {
+    if (/^[ \t]/.test(line) && result.length) result[result.length - 1] += line.slice(1);
+    else result.push(line);
+    return result;
+  }, []);
+
+  const events: Array<Record<string, string>> = [];
+  let event: Record<string, string> | null = null;
+  for (const line of unfolded) {
+    if (line === 'BEGIN:VEVENT') { event = {}; continue; }
+    if (line === 'END:VEVENT') { if (event) events.push(event); event = null; continue; }
+    if (!event) continue;
+    const delimiter = line.indexOf(':');
+    if (delimiter < 0) continue;
+    const key = line.slice(0, delimiter).split(';', 1)[0].toUpperCase();
+    event[key] = unescapeIcal(line.slice(delimiter + 1));
+  }
+  return events;
+}
+
 // ── Route dispatcher ─────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   cors(res);
@@ -227,6 +265,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await setList('cr8w_calendar_events', normalized);
         res.json({ ok: true, count: normalized.length }); return;
       }
+    }
+
+    if (resource === 'calendar-ical-sync' && method === 'POST') {
+      const icalUrl = `https://calendar.google.com/calendar/ical/${encodeURIComponent(TEAM_CALENDAR_ID)}/public/basic.ics`;
+      const icalRes = await fetch(icalUrl);
+      if (!icalRes.ok) {
+        res.status(502).json({ error: `Unable to fetch shared calendar (${icalRes.status})` }); return;
+      }
+      const events = parseIcalEvents(await icalRes.text())
+        .filter(event => event.UID && event.DTSTART)
+        .map(event => ({
+          id: `ical-${event.UID}`,
+          title: event.SUMMARY || '(No title)',
+          start: parseIcalDate(event.DTSTART),
+          end: parseIcalDate(event.DTEND),
+          location: event.LOCATION || '',
+          description: event.DESCRIPTION || '',
+          creator: 'shared-calendar',
+          synced_at: new Date().toISOString(),
+        }));
+      await setList('cr8w_calendar_events', events);
+      res.json({ ok: true, count: events.length }); return;
     }
 
     // ── Parking lot ───────────────────────────────────────────────────────────

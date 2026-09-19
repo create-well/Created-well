@@ -112,7 +112,10 @@ export async function connectCalendar(req: VercelRequest, res: VercelResponse, u
     body: new URLSearchParams({ code, code_verifier, client_id: GOOGLE_CLIENT_ID, client_secret: secret, redirect_uri, grant_type: 'authorization_code' }).toString(),
   });
   const token = await tokenRes.json();
-  if (!tokenRes.ok) { res.status(400).json({ error: token.error || 'Google authorization failed' }); return; }
+  if (!tokenRes.ok) {
+    console.error('Google Calendar token exchange failed:', token.error, token.error_description);
+    res.status(400).json({ error: token.error_description || token.error || 'Google authorization failed' }); return;
+  }
   const previous = await get<Member>(`cr8w_calendar_member_${user.id}`);
   // Google returns a refresh token only on the first grant in some consent states.
   // Preserve an existing encrypted credential when a reconnect returns access only.

@@ -613,7 +613,8 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
       + `&code_challenge=${encodeURIComponent(codeChallenge)}`
       + `&code_challenge_method=S256`
       + `&access_type=offline`
-      + `&prompt=consent`;
+      + `&include_granted_scopes=false`
+      + `&prompt=select_account%20consent`;
 
     window.location.href = authUrl;
   }

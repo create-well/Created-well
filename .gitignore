@@ -16,6 +16,9 @@ out/
 .env.test.local
 .env.production.local
 
+# npm registry auth — token must be in env vars, never committed
+.npmrc
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

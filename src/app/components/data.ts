@@ -382,7 +382,7 @@ export const WELL_GREETINGS: string[] = [
   'well met, creator.',
 ];
 
-export const GCAL_CLIENT_ID = '411548888468-3volgsnl2spba4gcfgik620o0al7pq1v.apps.googleusercontent.com';
+export const GCAL_CLIENT_ID = '1075308813287-od6j8oaf5or22qgt2d9v55gkutv4jq83.apps.googleusercontent.com';
 
 // ── How We Flow operational constants ─────────────────────────────────────────
 // 7-phase event lifecycle for forum thread categories

@@ -14,6 +14,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './_notionWriter.js';
+import { connectCalendar, currentUser, disconnectCalendar, getMyCalendar, getTeamCalendar, updateSharing } from './_calendarSharing.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 function supabase() {
@@ -81,7 +82,7 @@ function resolveRawPath(req: VercelRequest): string {
 }
 
 // ── Shared Google Calendar iCalendar sync ───────────────────────────────────
-const TEAM_CALENDAR_ID = '852831a7508dafc2e0b3ab728fdc731e7bd45b568b4ab8b0fd7657a5e5771934@group.calendar.google.com';
+const TEAM_CALENDAR_ID = 'mb@tablante.com';
 
 function unescapeIcal(value: string): string {
   return value.replace(/\n/gi, '\n').replace(/\,/g, ',').replace(/\;/g, ';').replace(/\\/g, '\\');
@@ -308,22 +309,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // ── Google Calendar OAuth token exchange ──────────────────────────────────
-    if (resource === 'gcal-token-exchange' && method === 'POST') {
-      const { code, code_verifier, redirect_uri, client_id } = await body(req);
-      if (!code || !redirect_uri || !client_id) { res.status(400).json({ error: 'Missing required fields' }); return; }
-      const clientSecret = process.env.GCAL_CLIENT_SECRET;
-      if (!clientSecret) { res.status(500).json({ error: 'GCAL_CLIENT_SECRET not configured' }); return; }
-      const params: Record<string, string> = { code, client_id, client_secret: clientSecret, redirect_uri, grant_type: 'authorization_code' };
-      if (code_verifier) params.code_verifier = code_verifier;
-      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(params).toString(),
-      });
-      const tokenData = await tokenRes.json();
-      if (tokenData.error) { res.status(400).json({ error: tokenData.error, error_description: tokenData.error_description }); return; }
-      res.json({ access_token: tokenData.access_token, refresh_token: tokenData.refresh_token, expires_in: tokenData.expires_in, token_type: tokenData.token_type, scope: tokenData.scope });
-      return;
+    // ── Authenticated Google Calendar sharing ─────────────────────────────────
+    if (resource === 'calendar-connection' && method === 'POST') {
+      const user = await currentUser(req, res); if (!user) return;
+      await connectCalendar(req, res, user); return;
+    }
+    if (resource === 'calendar-sharing' && method === 'PUT') {
+      const user = await currentUser(req, res); if (!user) return;
+      await updateSharing(req, res, user); return;
+    }
+    if (resource === 'my-calendar' && method === 'GET') {
+      const user = await currentUser(req, res); if (!user) return;
+      await getMyCalendar(req, res, user); return;
+    }
+    if (resource === 'calendar-connection' && method === 'DELETE') {
+      const user = await currentUser(req, res); if (!user) return;
+      await disconnectCalendar(req, res, user); return;
+    }
+    if (resource === 'team-calendar' && method === 'GET') {
+      const user = await currentUser(req, res); if (!user) return;
+      await getTeamCalendar(req, res); return;
     }
 
     // ── Notion dual-write helper ───────────────────────────────────────────────

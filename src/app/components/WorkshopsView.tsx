@@ -1600,6 +1600,10 @@ function CalendarSection({ workshops }: { workshops: Workshop[] }) {
 
   // ── Connect Google Calendar ──────────────────────────────────────────────
   async function connectGcal() {
+    if (window.location.hostname.endsWith('.vercel.app')) {
+      setGcalError('Google Calendar connection is available only on the production site.');
+      return;
+    }
     const REDIRECT_URI = window.location.origin;
     const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
     const codeVerifier = generateCodeVerifier();

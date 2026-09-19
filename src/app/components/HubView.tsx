@@ -378,40 +378,11 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
   // Calendar events from KV (synced from shared Google Calendar)
   const [kvCalEvents, setKvCalEvents] = useState<CalendarEventKV[]>([]);
   const [kvCalLoaded, setKvCalLoaded] = useState(false);
-  const [icalSyncing, setIcalSyncing] = useState(false);
-  const [icalSyncMsg, setIcalSyncMsg] = useState('');
   useEffect(() => {
     api.getCalendarEvents()
       .then(data => { setKvCalEvents(data || []); setKvCalLoaded(true); })
       .catch(e => { if (!(e instanceof TypeError)) console.error(e); setKvCalLoaded(true); });
   }, []);
-
-  async function syncIcalCalendar() {
-    setIcalSyncing(true);
-    setIcalSyncMsg('');
-    try {
-      const apiBase = (import.meta.env.VITE_API_BASE as string | undefined)
-        ?? (() => {
-          const h = window.location.hostname;
-          return (h.endsWith('.vercel.app') || h === 'createwell.monnyfest.co' || h === 'localhost')
-            ? '/api/server' : 'https://cr8w-home-v2.vercel.app/api/server';
-        })();
-      const res = await fetch(`${apiBase}/calendar-ical-sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer sb_publishable_9iKcrLqFPwPnKmZ4JC3RIg_C15YWSbk` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Sync failed');
-      setIcalSyncMsg(`Synced ${data.count} event${data.count !== 1 ? 's' : ''} ✓`);
-      // Re-fetch calendar events to refresh the list
-      const updated = await api.getCalendarEvents();
-      setKvCalEvents(updated || []);
-    } catch (e: any) {
-      setIcalSyncMsg(`Sync error: ${e?.message ?? e}`);
-    }
-    setIcalSyncing(false);
-    setTimeout(() => setIcalSyncMsg(''), 4000);
-  }
 
   const [calendarTab, setCalendarTab] = useState<'calendar' | 'wellshop'>('calendar');
   const [notifyTick, setNotifyTick] = useState(0);
@@ -503,23 +474,12 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
   const [gcalEvents, setGcalEvents] = useState<{ date: string; time: string; name: string }[]>([]);
   const [gcalLoading, setGcalLoading] = useState(() => localStorage.getItem('gcal_token_fresh') === 'pending');
   const [gcalError, setGcalError] = useState('');
-  const [gcalCalendarName, setGcalCalendarName] = useState(() => localStorage.getItem(userNameKey) || '');
+  const [gcalCalendarName, setGcalCalendarName] = useState('');
+  const [calendarSharingLevel, setCalendarSharingLevel] = useState<api.CalendarSharingLevel>('off');
+  const [teamCalendars, setTeamCalendars] = useState<api.SharedCalendar[]>([]);
   const mountFetchedRef = useRef(false);
   const prevUserRef = useRef(userKey);
 
-  // ── Reset personal calendar state when active user changes ─────────────────
-  useEffect(() => {
-    if (prevUserRef.current === userKey) return;
-    prevUserRef.current = userKey;
-    mountFetchedRef.current = false; // allow re-fetch for new user
-    const hasToken = !!localStorage.getItem(userTokenKey);
-    setGcalConnected(hasToken);
-    setShowPersonalEvents(hasToken);
-    setGcalCalendarName(localStorage.getItem(userNameKey) || '');
-    setGcalEvents([]);
-    setGcalError('');
-    setGcalLoading(false);
-  }, [userKey, userTokenKey, userNameKey]);
 
   // ── PKCE helpers ───────────────────────────────────────────────────────────
   function generateCodeVerifier(): string {
@@ -538,64 +498,45 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
       .replace(/=+$/, '');
   }
 
-  // ── Fetch calendar events helper ───────────────────────────────────────────
-  const fetchCalendarEvents = React.useCallback(async (token: string) => {
+  // ── Personal calendar is read through the authenticated server endpoint ─────
+  const fetchCalendarEvents = React.useCallback(async () => {
     setGcalLoading(true);
     setGcalError('');
     try {
-      // Fetch calendar metadata for display name
-      const calRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (calRes.ok) {
-        const calData = await calRes.json();
-        const name = calData.summary || calData.id || 'Google Calendar';
-        setGcalCalendarName(name);
-        localStorage.setItem(userNameKey, name);
-      }
-
-      // Fetch upcoming events for the next 90 days, including all-day events.
-      const now = new Date();
-      const timeMin = now.toISOString();
-      const timeMax = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate()).toISOString();
-      const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=250`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 401) {
-        localStorage.removeItem(userTokenKey);
-        localStorage.removeItem(userNameKey);
-        localStorage.removeItem('gcal_token_fresh');
-        setGcalConnected(false);
-        setGcalCalendarName('');
-        setGcalError('Session expired — reconnect Google Calendar');
-        return;
-      }
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`Google Calendar API error ${res.status}: ${errText}`);
-      }
-      const data = await res.json();
-      const events = (data.items || []).map((ev: any) => {
-        const start = ev.start?.dateTime || ev.start?.date;
-        const date = start
-          ? new Date(`${start}${ev.start?.dateTime ? '' : 'T00:00:00'}`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-          : '';
-        const time = ev.start?.dateTime
-          ? new Date(ev.start.dateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()
-          : 'All day';
-        return { date, time, name: ev.summary || '(No title)' };
-      });
-      setGcalEvents(events);
-    } catch (e: any) {
-      console.error('Google Calendar fetch error:', e);
-      setGcalError(e.message || 'Failed to load events');
+      const calendar = await api.getMyCalendar();
+      setGcalConnected(calendar.connected);
+      setGcalCalendarName(calendar.calendarName || 'Google Calendar');
+      setCalendarSharingLevel(calendar.sharingLevel);
+      setGcalEvents(calendar.events.map(event => {
+        const start = event.start;
+        const date = start ? new Date(`${start}${event.allDay ? 'T00:00:00' : ''}`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+        const time = event.allDay ? 'All day' : new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+        return { date, time, name: event.title || 'Busy' };
+      }));
+    } catch (error) {
+      setGcalConnected(false);
+      setGcalError(error instanceof Error ? error.message : 'Failed to load your calendar');
     } finally {
       setGcalLoading(false);
-      // Clear the fresh-token flag now that we've processed it
       localStorage.removeItem('gcal_token_fresh');
     }
-  }, [userNameKey, userTokenKey]);
+  }, []);
+
+  const loadTeamCalendars = React.useCallback(async () => {
+    try { setTeamCalendars(await api.getTeamCalendar()); } catch { setTeamCalendars([]); }
+  }, []);
+
+  async function changeSharingLevel(sharingLevel: api.CalendarSharingLevel) {
+    try {
+      await api.updateCalendarSharing(sharingLevel);
+      setCalendarSharingLevel(sharingLevel);
+      await loadTeamCalendars();
+    } catch (error) {
+      setGcalError(error instanceof Error ? error.message : 'Unable to update calendar sharing');
+    }
+  }
+
+  useEffect(() => { loadTeamCalendars(); }, [loadTeamCalendars]);
 
   // ── On mount: poll for token exchange completion OR use stored token ────────
   // App.tsx IIFE fires the async token exchange and writes gcal_token_fresh.
@@ -615,14 +556,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
         if (status === 'ready') {
           clearInterval(pollId);
           localStorage.removeItem('gcal_token_fresh');
-          const token = localStorage.getItem(userTokenKey);
-          if (token) {
-            setGcalConnected(true);
-            fetchCalendarEvents(token);
-          } else {
-            setGcalLoading(false);
-            setGcalError('Token exchange produced no token. Try reconnecting.');
-          }
+          fetchCalendarEvents();
         } else if (status === 'error') {
           clearInterval(pollId);
           const errMsg = localStorage.getItem('gcal_token_error') || 'Token exchange failed';
@@ -650,16 +584,15 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
       localStorage.removeItem('gcal_token_fresh');
     }
 
-    // Check for existing token from a previous session
-    const storedToken = localStorage.getItem(userTokenKey);
-    if (storedToken) {
-      setGcalConnected(true);
-      fetchCalendarEvents(storedToken);
-    }
-  }, [fetchCalendarEvents, userTokenKey]);
+    fetchCalendarEvents();
+  }, [fetchCalendarEvents]);
 
   // ── Connect: redirect to Google OAuth (authorization code + PKCE) ──────────
   async function connectGoogleCalendar() {
+    if (window.location.hostname.endsWith('.vercel.app')) {
+      setGcalError('Google Calendar connection is available only on the production site.');
+      return;
+    }
     const REDIRECT_URI = window.location.origin;
     const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
 
@@ -679,21 +612,16 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
       + `&scope=${encodeURIComponent(SCOPES)}`
       + `&code_challenge=${encodeURIComponent(codeChallenge)}`
       + `&code_challenge_method=S256`
-      + `&access_type=online`
-      + `&prompt=consent`;
+      + `&access_type=offline`
+      + `&include_granted_scopes=false`
+      + `&prompt=select_account%20consent`;
 
     window.location.href = authUrl;
   }
 
   // ── Disconnect: revoke token via Google endpoint, clear local state ────────
-  function disconnectGoogleCalendar() {
-    const token = localStorage.getItem(userTokenKey);
-    if (token) {
-      fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      }).catch(() => {});
-    }
+  async function disconnectGoogleCalendar() {
+    try { await api.disconnectCalendar(); } catch (error) { setGcalError(error instanceof Error ? error.message : 'Failed to disconnect calendar'); return; }
     localStorage.removeItem(userTokenKey);
     localStorage.removeItem(userNameKey);
     localStorage.removeItem('gcal_pkce_verifier');
@@ -1070,16 +998,6 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
         <div className="hub-section-header">
           <span className="hub-section-title">Calendar</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              onClick={syncIcalCalendar}
-              disabled={icalSyncing}
-              style={{ padding: '4px 12px', borderRadius: 8, border: '1px solid rgba(194,91,56,0.35)', background: 'rgba(194,91,56,0.08)', color: '#C25B38', fontFamily: 'var(--font-label)', fontSize: '0.7rem', fontWeight: 600, cursor: icalSyncing ? 'default' : 'pointer', opacity: icalSyncing ? 0.6 : 1, whiteSpace: 'nowrap' }}
-            >
-              {icalSyncing ? 'Syncing…' : '⟳ Sync Calendar'}
-            </button>
-            {icalSyncMsg && (
-              <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.68rem', color: icalSyncMsg.startsWith('Sync error') ? '#C03020' : '#3A7A3A' }}>{icalSyncMsg}</span>
-            )}
             <a
               href="https://calendar.google.com/calendar/u/0/r"
               target="_blank" rel="noopener noreferrer"
@@ -1123,10 +1041,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
             onChange={e => {
               setShowPersonalEvents(e.target.checked);
               // If toggling on and already connected, fetch events
-              if (e.target.checked && gcalConnected && gcalEvents.length === 0) {
-                const token = localStorage.getItem(userTokenKey);
-                if (token) fetchCalendarEvents(token);
-              }
+              if (e.target.checked && gcalConnected && gcalEvents.length === 0) fetchCalendarEvents();
             }}
             style={{ accentColor: '#1A73E8', width: 16, height: 16 }}
           />
@@ -1184,6 +1099,20 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                   >Disconnect</button>
                 </div>
 
+                <label style={{ display: 'block', marginBottom: 10, fontFamily: 'var(--font-label)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  Share with the team
+                  <select
+                    value={calendarSharingLevel}
+                    onChange={event => changeSharingLevel(event.target.value as api.CalendarSharingLevel)}
+                    style={{ display: 'block', width: '100%', marginTop: 4, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border-soft)', background: 'var(--cr8w-surface)', color: 'var(--text-primary)' }}
+                  >
+                    <option value="off">Private — only I can see my events</option>
+                    <option value="availability">Availability only — busy times</option>
+                    <option value="title-time">Title and time</option>
+                    <option value="full-details">Full event details</option>
+                  </select>
+                </label>
+
                 {gcalLoading ? (
                   <div style={{ padding: '12px 0', textAlign: 'center', color: '#1A73E8', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" style={{ animation: 'spin 1s linear infinite' }}>
@@ -1211,6 +1140,24 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                 )}
               </>
             )}
+          </div>
+        )}
+
+        {teamCalendars.length > 0 && (
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-soft)' }}>
+            <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.67rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 7 }}>Team calendars</div>
+            {teamCalendars.map(member => (
+              <div key={member.profile} style={{ marginBottom: 8 }}>
+                <strong style={{ fontFamily: 'var(--font-label)', fontSize: '0.74rem' }}>{member.displayName}</strong>
+                {member.events.slice(0, 5).map((event, index) => (
+                  <div key={index} className="hub-schedule-item">
+                    <span className="hub-schedule-dot" style={{ background: '#7BA89D' }} />
+                    <span className="hub-schedule-time">{new Date(`${event.start}${event.allDay ? 'T00:00:00' : ''}`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                    <span className="hub-schedule-name">{event.title || 'Busy'}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         )}
           </>

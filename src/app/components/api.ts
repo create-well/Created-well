@@ -73,6 +73,33 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   throw lastError!;
 }
 
+function sessionAccessToken(): string {
+  try {
+    const session = JSON.parse(localStorage.getItem('cr8w_supabase_auth') || '{}');
+    return session.access_token || session.currentSession?.access_token || '';
+  } catch { return ''; }
+}
+
+async function calendarReq<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const token = sessionAccessToken();
+  if (!token) throw new Error('Sign in before connecting or sharing a calendar.');
+  const response = await fetch(`${BASE}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error((await response.json().catch(() => ({ error: 'Calendar request failed' }))).error);
+  return response.json();
+}
+
+export type CalendarSharingLevel = 'off' | 'availability' | 'title-time' | 'full-details';
+export type SharedCalendar = { profile: string; displayName: string; sharingLevel: CalendarSharingLevel; events: Array<{ start: string; end: string; allDay: boolean; status?: string; title?: string; location?: string; description?: string }> };
+export const completeCalendarConnection = (input: { code: string; code_verifier: string; redirect_uri: string }) => calendarReq<{ ok: true; sharingLevel: CalendarSharingLevel }>('POST', '/calendar-connection', input);
+export const disconnectCalendar = () => calendarReq<{ ok: true }>('DELETE', '/calendar-connection');
+export const updateCalendarSharing = (sharingLevel: CalendarSharingLevel) => calendarReq<{ ok: true; sharingLevel: CalendarSharingLevel }>('PUT', '/calendar-sharing', { sharingLevel });
+export const getMyCalendar = () => calendarReq<{ connected: boolean; sharingLevel: CalendarSharingLevel; calendarName?: string; events: SharedCalendar['events'] }>('GET', '/my-calendar');
+export const getTeamCalendar = () => calendarReq<SharedCalendar[]>('GET', '/team-calendar');
+
 // Sync
 export const sync = () => req<SyncData>('GET', '/sync');
 

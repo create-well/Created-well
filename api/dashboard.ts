@@ -28,7 +28,7 @@ import {
   normalizeFlow,
   type NotionPage,
 } from '../src/lib/notionNormalizer.js';
-import type { SyncData } from '../src/app/components/api';
+import type { SyncData } from '../src/app/components/api.js';
 
 // ── Supabase KV helpers ───────────────────────────────────────────────────────
 

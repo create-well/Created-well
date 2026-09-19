@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "es2022",
+    "noEmit": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "/utils/supabase/info": [
+        "./supabase-info.d.ts"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "../src/lib/**/*.ts"
+  ]
+}

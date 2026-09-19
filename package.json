@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "npm run typecheck:api && vite build",
     "dev": "vite",
     "typecheck:api": "tsc --noEmit -p api/tsconfig.json"
   },

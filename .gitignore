@@ -16,8 +16,8 @@ out/
 .env.test.local
 .env.production.local
 
-# npm registry auth — token must be in env vars, never committed
-.npmrc
+# npm registry — literal-token local overrides (never commit these)
+.npmrc.local
 
 # Logs
 npm-debug.log*

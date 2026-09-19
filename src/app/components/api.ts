@@ -30,24 +30,8 @@ const BASE = resolveApiBase();
 // /api/dashboard only exists as a Vercel serverless function; not present on the Edge Function.
 export const isDashboardAvailable = BASE.endsWith('/server');
 
-function getSessionAccessToken(): string | null {
-  try {
-    const raw = localStorage.getItem('cr8w_supabase_auth');
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.access_token ?? parsed?.currentSession?.access_token ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export function getApiJsonHeaders(): Record<string, string> {
-  const token = getSessionAccessToken();
-  return {
-    'Content-Type': 'application/json',
-    Authorization: token ? 'Bearer ' + token : API_KEY,
-  };
-}
+// Auth header: required by Supabase edge function; Vercel routes ignore it.
+const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` };
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   // One retry for GETs on network-level failures only; mutations fail fast.
@@ -62,7 +46,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     try {
       const res = await fetch(`${BASE}${path}`, {
         method,
-        headers: getApiJsonHeaders(),
+        headers,
         body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
@@ -194,7 +178,7 @@ export async function fetchDashboard(): Promise<SyncData> {
   const timeoutId = setTimeout(() => controller.abort(), 10_000);
   try {
     const res = await fetch(DASHBOARD_URL, {
-      headers: getApiJsonHeaders(),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
       signal: controller.signal,
     });
     if (!res.ok) {
@@ -215,7 +199,7 @@ export async function fetchDashboard(): Promise<SyncData> {
 export async function lookupUsername(username: string): Promise<string> {
   const res = await fetch(`${BASE}/username-lookup`, {
     method: 'POST',
-    headers: getApiJsonHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: username.trim().toLowerCase() }),
   });
   if (!res.ok) throw new Error('Username not found');

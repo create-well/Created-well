@@ -1,6 +1,6 @@
 /**
  * CR8W Create Well — Vercel API handler
- * Primary handler for /api/server and /api/server/* via the catch-all delegate.
+ * Single catch-all route that replaces the Supabase edge function.
  *
  * Write strategy:
  *   • All 14 resource types are persisted in Supabase KV (primary, fast, always-on).
@@ -58,36 +58,6 @@ function cors(res: VercelResponse): void {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
 }
 
-function authToken(req: VercelRequest): string | null {
-  const header = Array.isArray(req.headers.authorization)
-    ? req.headers.authorization[0]
-    : req.headers.authorization;
-  if (!header) return null;
-  return header.replace(/^Bearer\s+/i, '').trim() || null;
-}
-
-async function requireUser(req: VercelRequest, res: VercelResponse) {
-  const token = authToken(req);
-  if (!token) {
-    res.status(401).json({ error: 'Authentication required' });
-    return null;
-  }
-
-  const { data, error } = await supabase().auth.getUser(token);
-  if (error || !data.user) {
-    res.status(401).json({ error: 'Invalid session' });
-    return null;
-  }
-
-  return data.user;
-}
-
-function runInBackground(label: string, work: () => Promise<void>): void {
-  void work().catch((err) => {
-    console.error(`[background] ${label} failed:`, err);
-  });
-}
-
 // ── Body parser ───────────────────────────────────────────────────────────────
 function body(req: VercelRequest): Promise<any> {
   return new Promise((resolve) => {
@@ -100,15 +70,23 @@ function body(req: VercelRequest): Promise<any> {
   });
 }
 
+function resolveRawPath(req: VercelRequest): string {
+  if (Array.isArray(req.query.path)) return req.query.path.join('/');
+  if (typeof req.query.path === 'string' && req.query.path.length > 0) return req.query.path;
+
+  const pathname = new URL(req.url ?? '/api/server', 'http://localhost').pathname;
+  return pathname
+    .replace(/^\/api\/server(?:\/|$)/, '')
+    .replace(/^\/+/, '');
+}
+
 // ── Route dispatcher ─────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   cors(res);
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
   // Resolve path: /api/server/sync → "sync"; /api/server/tasks/123 → "tasks/123"
-  const rawPath = Array.isArray(req.query.path)
-    ? req.query.path.join('/')
-    : (req.query.path as string) ?? '';
+  const rawPath = resolveRawPath(req);
 
   const segments = rawPath.split('/').filter(Boolean);
   const [resource, id, sub, subId] = segments;
@@ -119,9 +97,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (resource === 'health') {
       res.json({ status: 'ok', runtime: 'vercel' }); return;
     }
-
-    const user = await requireUser(req, res);
-    if (!user) return;
 
     // ── Sync ──────────────────────────────────────────────────────────────────
     if (resource === 'sync' && method === 'GET') {
@@ -292,7 +267,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ── Notion dual-write helper ───────────────────────────────────────────────
-    // Best-effort Notion sync; never throws so KV writes always succeed.
+    // Fires-and-forgets a Notion sync; never throws so KV writes always succeed.
     async function syncToNotion(action: 'create' | 'update' | 'archive', item?: any): Promise<string | undefined> {
       const cfg = NOTION_RESOURCES[resource];
       if (!cfg) return undefined;
@@ -324,20 +299,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const b = await body(req);
         const list = await getList(kvKey);
         const item: Record<string, any> = { ...b, id: Date.now(), created_at: new Date().toISOString() };
+        // Notion dual-write for the 4 CMS-backed types
+        const notionPageId = await syncToNotion('create', item);
+        if (notionPageId) item.notionPageId = notionPageId;
         // Forum and messages prepend; others append
         if (resource === 'forum' || resource === 'braindumps' || resource === 'announcements') list.unshift(item);
         else if (resource === 'messages') { list.push(item); if (list.length > 500) list.splice(0, list.length - 500); }
         else list.push(item);
         await setList(kvKey, list);
-        runInBackground(`notion create ${resource}`, async () => {
-          const notionPageId = await syncToNotion('create', item);
-          if (!notionPageId) return;
-          const latest = await getList(kvKey);
-          const idx = latest.findIndex((x: any) => String(x.id) === String(item.id));
-          if (idx === -1) return;
-          latest[idx] = { ...latest[idx], notionPageId };
-          await setList(kvKey, latest);
-        });
         res.status(201).json(item); return;
       }
       if (method === 'PUT' && id) {
@@ -346,21 +315,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const idx = list.findIndex((x: any) => String(x.id) === String(id));
         if (idx === -1) { res.status(404).json({ error: 'Not found' }); return; }
         list[idx] = { ...list[idx], ...b, id: list[idx].id, updated_at: new Date().toISOString() };
+        // Notion dual-write: update if item has a notionPageId
+        await syncToNotion('update', list[idx]);
         await setList(kvKey, list);
-        runInBackground(`notion update ${resource}`, async () => {
-          await syncToNotion('update', list[idx]);
-        });
         res.json(list[idx]); return;
       }
       if (method === 'DELETE' && id) {
         const list = await getList(kvKey);
         const target = list.find((x: any) => String(x.id) === String(id));
+        // Notion dual-write: archive if item has a notionPageId
+        if (target) await syncToNotion('archive', target);
         await setList(kvKey, list.filter((x: any) => String(x.id) !== String(id)));
-        if (target) {
-          runInBackground(`notion archive ${resource}`, async () => {
-            await syncToNotion('archive', target);
-          });
-        }
         res.json({ ok: true }); return;
       }
     }
@@ -382,10 +347,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (resource === 'register-username' && method === 'POST') {
       const { username, email } = await body(req);
       if (!username || !email) { res.status(400).json({ error: 'username and email required' }); return; }
-      const normalizedEmail = email.trim().toLowerCase();
-      if (!user.email || user.email.trim().toLowerCase() !== normalizedEmail) {
-        res.status(403).json({ error: 'Username registration is limited to your own account' }); return;
-      }
       const key = String(username).toLowerCase().replace(/[^a-z0-9_-]/g, '');
       if (key.length < 2 || key.length > 30) {
         res.status(400).json({ error: 'Username must be 2–30 alphanumeric/underscore/dash characters' }); return;
@@ -395,10 +356,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? (typeof raw === 'string' ? JSON.parse(raw) : raw)
         : {};
       const existing = map[key];
-      if (existing && existing !== normalizedEmail) {
+      if (existing && existing !== email.trim().toLowerCase()) {
         res.status(409).json({ error: 'Username already taken' }); return;
       }
-      map[key] = normalizedEmail;
+      map[key] = email.trim().toLowerCase();
       await kvSet('cr8w_username_map', JSON.stringify(map));
       res.json({ ok: true });
       return;

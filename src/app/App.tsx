@@ -7,7 +7,6 @@ import {
   isAuthenticated,
   getStoredProfile,
 } from "./components/AuthGate";
-import { getApiJsonHeaders } from "./components/api";
 import { useThemeInit } from "./components/ThemeProvider";
 import { GCAL_CLIENT_ID } from "./components/data";
 
@@ -59,7 +58,10 @@ import { GCAL_CLIENT_ID } from "./components/data";
 
         fetch(serverUrl, {
           method: "POST",
-          headers: getApiJsonHeaders(),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${publicAnonKey}`,
+          },
           body: JSON.stringify({
             code,
             code_verifier: codeVerifier,

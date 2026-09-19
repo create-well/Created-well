@@ -70,15 +70,23 @@ function body(req: VercelRequest): Promise<any> {
   });
 }
 
+function resolveRawPath(req: VercelRequest): string {
+  if (Array.isArray(req.query.path)) return req.query.path.join('/');
+  if (typeof req.query.path === 'string' && req.query.path.length > 0) return req.query.path;
+
+  const pathname = new URL(req.url ?? '/api/server', 'http://localhost').pathname;
+  return pathname
+    .replace(/^\/api\/server(?:\/|$)/, '')
+    .replace(/^\/+/, '');
+}
+
 // ── Route dispatcher ─────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   cors(res);
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
   // Resolve path: /api/server/sync → "sync"; /api/server/tasks/123 → "tasks/123"
-  const rawPath = Array.isArray(req.query.path)
-    ? req.query.path.join('/')
-    : (req.query.path as string) ?? '';
+  const rawPath = resolveRawPath(req);
 
   const segments = rawPath.split('/').filter(Boolean);
   const [resource, id, sub, subId] = segments;

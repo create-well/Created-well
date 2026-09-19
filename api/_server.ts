@@ -51,6 +51,83 @@ async function setList(key: string, list: any[]): Promise<void> {
   await kvSet(key, JSON.stringify(list));
 }
 
+// ── iCal parser (RFC 5545 zero-dependency helper) ────────────────────────────
+function parseIcal(raw: string): any[] {
+  const unfolded = raw.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '');
+  const lines = unfolded.split(/\r?\n/);
+  const events: any[] = [];
+  let inEvent = false;
+  let cur: Record<string, string> = {};
+
+  function parseIcalDate(val: string): string {
+    if (!val) return '';
+    const clean = val.trim();
+    if (/^\d{8}T\d{6}Z?$/.test(clean)) {
+      const y = clean.slice(0, 4);
+      const m = clean.slice(4, 6);
+      const d = clean.slice(6, 8);
+      const h = clean.slice(9, 11);
+      const min = clean.slice(11, 13);
+      const s = clean.slice(13, 15);
+      const isUtc = clean.endsWith('Z');
+      return `${y}-${m}-${d}T${h}:${min}:${s}${isUtc ? 'Z' : ''}`;
+    }
+    if (/^\d{8}$/.test(clean)) {
+      const y = clean.slice(0, 4);
+      const m = clean.slice(4, 6);
+      const d = clean.slice(6, 8);
+      return `${y}-${m}-${d}`;
+    }
+    return clean;
+  }
+
+  function unescapeIcalText(s: string): string {
+    return s
+      .replace(/\\n/g, '\n')
+      .replace(/\\,/g, ',')
+      .replace(/\\;/g, ';')
+      .replace(/\\\\/g, '\\');
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed === 'BEGIN:VEVENT') {
+      inEvent = true;
+      cur = {};
+      continue;
+    }
+    if (trimmed === 'END:VEVENT') {
+      if (inEvent && (cur.SUMMARY || cur.DTSTART)) {
+        events.push({
+          id: cur.UID || `ical-${Date.now()}-${events.length}`,
+          title: cur.SUMMARY ? unescapeIcalText(cur.SUMMARY) : '(No title)',
+          start: parseIcalDate(cur.DTSTART || ''),
+          end: parseIcalDate(cur.DTEND || ''),
+          location: cur.LOCATION ? unescapeIcalText(cur.LOCATION) : '',
+          description: cur.DESCRIPTION ? unescapeIcalText(cur.DESCRIPTION) : '',
+          creator: 'team',
+          synced_at: new Date().toISOString(),
+        });
+      }
+      inEvent = false;
+      continue;
+    }
+    if (!inEvent) continue;
+    const colonIdx = line.indexOf(':');
+    if (colonIdx === -1) continue;
+    const keyPart = line.slice(0, colonIdx);
+    const val = line.slice(colonIdx + 1);
+    const key = keyPart.split(';')[0].trim().toUpperCase();
+    if (key === 'SUMMARY') cur.SUMMARY = val;
+    else if (key === 'DTSTART') cur.DTSTART = val;
+    else if (key === 'DTEND') cur.DTEND = val;
+    else if (key === 'LOCATION') cur.LOCATION = val;
+    else if (key === 'DESCRIPTION') cur.DESCRIPTION = val;
+    else if (key === 'UID') cur.UID = val;
+  }
+  return events;
+}
+
 // ── CORS headers ──────────────────────────────────────────────────────────────
 function cors(res: VercelResponse): void {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -228,6 +305,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }));
         await setList('cr8w_calendar_events', normalized);
         res.json({ ok: true, count: normalized.length }); return;
+      }
+    }
+
+    // ── Calendar iCal Sync (Zero-OAuth shared team feed) ─────────────────────
+    if (resource === 'calendar-ical-sync' && (method === 'POST' || method === 'GET')) {
+      const b = await body(req).catch(() => ({}));
+      const DEFAULT_TEAM_ICAL = 'https://calendar.google.com/calendar/ical/852831a7508dafc2e0b3ab728fdc731e7bd45b568b4ab8b0fd7657a5e5771934%40group.calendar.google.com/public/basic.ics';
+      const icalUrl = b.url || process.env.CR8W_ICAL_URL || DEFAULT_TEAM_ICAL;
+
+      try {
+        const icalRes = await fetch(icalUrl);
+        if (!icalRes.ok) {
+          res.status(icalRes.status).json({ error: `Failed to fetch iCal feed (${icalRes.status}): ${icalRes.statusText}` });
+          return;
+        }
+        const icalText = await icalRes.text();
+        const parsedEvents = parseIcal(icalText);
+        await setList('cr8w_calendar_events', parsedEvents);
+        res.json({ ok: true, count: parsedEvents.length, events: parsedEvents });
+        return;
+      } catch (err: any) {
+        console.error('[calendar-ical-sync] Error:', err);
+        res.status(500).json({ error: err?.message ?? String(err) });
+        return;
       }
     }
 

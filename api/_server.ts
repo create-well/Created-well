@@ -125,6 +125,7 @@ function parseIcal(raw: string): any[] {
     else if (key === 'DESCRIPTION') cur.DESCRIPTION = val;
     else if (key === 'UID') cur.UID = val;
   }
+  events.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
   return events;
 }
 
@@ -311,7 +312,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ── Calendar iCal Sync (Zero-OAuth shared team feed) ─────────────────────
     if (resource === 'calendar-ical-sync' && (method === 'POST' || method === 'GET')) {
       const b = await body(req).catch(() => ({}));
-      const DEFAULT_TEAM_ICAL = 'https://calendar.google.com/calendar/ical/852831a7508dafc2e0b3ab728fdc731e7bd45b568b4ab8b0fd7657a5e5771934%40group.calendar.google.com/public/basic.ics';
+      const DEFAULT_TEAM_ICAL = 'https://calendar.google.com/calendar/ical/mb%40tablante.com/private-91a14bbdbb0a5032f1b1860f2204a6c5/basic.ics';
       const icalUrl = b.url || process.env.CR8W_ICAL_URL || DEFAULT_TEAM_ICAL;
 
       try {

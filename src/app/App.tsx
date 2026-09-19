@@ -8,118 +8,75 @@ import {
   getStoredProfile,
 } from "./components/AuthGate";
 import { useThemeInit } from "./components/ThemeProvider";
-import { GCAL_CLIENT_ID } from "./components/data";
 
-// ── Google Calendar OAuth: capture auth code at module-eval time ──────────────
-(function captureOAuthCode() {
+// ── Google Calendar OAuth: capture callback result at module-eval time ───────
+(function captureGoogleOAuthResult() {
   try {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    if (!code) return;
+    const hash = window.location.hash.startsWith("#")
+      ? window.location.hash.slice(1)
+      : window.location.hash;
+    if (!hash) return;
 
-    const codeVerifier = localStorage.getItem(
-      "gcal_pkce_verifier",
-    );
-    if (!codeVerifier) {
-      console.error(
-        "[GCal OAuth] No PKCE code_verifier in localStorage — ignoring ?code param",
-      );
-      return;
-    }
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get("gcal_access_token");
+    const error = params.get("gcal_error");
+    if (!accessToken && !error) return;
 
     window.history.replaceState(
       null,
       "",
-      window.location.pathname,
+      `${window.location.pathname}${window.location.search}`,
     );
-    console.log(
-      "[GCal OAuth] Auth code captured, exchanging for token via server...",
-    );
-    localStorage.setItem("gcal_token_fresh", "pending");
 
-    import("/utils/supabase/info").then(
-      ({ projectId, publicAnonKey }) => {
-        const host = window.location.hostname;
-        const isFirstParty =
-          host.endsWith(".vercel.app") ||
-          host === "cr8w.com" ||
-          host.endsWith(".cr8w.com") ||
-          host === "createwell.monnyfest.co" ||
-          host.endsWith(".monnyfest.co") ||
-          host === "localhost" ||
-          host === "127.0.0.1";
-        const apiBase =
-          (import.meta.env.VITE_API_BASE as
-            string | undefined) ??
-          (isFirstParty
-            ? "/api/server"
-            : `https://${projectId}.supabase.co/functions/v1/make-server-dabe1c74`);
-        const serverUrl = `${apiBase}/gcal-token-exchange`;
+    const returnedNonce = params.get("gcal_nonce");
+    const expectedNonce = localStorage.getItem("gcal_oauth_nonce");
+    if (!returnedNonce || returnedNonce !== expectedNonce) {
+      console.error(
+        "[GCal OAuth] State nonce mismatch — ignoring callback result",
+      );
+      localStorage.setItem("gcal_token_fresh", "error");
+      localStorage.setItem(
+        "gcal_token_error",
+        "Google Calendar connection failed state verification. Try reconnecting.",
+      );
+      return;
+    }
 
-        fetch(serverUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify({
-            code,
-            code_verifier: codeVerifier,
-            redirect_uri: window.location.origin,
-            client_id: GCAL_CLIENT_ID,
-          }),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.error) {
-              console.error(
-                "[GCal OAuth] Token exchange error:",
-                data.error,
-                data.error_description,
-              );
-              localStorage.setItem("gcal_token_fresh", "error");
-              localStorage.setItem(
-                "gcal_token_error",
-                data.error_description || data.error,
-              );
-              return;
-            }
-            if (data.access_token) {
-              localStorage.setItem(
-                "gcal_access_token",
-                data.access_token,
-              );
-              const oauthUser = localStorage.getItem(
-                "gcal_oauth_user",
-              );
-              if (oauthUser)
-                localStorage.setItem(
-                  `gcal_token_${oauthUser.toUpperCase()}`,
-                  data.access_token,
-                );
-              localStorage.setItem("gcal_token_fresh", "ready");
-              console.log(
-                "[GCal OAuth] Token exchange successful" +
-                  (oauthUser ? ` for ${oauthUser}` : ""),
-              );
-            }
-            localStorage.removeItem("gcal_pkce_verifier");
-          })
-          .catch((err) => {
-            console.error(
-              "[GCal OAuth] Token exchange fetch error:",
-              err,
-            );
-            localStorage.setItem("gcal_token_fresh", "error");
-            localStorage.setItem(
-              "gcal_token_error",
-              String(err),
-            );
-          });
-      },
+    localStorage.removeItem("gcal_oauth_nonce");
+    if (error) {
+      console.error("[GCal OAuth] Callback error:", error);
+      localStorage.setItem("gcal_token_fresh", "error");
+      localStorage.setItem("gcal_token_error", error);
+      return;
+    }
+
+    const oauthUser =
+      params.get("gcal_user") ?? localStorage.getItem("gcal_oauth_user");
+    if (!oauthUser || !accessToken) {
+      localStorage.setItem("gcal_token_fresh", "error");
+      localStorage.setItem(
+        "gcal_token_error",
+        "Google Calendar connection returned no token. Try reconnecting.",
+      );
+      return;
+    }
+
+    localStorage.setItem("gcal_access_token", accessToken);
+    localStorage.setItem(
+      `gcal_token_${oauthUser.toUpperCase()}`,
+      accessToken,
     );
+    const refreshToken = params.get("gcal_refresh_token");
+    if (refreshToken) {
+      localStorage.setItem(
+        `gcal_refresh_token_${oauthUser.toUpperCase()}`,
+        refreshToken,
+      );
+    }
+    localStorage.setItem("gcal_token_fresh", "ready");
+    console.log(`[GCal OAuth] Token exchange successful for ${oauthUser}`);
   } catch (e) {
-    console.error("[GCal OAuth] Code capture error:", e);
+    console.error("[GCal OAuth] Callback capture error:", e);
   }
 })();
 

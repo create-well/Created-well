@@ -26,6 +26,7 @@ import {
   normalizePerson,
   normalizeContent,
   normalizeFlow,
+  normalizeMoney,
   type NotionPage,
 } from '../src/lib/notionNormalizer.js';
 import type { SyncData } from '../src/app/components/api';
@@ -118,8 +119,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  // Serve from in-process cache if still fresh
-  if (cache && Date.now() - cache.ts < PROCESS_CACHE_TTL) {
+  // Serve from in-process cache if still fresh and not forcing refresh
+  const forceRefresh = req.query.refresh === 'true' || req.query.force === 'true';
+  if (!forceRefresh && cache && Date.now() - cache.ts < PROCESS_CACHE_TTL) {
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
     res.setHeader('X-Cache', 'HIT');
     res.json(cache.payload);
@@ -131,6 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const dbPeople   = process.env.NOTION_DB_PEOPLE;
   const dbFlows    = process.env.NOTION_DB_FLOWS;
   const dbContent  = process.env.NOTION_DB_CONTENT;
+  const dbMoney    = process.env.NOTION_DB_MONEY;
 
   // KV keys for data not yet migrated to Notion
   const KV_KEYS = [
@@ -155,11 +158,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         secret && dbPeople  ? queryNotionDatabase(dbPeople, secret)  : Promise.resolve([]),
         secret && dbFlows   ? queryNotionDatabase(dbFlows, secret)   : Promise.resolve([]),
         secret && dbContent ? queryNotionDatabase(dbContent, secret) : Promise.resolve([]),
+        secret && dbMoney   ? queryNotionDatabase(dbMoney, secret)   : Promise.resolve([]),
       ]),
       Promise.all(KV_KEYS.map(k => kvGetList(k))),
     ]);
 
-    const [movesPages, peoplePages, flowsPages, contentPages] = notionResults;
+    const [movesPages, peoplePages, flowsPages, contentPages, moneyPages] = notionResults;
     const [
       messages, braindumps, announcements, forumReplies,
       workshops, workshopPrograms, workshopResources,
@@ -172,6 +176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       stations:          peoplePages.map(normalizePerson),
       forum:             contentPages.map(normalizeContent),
       coflowDates:       flowsPages.map(normalizeFlow),
+      money:             moneyPages.map(normalizeMoney),
       // KV-backed (passed through; typed by trust — these were written by our own API)
       messages:          messages          as SyncData['messages'],
       braindumps:        braindumps        as SyncData['braindumps'],

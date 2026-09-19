@@ -12,7 +12,7 @@
  *   NOTION_SECRET, NOTION_DB_MOVES, NOTION_DB_PEOPLE, NOTION_DB_FLOWS, NOTION_DB_CONTENT
  */
 
-import type { Task, Station, ForumPost, CoFlowDate } from '../src/app/components/api';
+import type { Task, Station, ForumPost, CoFlowDate, RevenueItem } from '../src/app/components/api';
 
 const NOTION_API     = 'https://api.notion.com/v1';
 const NOTION_VERSION = '2022-06-28';
@@ -145,6 +145,36 @@ interface NotionResourceConfig {
   toProperties: PropsBuilder;
 }
 
+export function moneyToProperties(m: OmitMeta<RevenueItem>): Record<string, unknown> {
+  const TYPE_LABELS: Record<string, string> = {
+    sponsorship: 'Sponsorship',
+    workshop: 'Workshop',
+    open_studio: 'Open Studio',
+    geyser: 'Geyser',
+    grant: 'Grant',
+    other: 'Other',
+  };
+
+  const STATUS_LABELS: Record<string, string> = {
+    projected: 'Projected',
+    committed: 'Committed',
+    cleared: 'Cleared',
+    invoiced: 'Invoiced',
+    wrapped: 'Wrapped',
+  };
+
+  const props: Record<string, unknown> = {
+    Name:   nTitle(m.title || 'Untitled Stream'),
+    Amount: { number: Number(m.amount) || 0 },
+    Type:   nSelect(TYPE_LABELS[m.type] ?? 'Other'),
+    Status: nSelect(STATUS_LABELS[m.status] ?? 'Projected'),
+  };
+
+  if (m.date)  props['Date']  = nDate(m.date);
+  if (m.notes) props['Notes'] = nRichText(m.notes);
+  return props;
+}
+
 export const NOTION_RESOURCES: Record<string, NotionResourceConfig> = {
   tasks: {
     dbIdEnvVar:   'NOTION_DB_MOVES',
@@ -161,5 +191,9 @@ export const NOTION_RESOURCES: Record<string, NotionResourceConfig> = {
   'coflow-dates': {
     dbIdEnvVar:   'NOTION_DB_FLOWS',
     toProperties: (item) => coFlowDateToProperties(item as OmitMeta<CoFlowDate>),
+  },
+  money: {
+    dbIdEnvVar:   'NOTION_DB_MONEY',
+    toProperties: (item) => moneyToProperties(item as OmitMeta<RevenueItem>),
   },
 };

@@ -150,6 +150,12 @@ export const getWellNotes = () => req<WellNote[]>('GET', '/well-notes');
 export const createWellNote = (n: { content: string }) => req<WellNote>('POST', '/well-notes', n);
 export const updateWellNote = (id: number, n: Partial<WellNote>) => req<WellNote>('PUT', `/well-notes/${id}`, n);
 
+// Money (Revenue & Sponsorships — Notion-backed dual-write)
+export const getMoney = () => req<RevenueItem[]>('GET', '/money');
+export const createMoney = (m: Omit<RevenueItem, 'id' | 'created_at'>) => req<RevenueItem>('POST', '/money', m);
+export const updateMoney = (id: number, m: Partial<RevenueItem>) => req<RevenueItem>('PUT', `/money/${id}`, m);
+export const deleteMoney = (id: number) => req<{ ok: boolean }>('DELETE', `/money/${id}`);
+
 // Settings (generic JSON config storage)
 export const getSetting = <T = any>(key: string) => req<{ value: T | null }>('GET', `/settings/${key}`);
 export const setSetting = <T = any>(key: string, value: T) => req<{ ok: boolean }>('PUT', `/settings/${key}`, { value });
@@ -173,11 +179,12 @@ const DASHBOARD_URL: string = (() => {
   return resolveApiBase().replace(/\/server$/, '') + '/dashboard';
 })();
 
-export async function fetchDashboard(): Promise<SyncData> {
+export async function fetchDashboard(forceRefresh = false): Promise<SyncData> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10_000);
   try {
-    const res = await fetch(DASHBOARD_URL, {
+    const url = forceRefresh ? `${DASHBOARD_URL}?force=true` : DASHBOARD_URL;
+    const res = await fetch(url, {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
       signal: controller.signal,
     });
@@ -349,6 +356,20 @@ export interface WellNote {
   created_at?: string;
 }
 
+export interface RevenueItem {
+  id: number;
+  notionPageId?: string;
+  title: string;
+  amount: number;
+  type: 'sponsorship' | 'workshop' | 'open_studio' | 'geyser' | 'grant' | 'other';
+  status: 'projected' | 'committed' | 'cleared' | 'invoiced' | 'wrapped';
+  date?: string;
+  flowId?: string;
+  closer?: string;
+  notes?: string;
+  created_at?: string;
+}
+
 export interface SyncData {
   tasks: Task[];
   stations: Station[];
@@ -364,6 +385,7 @@ export interface SyncData {
   coflowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
   calendarEvents: CalendarEventKV[];
+  money?: RevenueItem[];
 }
 
 export interface CalendarEventKV {

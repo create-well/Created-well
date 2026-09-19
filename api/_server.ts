@@ -105,7 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'cr8w_braindumps', 'cr8w_announcements', 'cr8w_forum_replies',
         'cr8w_workshops', 'cr8w_workshop_programs', 'cr8w_workshop_resources',
         'cr8w_coflow_dates', 'cr8w_coflow_checkins', 'cr8w_well_notes',
-        'cr8w_calendar_events',
+        'cr8w_calendar_events', 'cr8w_money',
       ];
       const sb = supabase();
       const { data, error } = await sb.from(TABLE).select('key,value').in('key', SYNC_KEYS);
@@ -127,6 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         coflowCheckins: map['cr8w_coflow_checkins'] ?? [],
         wellNotes: map['cr8w_well_notes'] ?? [],
         calendarEvents: map['cr8w_calendar_events'] ?? [],
+        money: map['cr8w_money'] ?? [],
       });
       return;
     }
@@ -145,6 +146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'coflow-dates': 'cr8w_coflow_dates',
       'coflow-checkins': 'cr8w_coflow_checkins',
       'well-notes': 'cr8w_well_notes',
+      money: 'cr8w_money',
     };
 
     // ── Forum replies (nested: /forum/:id/replies[/:replyId]) ─────────────────

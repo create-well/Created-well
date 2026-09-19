@@ -12,7 +12,7 @@
 //   CONTENT: Name, Flow (Relation→FLOWS), Content Type, Audience,
 //             Status, Final?, Publish Date, URL, Where
 
-import type { Task, Station, ForumPost, CoFlowDate } from '../app/components/api';
+import type { Task, Station, ForumPost, CoFlowDate, RevenueItem, Workshop } from '../app/components/api';
 
 // ── Notion property value types ───────────────────────────────────────────────
 
@@ -366,5 +366,98 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
     attendees:    [],
     status:       FLOW_STATUS_MAP[rawStatus] ?? 'upcoming',
     created_at:   page.created_time,
+  };
+}
+
+// ── MONEY → RevenueItem ──────────────────────────────────────────────────────
+// Canonical MONEY schema (Create Well OS):
+//   Name     : Title (Opportunity / Sponsor / Item name)
+//   Amount   : Number (Currency value)
+//   Type     : Select (Sponsorship / Workshop / Open Studio / Geyser / Grant)
+//   Status   : Select (Projected / Committed / Cleared / Invoiced / Wrapped)
+//   Date     : Date (Transaction or commitment date)
+//   Flow     : Relation → FLOWS (associated gathering or program)
+//   Closer   : Relation → PEOPLE (lead holder)
+//   Notes    : Rich Text
+
+export function normalizeMoney(page: NotionPage): RevenueItem {
+  const p = page.properties;
+
+  const rawType = getSelect(pick(p, 'Type', 'Category', 'Stream')).toLowerCase();
+  const rawStatus = getSelect(pick(p, 'Status', 'State', 'Payment Status')).toLowerCase();
+
+  const TYPE_MAP: Record<string, RevenueItem['type']> = {
+    sponsorship: 'sponsorship',
+    sponsor: 'sponsorship',
+    workshop: 'workshop',
+    'open studio': 'open_studio',
+    open_studio: 'open_studio',
+    geyser: 'geyser',
+    grant: 'grant',
+  };
+
+  const STATUS_MAP: Record<string, RevenueItem['status']> = {
+    projected: 'projected',
+    committed: 'committed',
+    cleared: 'cleared',
+    paid: 'cleared',
+    invoiced: 'invoiced',
+    wrapped: 'wrapped',
+  };
+
+  const closerRelationId = getRelationFirstId(pick(p, 'Closer', 'Lead', 'Owner'));
+  const closerText =
+    getPeople(pick(p, 'Closer', 'Lead', 'Owner')) ||
+    getSelect(pick(p, 'Closer', 'Lead', 'Owner'));
+
+  const flowRelationId = getRelationFirstId(pick(p, 'Flow', 'Gathering', 'Event'));
+
+  return {
+    id: stableId(page.id),
+    notionPageId: page.id,
+    title: getText(pick(p, 'Name', 'Title', 'Item')) || 'Untitled Stream',
+    amount: (pick(p, 'Amount', 'Value', 'Total') as NPropNumber)?.number ?? 0,
+    type: TYPE_MAP[rawType] ?? 'other',
+    status: STATUS_MAP[rawStatus] ?? 'projected',
+    date: getDate(pick(p, 'Date', 'Due Date', 'Cleared Date')) || undefined,
+    flowId: flowRelationId || undefined,
+    closer: (closerText || closerRelationId).toLowerCase() || undefined,
+    notes: getText(pick(p, 'Notes', 'Description')) || undefined,
+    created_at: page.created_time,
+  };
+}
+
+// ── WORKSHOPS → Workshop ─────────────────────────────────────────────────────
+export function normalizeWorkshop(page: NotionPage): Workshop {
+  const p = page.properties;
+  const rawFacilitator = (getSelect(pick(p, 'Facilitator', 'Host', 'Lead')) || 'monny').toLowerCase();
+  const rawStatus = (getSelect(pick(p, 'Status', 'State')) || 'planning').toLowerCase();
+
+  const STATUS_MAP: Record<string, Workshop['status']> = {
+    ideation: 'ideation',
+    planning: 'planning',
+    scheduled: 'scheduled',
+    completed: 'completed',
+    done: 'completed',
+  };
+
+  const FACILITATOR_LIST = ['monny', 'sunshine', 'bingle', 'pia', 'omar', 'event-support'] as const;
+  const facilitator = FACILITATOR_LIST.includes(rawFacilitator as any)
+    ? (rawFacilitator as Workshop['facilitator'])
+    : 'monny';
+
+  return {
+    id: stableId(page.id),
+    title: getText(pick(p, 'Name', 'Title', 'Workshop Title')) || 'Untitled Workshop',
+    description: getText(pick(p, 'Description', 'Notes', 'About')) || '',
+    facilitator,
+    date: getDate(pick(p, 'Date', 'Workshop Date')) || '',
+    capacity: (pick(p, 'Capacity', 'Max Attendees') as NPropNumber)?.number ?? 20,
+    participants: (pick(p, 'Participants', 'Attendees', 'Signups') as NPropNumber)?.number ?? 0,
+    location: getText(pick(p, 'Location', 'Venue')) || 'TBD',
+    tags: getMultiSelect(pick(p, 'Tags', 'Category', 'Type')),
+    googleDocLink: getUrl(pick(p, 'Google Doc', 'Run of Show', 'URL')) || undefined,
+    status: STATUS_MAP[rawStatus] ?? 'planning',
+    created_at: page.created_time,
   };
 }

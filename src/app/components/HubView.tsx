@@ -660,6 +660,10 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
 
   // ── Connect: redirect to Google OAuth (authorization code + PKCE) ──────────
   async function connectGoogleCalendar() {
+    if (window.location.hostname.endsWith('.vercel.app')) {
+      setGcalError('Google Calendar connection is available only on the production site.');
+      return;
+    }
     const REDIRECT_URI = window.location.origin;
     const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
 

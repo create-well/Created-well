@@ -81,7 +81,7 @@ function resolveRawPath(req: VercelRequest): string {
 }
 
 // ── Shared Google Calendar iCalendar sync ───────────────────────────────────
-const TEAM_CALENDAR_ID = '852831a7508dafc2e0b3ab728fdc731e7bd45b568b4ab8b0fd7657a5e5771934@group.calendar.google.com';
+const TEAM_CALENDAR_ID = 'mb@tablante.com';
 
 function unescapeIcal(value: string): string {
   return value.replace(/\n/gi, '\n').replace(/\,/g, ',').replace(/\;/g, ';').replace(/\\/g, '\\');

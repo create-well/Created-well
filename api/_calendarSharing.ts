@@ -112,11 +112,15 @@ export async function connectCalendar(req: VercelRequest, res: VercelResponse, u
     body: new URLSearchParams({ code, code_verifier, client_id: GOOGLE_CLIENT_ID, client_secret: secret, redirect_uri, grant_type: 'authorization_code' }).toString(),
   });
   const token = await tokenRes.json();
-  if (!tokenRes.ok || !token.refresh_token) { res.status(400).json({ error: token.error || 'Google authorization did not return a reusable calendar permission' }); return; }
+  if (!tokenRes.ok) { res.status(400).json({ error: token.error || 'Google authorization failed' }); return; }
   const previous = await get<Member>(`cr8w_calendar_member_${user.id}`);
+  // Google returns a refresh token only on the first grant in some consent states.
+  // Preserve an existing encrypted credential when a reconnect returns access only.
+  const encryptedRefreshToken = token.refresh_token ? encrypt(token.refresh_token) : previous?.encryptedRefreshToken;
+  if (!encryptedRefreshToken) { res.status(400).json({ error: 'Google authorization did not return a reusable calendar permission. Remove Create Well from your Google Account permissions, then connect again.' }); return; }
   await put(`cr8w_calendar_member_${user.id}`, {
     id: user.id, profile: user.profile, displayName: user.displayName,
-    sharingLevel: previous?.sharingLevel || 'off', encryptedRefreshToken: encrypt(token.refresh_token), updatedAt: new Date().toISOString(),
+    sharingLevel: previous?.sharingLevel || 'off', encryptedRefreshToken, updatedAt: new Date().toISOString(),
   });
   res.json({ ok: true, sharingLevel: previous?.sharingLevel || 'off' });
 }

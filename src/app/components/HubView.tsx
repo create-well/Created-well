@@ -500,7 +500,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
 
   const [showPersonalEvents, setShowPersonalEvents] = useState(() => !!localStorage.getItem(userTokenKey));
   const [gcalConnected, setGcalConnected] = useState(() => !!localStorage.getItem(userTokenKey));
-  const [gcalEvents, setGcalEvents] = useState<{ time: string; name: string }[]>([]);
+  const [gcalEvents, setGcalEvents] = useState<{ date: string; time: string; name: string }[]>([]);
   const [gcalLoading, setGcalLoading] = useState(() => localStorage.getItem('gcal_token_fresh') === 'pending');
   const [gcalError, setGcalError] = useState('');
   const [gcalCalendarName, setGcalCalendarName] = useState(() => localStorage.getItem(userNameKey) || '');
@@ -554,11 +554,11 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
         localStorage.setItem(userNameKey, name);
       }
 
-      // Fetch today's events
+      // Fetch upcoming events for the next 90 days, including all-day events.
       const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
-      const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(startOfDay)}&timeMax=${encodeURIComponent(endOfDay)}&singleEvents=true&orderBy=startTime`;
+      const timeMin = now.toISOString();
+      const timeMax = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate()).toISOString();
+      const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=250`;
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -577,13 +577,14 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
       }
       const data = await res.json();
       const events = (data.items || []).map((ev: any) => {
-        let time = '';
-        if (ev.start?.dateTime) {
-          time = new Date(ev.start.dateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
-        } else {
-          time = 'All day';
-        }
-        return { time, name: ev.summary || '(No title)' };
+        const start = ev.start?.dateTime || ev.start?.date;
+        const date = start
+          ? new Date(`${start}${ev.start?.dateTime ? '' : 'T00:00:00'}`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          : '';
+        const time = ev.start?.dateTime
+          ? new Date(ev.start.dateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()
+          : 'All day';
+        return { date, time, name: ev.summary || '(No title)' };
       });
       setGcalEvents(events);
     } catch (e: any) {
@@ -1196,13 +1197,13 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                     <button onClick={connectGoogleCalendar} style={{ marginLeft: 8, background: 'none', border: 'none', color: '#1A73E8', cursor: 'pointer', textDecoration: 'underline', fontSize: 'inherit', fontFamily: 'inherit' }}>Reconnect</button>
                   </div>
                 ) : gcalEvents.length === 0 ? (
-                  <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', fontFamily: 'var(--font-body)' }}>No personal events scheduled for today</div>
+                  <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', fontFamily: 'var(--font-body)' }}>No upcoming personal events in the next 90 days</div>
                 ) : (
                   <div className="hub-schedule-list">
                     {gcalEvents.map((ev, i) => (
                       <div key={i} className="hub-schedule-item">
                         <span className="hub-schedule-dot" style={{ background: '#1A73E8' }} />
-                        <span className="hub-schedule-time">{ev.time}</span>
+                        <span className="hub-schedule-time">{ev.date} · {ev.time}</span>
                         <span className="hub-schedule-name">{ev.name}</span>
                       </div>
                     ))}

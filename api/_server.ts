@@ -13,7 +13,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './notionWriter.js';
+import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './_notionWriter.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 function supabase() {

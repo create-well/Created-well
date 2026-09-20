@@ -93,6 +93,25 @@ The `@custom-variant dark (&:is(.dark *))` declaration in `theme.css` wires this
 In dark mode, `--primary` shifts to near-white; sage/lavender brand colors are not maintained.  
 Dark mode is intentionally minimal — this dashboard is primarily a light-mode product.
 
+## `@cr8w/design-system` tokens (published kit layer)
+
+These tokens come from `node_modules/@cr8w/design-system/dist/index.css` and are  
+injected at `:root` via the `App.tsx` CSS import. Use them inside kit components  
+or wherever the kit's design language applies; they are a **separate layer** from  
+the workspace `--primary` / `--secondary` tokens above.
+
+| Token | Value | Role |
+|---|---|---|
+| `--cw-brand-primary` | `#2F2A26` | Primary actions, headings (kit components) |
+| `--cw-space-md` | `16px` | Default gap between related elements |
+| `--cw-corner-md` | `8px` | Cards, buttons, inputs (kit components) |
+
+**Rules:**
+- Never hardcode `#2F2A26`, `16px`, or `8px` when a `--cw-*` token exists
+- Use `var(--cw-brand-primary)` — not the raw hex
+- If you need a value the kit hasn't tokenised yet, use the closest existing `--cw-*` token
+- The `--cw-*` namespace is owned by `@cr8w/design-system`; do not define custom `--cw-*` properties outside that package
+
 ## Token anti-patterns
 
 ```ts

@@ -17,6 +17,19 @@ Components live in `src/app/components/ui/`. Barrel export is `src/index.ts`.
 - `tokens.md` — no raw hex anywhere; always use CSS custom property names
 - `components.md` — scan the catalog before reaching for raw HTML
 
+## Published kit package — `@cr8w/design-system`
+
+This workspace is also the authoring source for the `@cr8w/design-system` npm package  
+(Figma private registry, `v0.0.2`). The published package is installed in `node_modules/`  
+and is the foundation layer that consumer Figma Make projects import.
+
+See **[kit-package.md](./kit-package.md)** for the full API reference and token docs.
+
+Quick reference:
+- Install: `npm install @cr8w/design-system`
+- CSS: `import '@cr8w/design-system/styles.css'` (once, at app root — already in `App.tsx`)
+- Components: `import { Button } from '@cr8w/design-system'`
+
 ## Kit import paths (within this workspace)
 
 ```ts

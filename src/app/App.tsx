@@ -1,3 +1,4 @@
+import "@cr8w/design-system/styles.css";
 import React, { useState, useEffect } from "react";
 import { RouterProvider } from "react-router";
 import { router } from "./routes";
@@ -8,7 +9,8 @@ import {
   getStoredProfile,
 } from "./components/AuthGate";
 import { useThemeInit } from "./components/ThemeProvider";
-import { GCAL_CLIENT_ID } from "./components/data";
+import { GCAL_CLIENT_ID, GCAL_REDIRECT_URI } from "./components/data";
+
 
 // ── Google Calendar OAuth: capture auth code at module-eval time ──────────────
 (function captureOAuthCode() {
@@ -65,7 +67,7 @@ import { GCAL_CLIENT_ID } from "./components/data";
           body: JSON.stringify({
             code,
             code_verifier: codeVerifier,
-            redirect_uri: window.location.origin,
+            redirect_uri: GCAL_REDIRECT_URI,
             client_id: GCAL_CLIENT_ID,
           }),
         })

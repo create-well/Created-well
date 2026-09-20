@@ -53,7 +53,26 @@ pnpm add lucide-react
 All Radix UI primitives used by this kit are already listed in `package.json`.  
 The `cn()` utility is exported from `src/app/components/ui/utils.ts`.
 
-## 5. Verify
+## 5. `@cr8w/design-system` package (published kit)
+
+The published kit package is installed alongside this workspace. Its CSS tokens are  
+loaded automatically — `App.tsx` already contains the required import:
+
+```ts
+import '@cr8w/design-system/styles.css';
+```
+
+Do **not** add this import again in individual components.  
+See `guidelines/kit-package.md` for the full token and component reference.
+
+Registry setup (consumers outside this workspace):
+
+```
+@cr8w:registry=https://registry.figma.com/npm/ce4a3132-d671-4eb3-86fc-c586bacd062c/registry/
+//registry.figma.com/npm/ce4a3132-d671-4eb3-86fc-c586bacd062c/registry/:_authToken=${FIGMA_REGISTRY_TOKEN}
+```
+
+## 6. Verify
 
 After setup, confirm:
 - `bg-background` renders white (`#ffffff`)

@@ -326,6 +326,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
+    if (resource === 'gcal-token-refresh' && method === 'POST') {
+      const { refresh_token, client_id } = await body(req);
+      if (!refresh_token || !client_id) { res.status(400).json({ error: 'Missing required fields' }); return; }
+      const clientSecret = process.env.GCAL_CLIENT_SECRET;
+      if (!clientSecret) { res.status(500).json({ error: 'GCAL_CLIENT_SECRET not configured' }); return; }
+      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          refresh_token,
+          client_id,
+          client_secret: clientSecret,
+          grant_type: 'refresh_token',
+        }).toString(),
+      });
+      const tokenData = await tokenRes.json();
+      if (tokenData.error) { res.status(400).json({ error: tokenData.error, error_description: tokenData.error_description }); return; }
+      res.json({ access_token: tokenData.access_token, expires_in: tokenData.expires_in, token_type: tokenData.token_type, scope: tokenData.scope });
+      return;
+    }
+
     // ── Notion dual-write helper ───────────────────────────────────────────────
     // Fires-and-forgets a Notion sync; never throws so KV writes always succeed.
     async function syncToNotion(action: 'create' | 'update' | 'archive', item?: any): Promise<string | undefined> {

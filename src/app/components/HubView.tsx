@@ -12,6 +12,9 @@ import { ArriveState, shouldShowArriveState } from './ArriveState';
 import type { Task, Station, WellNote, Workshop, CoFlowDate, CoFlowCheckin, InviteCounts, CalendarEventKV } from './api';
 import * as api from './api';
 
+const GOOGLE_REDIRECT_URI = (import.meta.env.VITE_GOOGLE_REDIRECT_URI as string | undefined)
+  ?? 'https://dash.cr8w.com/api/auth/google/callback';
+
 // ── Wellshop category → workshop tag matching ────────────────────────────────
 const WELLSHOP_TAG_MAP: Record<string, string[]> = {
   wellshop: ['wellshop', 'reflection', 'grounding', 'journaling', 'inner', 'nurture', 'decomprocess'],
@@ -489,7 +492,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
     return () => { window.removeEventListener('storage', handler); clearInterval(interval); };
   }, []);
 
-  // ── Per-user Google Calendar OAuth (Authorization Code + PKCE) ─────────────
+  // ── Per-user Google Calendar OAuth (Authorization Code + state nonce) ───────
   // Each co-creator (Sunshine / Monny / Bingle) can independently connect their
   // personal Google Calendar.  Tokens are stored per-user in localStorage as
   // gcal_token_SUNSHINE, gcal_token_MONNY, gcal_token_BINGLE, etc.
@@ -521,25 +524,44 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
     setGcalLoading(false);
   }, [userKey, userTokenKey, userNameKey]);
 
-  // ── PKCE helpers ───────────────────────────────────────────────────────────
-  function generateCodeVerifier(): string {
+  function generateOAuthNonce(): string {
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
     return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  async function generateCodeChallenge(verifier: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(verifier);
-    const digest = await crypto.subtle.digest('SHA-256', data);
-    return btoa(String.fromCharCode(...new Uint8Array(digest)))
+  function encodeOAuthState(state: Record<string, string>): string {
+    return btoa(JSON.stringify(state))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
   }
 
+  async function refreshCalendarAccessToken(): Promise<string | null> {
+    const refreshToken = localStorage.getItem(`gcal_refresh_token_${userKey}`);
+    if (!refreshToken) return null;
+
+    const apiBase = (import.meta.env.VITE_API_BASE as string | undefined)
+      ?? '/api/server';
+    const res = await fetch(`${apiBase}/gcal-token-refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        refresh_token: refreshToken,
+        client_id: GCAL_CLIENT_ID,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error || !data.access_token) {
+      console.error('Google Calendar token refresh error:', data.error, data.error_description);
+      return null;
+    }
+    localStorage.setItem(userTokenKey, data.access_token);
+    return data.access_token;
+  }
+
   // ── Fetch calendar events helper ───────────────────────────────────────────
-  const fetchCalendarEvents = React.useCallback(async (token: string) => {
+  const fetchCalendarEvents = React.useCallback(async (token: string, allowRefresh = true) => {
     setGcalLoading(true);
     setGcalError('');
     try {
@@ -563,6 +585,11 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 401) {
+        const refreshedToken = allowRefresh ? await refreshCalendarAccessToken() : null;
+        if (refreshedToken) {
+          await fetchCalendarEvents(refreshedToken, false);
+          return;
+        }
         localStorage.removeItem(userTokenKey);
         localStorage.removeItem(userNameKey);
         localStorage.removeItem('gcal_token_fresh');
@@ -595,7 +622,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
       // Clear the fresh-token flag now that we've processed it
       localStorage.removeItem('gcal_token_fresh');
     }
-  }, [userNameKey, userTokenKey]);
+  }, [userKey, userNameKey, userTokenKey]);
 
   // ── On mount: poll for token exchange completion OR use stored token ────────
   // App.tsx IIFE fires the async token exchange and writes gcal_token_fresh.
@@ -658,28 +685,34 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
     }
   }, [fetchCalendarEvents, userTokenKey]);
 
-  // ── Connect: redirect to Google OAuth (authorization code + PKCE) ──────────
+  // ── Connect: redirect to Google OAuth (authorization code + state nonce) ───
   async function connectGoogleCalendar() {
-    const REDIRECT_URI = window.location.origin;
     const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
 
-    // Generate PKCE code_verifier and code_challenge
-    const codeVerifier = generateCodeVerifier();
-    const codeChallenge = await generateCodeChallenge(codeVerifier);
+    if (!GOOGLE_REDIRECT_URI) {
+      setGcalError('Google Calendar redirect URI is not configured.');
+      return;
+    }
 
-    // Store code_verifier — App.tsx IIFE will read it on redirect return
-    localStorage.setItem('gcal_pkce_verifier', codeVerifier);
-    // Store which user initiated the OAuth so App.tsx can assign the token
+    const nonce = generateOAuthNonce();
+    const returnUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
+    localStorage.setItem('gcal_oauth_nonce', nonce);
     localStorage.setItem('gcal_oauth_user', activeUser || 'monny');
+    localStorage.setItem('gcal_token_fresh', 'pending');
+
+    const state = encodeOAuthState({
+      nonce,
+      returnUrl,
+      user: activeUser || 'monny',
+    });
 
     const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
       + `?client_id=${encodeURIComponent(GCAL_CLIENT_ID)}`
-      + `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`
+      + `&redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}`
       + `&response_type=code`
       + `&scope=${encodeURIComponent(SCOPES)}`
-      + `&code_challenge=${encodeURIComponent(codeChallenge)}`
-      + `&code_challenge_method=S256`
-      + `&access_type=online`
+      + `&state=${encodeURIComponent(state)}`
+      + `&access_type=offline`
       + `&prompt=consent`;
 
     window.location.href = authUrl;
@@ -695,8 +728,10 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
       }).catch(() => {});
     }
     localStorage.removeItem(userTokenKey);
+    localStorage.removeItem(`gcal_refresh_token_${userKey}`);
     localStorage.removeItem(userNameKey);
     localStorage.removeItem('gcal_pkce_verifier');
+    localStorage.removeItem('gcal_oauth_nonce');
     localStorage.removeItem('gcal_token_fresh');
     localStorage.removeItem('gcal_token_error');
     setGcalConnected(false);

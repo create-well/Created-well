@@ -1,0 +1,10 @@
+{
+  "version": "1",
+  "name": "CR8W Create Well",
+  "description": "Internal team dashboard UI kit. Sage green primary, lavender secondary, Fredoka/Blinker/Montserrat type trio.",
+  "fonts": [
+    { "family": "Fredoka", "weights": [300, 400, 500, 600, 700] },
+    { "family": "Blinker", "weights": [300, 400, 600, 700, 900] },
+    { "family": "Montserrat", "weights": [300, 400, 500, 600, 700], "italics": true }
+  ]
+}

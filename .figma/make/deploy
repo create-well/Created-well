@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run build pipeline
+if command -v pnpm &>/dev/null && pnpm build 2>/dev/null; then
+  echo "Built with pnpm"
+else
+  npm run build
+fi
+
+[[ -d "dist" ]] || {
+  echo "Expected build output at dist" >&2
+  exit 1
+}
+
+if command -v figma &>/dev/null; then
+  figma make deploy --build-dir "dist"
+else
+  echo "[ready] Production build emitted to dist/. Ready for Figma Make Canvas Publish."
+fi

@@ -9,21 +9,6 @@ This prompt is the frontend half. Its pair is **CR8W Master Build Prompt**, whic
 
 ---
 
-## SESSION LOG — 2026-09-21, migration/v3-handoff
-
-All changes below were applied and pushed. Do not re-do them.
-
-- **DashboardContext** now tracks `money` (`RevenueItem[]`) and `parkingLot` (`ParkingLotItem[]`). `fetchSync` populates both on every cycle. `MoneyPage` is no longer empty on load.
-- **api/_server.ts** uses `KV_TABLE` from `src/config/sync.ts` instead of hardcoded strings. `SYNC_KEYS` deduped (removed `cr8w_braindumps` duplicate). `parkingLot` added to sync payload. `syncToNotion` reads canonical fallback IDs via `getNotionConfig()`. `MONEY` is read-only (Phase 2 enforced at the `dbMap` guard).
-- **iCal handler** (`calendar-ical-sync`) falls back to `process.env.GCAL_CREATEWELL_ICS_URL` when `CR8W_ICAL_URL` is unset. Only one URL variable is needed — `GCAL_CREATEWELL_ICS_URL`, set in all three environments.
-- **LoginGate** no longer displays a literal default password. The hint box says "Ask a Create Well admin." The failed-login message no longer references any hint.
-- **Vercel env cleaned up:** removed `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `VITE_SITE_URL`, `VITE_VERCEL_ENV`, `CALENDAR_TOKEN_ENCRYPTION_KEY`. None had code references.
-- **Vercel env added:** `GCAL_CLIENT_ID` (all three envs, documentation only — server reads from request body), `VITE_APP_PASSWORD_HASH` (all three), `VITE_SUPABASE_PUBLISHABLE_KEY` (all three).
-- **Active branch:** `migration/v3-handoff`. HEAD: `7de7247`. Production aliased to `dash.cr8w.com`.
-- **Open blockers not yet resolved:** (1) GCP OAuth client `411548888468` missing `https://dash.cr8w.com` in Authorized redirect URIs — this is the Calendar 400. (2) `NOTION_DB_MOVES` points at `3da8c564` — confirm whether this is the correct operational database before any further writes (Block B). (3) Supabase `ANON_KEY` / `JWT_SECRET` / `PUBLISHABLE_KEY` / `SECRET_KEY` and all `POSTGRES_*` Vercel vars appear unused by app code but may be managed by Vercel Storage integration — do not delete without checking the Vercel Storage tab.
-
----
-
 ## SCOPE LOCK, decided 2026-09-18. This overrides anything below it.
 
 **Internal dashboard only. Do not build the public surface.**
@@ -66,7 +51,6 @@ Three corrections to what earlier versions of this file said:
 - **Production is behind a shared passphrase**, not Vercel login. Assume every visitor is
   already through it and is one of six known people. Do not build a login screen, a user
   menu, an account page, or a sign-out button. There are no accounts.
-- **The team passphrase was rotated 2026-09-21.** `VITE_APP_PASSWORD_HASH` is set in all three Vercel environments. The default fallback hash (SHA-256 of `createwell`) is **no longer valid in production.** Do not reference or display `createwell` as a default password anywhere in the interface. The login hint box must never show a literal password — always say "Ask a Create Well admin" instead.
 
 ### 0.2 The write path was dead, and the UI lied about it
 
@@ -332,7 +316,6 @@ Rules:
 - Fixing Break 1 is what fixes this. No first-party host may ever reach the Edge Function base.
 - The Edge Function base stays as a Figma Make preview path only. Label it in a comment as degraded and 401-ing. Do not claim it works.
 - Read the key from `import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY` with the existing literal as a fallback, so no deploy breaks before the env var is set. Do not delete the literal in the same change that moves it. Rotation is a separate decision and not yours.
-- **`VITE_SUPABASE_PUBLISHABLE_KEY` is now set in all three Vercel environments (Production, Preview, Development) as of 2026-09-21.** The literal fallback `sb_publishable_9iKcrLqFPwPnKmZ4JC3RIg_C15YWSbk` remains valid but the env var takes precedence.
 
 ### Break 3. Two API handlers, and the one that served every request used a table that does not exist
 

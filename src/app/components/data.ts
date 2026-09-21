@@ -44,15 +44,6 @@ export const PERSONS: Record<string, Person> = {
       detail: 'Reflector: You are the rare mirror of the community. Your openness is your superpower — notice how spaces and people feel to you.'
     }
   },
-  'event-support': {
-    name: 'Event Support', fullName: 'Event Support', role: 'Day-Of · Logistics & Setup',
-    expression: 'Support / All-Hands Expression', color: '#E8AF93', emoji: '🎪', authority: 'none',
-    energyReminder: {
-      type: 'Support Check',
-      text: 'Flow in real time. Setup, space clearing, and live engagement.',
-      detail: 'Event Support: Present, grounded, and adaptive for community gatherings.'
-    }
-  },
 };
 
 export interface Person {
@@ -360,10 +351,29 @@ export function getEventColor(type: string, personColor?: string) {
   const colors: Record<string, string> = { bhd: '#6B5344', cr8w: '#7BA89D', personal: personColor || '#D4A5A5', launch: '#D46B6B' };
   return colors[type] || '#A89888';
 }
+/** @deprecated Geyser event has passed. Use getDaysToNextEvent() with live FLOWS data. */
 export function getDaysToLaunch() {
-  const launch = new Date('2026-04-15T00:00:00');
+  return 0;
+}
+
+/** Community gathering types sourced from FLOWS database Type select field. */
+export const COMMUNITY_EVENT_TYPES = ['Yapcast', 'Playdate', 'Book Club', 'Workshop'] as const;
+export type CommunityEventType = typeof COMMUNITY_EVENT_TYPES[number];
+
+/**
+ * Returns days until the next upcoming community event.
+ * Pass the live coFlowDates array from DashboardContext.
+ * Returns 0 if no upcoming events are found.
+ */
+export function getDaysToNextEvent(events: { date: string; status?: string }[]): number {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const upcoming = events
+    .filter(e => e.date && e.date >= todayStr && e.status !== 'archived')
+    .sort((a, b) => a.date.localeCompare(b.date));
+  if (!upcoming.length) return 0;
+  const nextDate = new Date(upcoming[0].date + 'T00:00:00');
   const now = new Date();
-  return Math.ceil((launch.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
 }
 export function getDayOfYear(date: Date) {
   const start = new Date(date.getFullYear(), 0, 0);
@@ -394,6 +404,8 @@ export const WELL_GREETINGS: string[] = [
 export const GCAL_CLIENT_ID =
   (import.meta.env.VITE_GCAL_CLIENT_ID as string | undefined) ||
   '1075308813287-od6j8oaf5or22qgt2d9v55gkutv4jq83.apps.googleusercontent.com';
+// Must match an Authorized Redirect URI registered in Google Cloud Console for the OAuth client above.
+export const GCAL_REDIRECT_URI = 'https://dash.cr8w.com';
 
 // ── How We Flow operational constants ─────────────────────────────────────────
 // 7-phase event lifecycle for forum thread categories
@@ -435,6 +447,10 @@ export const TASK_ROLES: Record<string, { name: string; emoji: string; color: st
   pia: {
     name: 'Pia', emoji: '🌸', color: '#9B3A5A',
     short: 'Reflective', sub: 'feedback · community health · space-reading',
+  },
+  omar: {
+    name: 'Omar', emoji: '🌟', color: '#9B7FD4',
+    short: 'Creative', sub: 'fresh perspective · creative collaboration · community energy',
   },
   'event-support': {
     name: 'Event Support', emoji: '🎪', color: '#E8AF93',

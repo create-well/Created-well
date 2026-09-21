@@ -36,10 +36,23 @@ function client(): SupabaseClient {
   return window.__cr8w_supabase__;
 }
 
-// ── Profiles & Access Control (canonical source: src/config/profiles.ts) ──────
-import { PROFILES_LIST, ADMIN_EMAILS, isAdmin } from '../../config/profiles';
-export const PROFILES = PROFILES_LIST;
-export { ADMIN_EMAILS, isAdmin };
+// ── Profiles ──────────────────────────────────────────────────────────────────
+export const PROFILES = [
+  { key: 'sunshine',      emoji: '☀️', display: 'Sunshine',       role: 'Remote',          color: '#C25B38', bg: '#FFF0EB', border: '#F2B49B' },
+  { key: 'monny',         emoji: '🌊', display: 'Monica (Monny)', role: 'Open Invitation', color: '#2A6A9A', bg: '#EAF4FC', border: '#A9D6F8' },
+  { key: 'bingle',        emoji: '✨', display: 'Bingle',          role: 'In-Person',       color: '#7A5010', bg: '#FFF8EC', border: '#D4A771' },
+  { key: 'omar',          emoji: '🌟', display: 'Omar',            role: 'New Member',      color: '#5C4A9A', bg: '#F0ECFB', border: '#B8A9D4' },
+  { key: 'pia',           emoji: '🌸', display: 'Pia',             role: 'Community',       color: '#9B3A5A', bg: '#FDF0F5', border: '#E8A8C0' },
+  { key: 'event-support', emoji: '🎪', display: 'Event Support',   role: 'Day-Of',          color: '#7A4A20', bg: '#FFF5EE', border: '#E8AF93' },
+];
+
+// ── Admin / owner access ──────────────────────────────────────────────────────
+// Emails listed here receive full admin access (all panels, all controls).
+export const ADMIN_EMAILS = new Set(['mb@tablante.com']);
+
+export function isAdmin(email?: string | null): boolean {
+  return !!email && ADMIN_EMAILS.has(email.trim().toLowerCase());
+}
 
 export function getStoredAdmin(): boolean {
   try { return localStorage.getItem('cr8w_is_admin') === 'true'; } catch { return false; }
@@ -134,18 +147,38 @@ export function AuthGate({ onAuthenticated }: Props) {
     let active = true;
 
     // Listen for PASSWORD_RECOVERY: fires when user arrives via a reset-password email link.
-    // Without this, the recovery token is silently dropped and the user can never set a new pw.
+    // SIGNED_OUT fires when GoTrueClient's internal token refresh fails (e.g. stale/revoked
+    // refresh token) — handle it here so checkingSession resolves and the login form appears.
     const { data: { subscription } } = client().auth.onAuthStateChange((event) => {
       if (!active) return;
       if (event === 'PASSWORD_RECOVERY') {
         setCheckingSession(false);
         setMode('newpassword');
       }
+      if (event === 'SIGNED_OUT') {
+        try { localStorage.removeItem('cr8w_supabase_auth'); } catch {}
+        if (active) setCheckingSession(false);
+      }
     });
 
+    function clearStaleSession() {
+      try { localStorage.removeItem('cr8w_supabase_auth'); } catch {}
+      try { localStorage.removeItem('cr8w_user_profile'); } catch {}
+      try { localStorage.removeItem('cr8w_user_email'); } catch {}
+      try { localStorage.removeItem('cr8w_is_admin'); } catch {}
+    }
+
     // Check for an existing live session on mount.
-    client().auth.getSession().then(({ data }) => {
+    // getSession() will attempt a silent refresh if the access token is expired;
+    // a bad/expired refresh token surfaces as an error (not a thrown exception).
+    client().auth.getSession().then(({ data, error }) => {
       if (!active) return;
+      if (error) {
+        // Refresh token invalid or session revoked — clear stale storage and show login.
+        clearStaleSession();
+        setCheckingSession(false);
+        return;
+      }
       const session = data.session;
       if (session) {
         const key = session.user?.user_metadata?.cr8w_profile ?? getStoredProfile() ?? 'monny';
@@ -158,7 +191,9 @@ export function AuthGate({ onAuthenticated }: Props) {
       } else {
         setCheckingSession(false);
       }
-    }).catch(() => { if (active) setCheckingSession(false); });
+    }).catch(() => {
+      if (active) { clearStaleSession(); setCheckingSession(false); }
+    });
 
     return () => { active = false; subscription.unsubscribe(); };
   }, [onAuthenticated]);

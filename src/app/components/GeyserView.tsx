@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   PERSONS, MILESTONES, GUEST_JOURNEY,
-  getDaysToLaunch, formatDate, capitalize, formatTimestamp,
+  formatDate, capitalize, formatTimestamp,
   PHASE_TAGS, PHASE_META, TASK_ROLES,
   type NoteItem,
 } from './data';
@@ -9,7 +9,6 @@ import type { Task, Station, ForumPost, Announcement, CalendarEventKV } from './
 import type { ForumReply as ApiForumReply, InviteCounts } from './api';
 import * as api from './api';
 import { HowWeFlowReference } from './HowWeFlowReference';
-import { NotionSyncChip } from './NotionSyncChip';
 
 type GeyserTab = 'overview' | 'journey' | 'stations' | 'tasks' | 'forum';
 
@@ -150,7 +149,6 @@ export function GeyserView({
       .catch(e => { if (!(e instanceof TypeError)) console.error(e); setKvCalLoaded(true); });
   }, []);
 
-  const daysToLaunch = getDaysToLaunch();
   const stationList = stations;
   const confirmedStations = stationList.filter(s => s.status === 'Confirmed').length;
   const highPriority = actionItems.filter(t => t.priority === 'high' && t.status !== 'done').length;
@@ -197,11 +195,6 @@ export function GeyserView({
             </div>
           </div>
         )}
-
-        <div className="geyser-big-countdown">
-          <div className="gbc-num">{daysToLaunch}</div>
-          <div className="gbc-label">days until<br />April 15, 2026</div>
-        </div>
 
         {/* Key Dates mini-timeline */}
         <div className="geyser-key-dates card">
@@ -617,16 +610,13 @@ export function GeyserView({
                     style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, display: 'block', marginBottom: 10 }}
                   />
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <select
-                        value={s.status}
-                        onChange={e => onUpdateStationStatus(s.id, e.target.value)}
-                        style={{ padding: '3px 8px', borderRadius: 6, border: 'none', background: sc.bg, color: sc.color, fontFamily: 'var(--font-label)', fontSize: '0.68rem', fontWeight: 600, cursor: 'pointer' }}
-                      >
-                        {Object.keys(statusColors).map(st => <option key={st} value={st}>{st}</option>)}
-                      </select>
-                      <NotionSyncChip sync={s.notionSync} onRetry={() => onUpdateStationField(s.id, {})} />
-                    </div>
+                    <select
+                      value={s.status}
+                      onChange={e => onUpdateStationStatus(s.id, e.target.value)}
+                      style={{ padding: '3px 8px', borderRadius: 6, border: 'none', background: sc.bg, color: sc.color, fontFamily: 'var(--font-label)', fontSize: '0.68rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      {Object.keys(statusColors).map(st => <option key={st} value={st}>{st}</option>)}
+                    </select>
                     <select
                       value={s.owner}
                       onChange={e => onUpdateStationOwner(s.id, e.target.value)}
@@ -747,7 +737,6 @@ export function GeyserView({
                       <span className={`gcc-priority-badge ${task.priority}`} style={{ fontSize: '0.6rem', padding: '1px 6px' }}>{task.priority}</span>
                       {task.due_date && <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: dueClass === 'overdue' ? '#D45050' : 'var(--text-muted)' }}>Due {formatDate(task.due_date)}</span>}
                       {task.category && <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.6rem', color: 'var(--text-muted)', background: 'var(--sandstone)', padding: '1px 6px', borderRadius: 4 }}>{task.category}</span>}
-                      <NotionSyncChip sync={task.notionSync} onRetry={() => onUpdateTask(task.id, {})} />
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -957,12 +946,6 @@ export function GeyserView({
       <div className="geyser-header">
         <div className="geyser-header-title">Geyser</div>
         <div className="geyser-header-subtitle">the launchpad</div>
-        <div className="geyser-header-info">
-          <div className="geyser-header-countdown">
-            <span className="geyser-countdown-num">{daysToLaunch}</span>
-            <span className="geyser-countdown-label">days til we go live</span>
-          </div>
-        </div>
       </div>
 
       {/* Tabs */}

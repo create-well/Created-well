@@ -5,7 +5,6 @@ import { PERSONS } from './data';
 import { VisibilityDial } from './VisibilityDial';
 import { SensorySettings } from './SensorySettings';
 import { ThemeSelector } from './ThemeSelector';
-import { SyncRefreshButton } from './SyncRefreshButton';
 import { useDashboard } from '../../contexts/DashboardContext';
 
 const NAV_ITEMS: { path: string; label: string; emoji: string; end?: boolean }[] = [
@@ -222,11 +221,6 @@ export function TopNav({ onSignOut }: TopNavProps) {
           })()}
         </div>
 
-        {/* Sync Notion Button */}
-        <div style={{ marginLeft: 10, display: 'flex', alignItems: 'center' }}>
-          <SyncRefreshButton />
-        </div>
-
         {/* Desktop sign-out */}
         {onSignOut && (
           <button
@@ -349,11 +343,6 @@ export function TopNav({ onSignOut }: TopNavProps) {
                 <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>Share Dashboard Link</>
               )}
             </button>
-          </div>
-
-          {/* Sync Notion Trigger */}
-          <div style={{ padding: '8px 16px', borderTop: '1px solid var(--border-soft, rgba(196,164,132,0.12))' }}>
-            <SyncRefreshButton />
           </div>
 
           {/* Well Settings */}

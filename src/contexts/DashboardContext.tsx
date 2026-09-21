@@ -4,7 +4,7 @@ import React, {
 import * as api from '../app/components/api';
 import type { Task, Station, ForumPost, Message, BrainDump, Announcement, ForumReply } from '../app/components/api';
 import type { Workshop, WorkshopProgram, WorkshopResource } from '../app/components/api';
-import type { CoFlowDate, CoFlowCheckin, WellNote, RevenueItem, ParkingLotItem } from '../app/components/api';
+import type { CoFlowDate, CoFlowCheckin, WellNote } from '../app/components/api';
 import {
   DEFAULT_ANNOUNCEMENTS, STATIONS_DEFAULT,
 } from '../app/components/data';
@@ -46,8 +46,6 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const [coFlowDates, setCoFlowDates] = useState<CoFlowDate[]>([]);
   const [coFlowCheckins, setCoFlowCheckins] = useState<CoFlowCheckin[]>([]);
   const [wellNotes, setWellNotes] = useState<WellNote[]>([]);
-  const [money, setMoney] = useState<RevenueItem[]>([]);
-  const [parkingLot, setParkingLot] = useState<ParkingLotItem[]>([]);
 
   // ── Sync metadata ────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
@@ -152,8 +150,6 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowDates(data.coflowDates || []);
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
-        setMoney(data.money || []);
-        setParkingLot(data.parkingLot || []);
         setSyncStatus(usedFallback ? 'stale' : 'fresh');
         setLastSynced(new Date());
         silentFailCount.current = 0;
@@ -562,8 +558,6 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     coFlowDates,
     coFlowCheckins,
     wellNotes,
-    money,
-    parkingLot,
     syncStatus: computedSyncStatus,
     lastSynced,
     permissions: {

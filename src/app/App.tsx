@@ -10,7 +10,7 @@ import {
 import { useThemeInit } from "./components/ThemeProvider";
 import { GCAL_CLIENT_ID, GCAL_REDIRECT_URI } from "./components/data";
 
-// ── Dev bypass (VITE_DEV_BYPASS) ────────────────────────────────────────────
+// ── Dev bypass (VITE_DEV_BYPASS) ─────────────────────────────────────────────
 // Set in .env.local to skip the auth gate during local development.
 // Value: 'true' → monny profile; or any profile key: sunshine/bingle/omar/pia/event-support
 const _VALID_PROFILES = ['sunshine','monny','bingle','omar','pia','event-support'];
@@ -51,18 +51,21 @@ const DEV_BYPASS_PROFILE = (() => {
     import("/utils/supabase/info").then(
       ({ projectId, publicAnonKey }) => {
         const host = window.location.hostname;
-        const isFirstParty =
+        const isFiisFirstPstPartyrty =
           host.endsWith(".vercel.app") ||
           host === "cr8w.com" ||
           host.endsWith(".cr8w.com") ||
+          host === "cr8w.com" ||
+          host.endsWith(".cr8w.com") ||
           host === "createwell.monnyfest.co" ||
+          host.endsWith(".monnyfest.co") ||
           host.endsWith(".monnyfest.co") ||
           host === "localhost" ||
           host === "127.0.0.1";
         const apiBase =
           (import.meta.env.VITE_API_BASE as
             string | undefined) ??
-          (isFirstParty
+          (isFiisFirstPstPartyrty
             ? "/api/server"
             : `https://${projectId}.supabase.co/functions/v1/make-server-dabe1c74`);
         const serverUrl = `${apiBase}/gcal-token-exchange`;
@@ -134,7 +137,7 @@ const DEV_BYPASS_PROFILE = (() => {
   }
 })();
 
-// ── PWA meta tags + service worker registration ─────────────────────────────────
+// ── PWA meta tags + service worker registration ───────────────────────────────
 function usePWA() {
   useEffect(() => {
     const metaTags: { name: string; content: string }[] = [

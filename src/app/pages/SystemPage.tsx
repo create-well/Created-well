@@ -1,6 +1,69 @@
 import React from 'react';
+import { Link } from 'react-router';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
+import { CalendarConnectCard } from '../components/CalendarConnectCard';
+
+// Notion database source URLs (one per top-level DB — multiple collections share a DB)
+const NOTION_DB_LINKS: Record<string, string> = {
+  tasks:         'https://app.notion.com/p/3da8c56469e948e489836ea8773d6354',
+  stations:      'https://app.notion.com/p/3da8c56469e948e489836ea8773d6354',
+  forum:         'https://app.notion.com/p/3da8c56469e948e489836ea8773d6354',
+  messages:      'https://app.notion.com/p/ea53d1eddde243adb0344582cbeaf4c5',
+  workshops:     'https://app.notion.com/p/17d69cdfab1f4bb78ba197ec0a829ff5',
+  coFlowDates:   'https://app.notion.com/p/17d69cdfab1f4bb78ba197ec0a829ff5',
+  checkins:      'https://app.notion.com/p/ea53d1eddde243adb0344582cbeaf4c5',
+  wellNotes:     'https://app.notion.com/p/bffdc8056b984515935b9496524198f8',
+  brainDumps:    'https://app.notion.com/p/bffdc8056b984515935b9496524198f8',
+  announcements: 'https://app.notion.com/p/bffdc8056b984515935b9496524198f8',
+};
+
+const CONTENT_CHANNELS = [
+  { label: 'Newsletter',       emoji: '📬', href: 'https://www.sunshinedgtlstudios.com/cr8wnewsletter' },
+  { label: 'Events (Partiful)',emoji: '🎉', href: 'https://partiful.com/uYXpeCS9xuzmgObb7Q7jf' },
+  { label: 'Book Club RSVP',   emoji: '📚', href: 'https://docs.google.com/forms/d/e/1FAIpQLSdru8LxeVv8HqjxAHMZ0pgFRcPs3bw8uSk7FjqxeHWKn-Urg/viewform' },
+  { label: 'YouTube',          emoji: '▶️',  href: 'https://www.youtube.com/@brbcreatingwell' },
+  { label: 'Spotify',          emoji: '🎵', href: 'https://open.spotify.com/show/0Tj253e1ZAE7vsKd4Tffvi' },
+  { label: 'Apple Podcasts',   emoji: '🎙️', href: 'https://podcasts.apple.com/us/podcast/brb-creating-well-a-create-well-podcast/id6795904154' },
+  { label: 'Amazon Music',     emoji: '🎶', href: 'https://music.amazon.com/podcasts/e1ff7602-912c-488b-a11f-e6fb6027dbba' },
+  { label: 'Instagram',        emoji: '📸', href: 'https://www.instagram.com/brbcreatingwell' },
+];
+
+const ROUTE_ARCHITECTURE = [
+  { path: '/',          label: 'This Week at the Well', emoji: '💧',
+    sources: 'brain dumps · announcements · well notes · coflow dates' },
+  { path: '/moves',     label: 'Moves: Now',            emoji: '⛲️',
+    sources: 'tasks · stations · forum posts' },
+  { path: '/care',      label: 'Care Loop',             emoji: '🫧',
+    sources: 'messages · check-ins · well notes' },
+  { path: '/flows',     label: 'FLOWS',                 emoji: '🛠️',
+    sources: 'workshops · coflow dates' },
+  { path: '/podyaps',   label: 'Podyaps',               emoji: '🎙️',
+    sources: 'coflow dates (theme: yapcast · playdate)' },
+  { path: '/workshops', label: 'Workshops',             emoji: '🎨',
+    sources: 'workshops · coflow dates (theme: workshop)' },
+  { path: '/money',     label: 'Money, Real Only',      emoji: '💰',
+    sources: 'MONEY database (read-only)' },
+  { path: '/decisions', label: 'Decision Queue',        emoji: '⚡',
+    sources: 'decisions database (pending)' },
+  { path: '/system',    label: 'System Health',         emoji: '🔧',
+    sources: 'all collections · build info' },
+];
+
+const SUGGESTED_IMPROVEMENTS = [
+  { label: 'Notion deep links from every data row',                            done: true },
+  { label: 'Add Omar to Moves task filter',                                    done: true },
+  { label: 'Dedicated /podyaps mini-dashboard (Yapcast + Playdate + Bookclub)',done: true },
+  { label: 'Dedicated /workshops mini-dashboard (FlowCommandCenter)',          done: true },
+  { label: 'Fix Hub MiniCard navigation (was all → /flows)',                   done: true },
+  { label: 'Real-time announcement push (replace prompt() with modal form)',   done: false },
+  { label: 'Weekly digest email/Notion page auto-generated from brain dumps',  done: false },
+  { label: 'Per-person coflow date RSVP tracking',                             done: false },
+  { label: 'Hub hero: lead with next upcoming Podyap instead of generic card', done: false },
+  { label: 'Hub widget: "last sync from Notion" visible on home page',         done: false },
+  { label: 'Decision Queue (/decisions) connected to Notion database',         done: false },
+  { label: 'Money page (/money) linked to Google Sheets source',               done: false },
+];
 
 function HealthRow({ label, value, status }: { label: string; value: string; status: 'ok' | 'warn' | 'error' | 'neutral' }) {
   const statusColor = { ok: '#30D158', warn: '#FF9F0A', error: '#FF453A', neutral: '#8A7D72' }[status];
@@ -40,7 +103,72 @@ function HealthRow({ label, value, status }: { label: string; value: string; sta
   );
 }
 
-function DataCountRow({ label, count, emoji }: { label: string; count: number; emoji: string }) {
+function DataCountRow({
+  label, count, emoji, internalPath, notionHref,
+}: {
+  label: string;
+  count: number;
+  emoji: string;
+  internalPath?: string;
+  notionHref?: string;
+}) {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '8px 0',
+      borderBottom: '1px solid var(--border-soft, rgba(196,164,132,0.08))',
+    }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: '0.9rem' }}>{emoji}</span>
+        {internalPath ? (
+          <Link
+            to={internalPath}
+            style={{
+              fontFamily: 'var(--font-body)', fontSize: '0.78rem',
+              color: 'var(--cr8w-primary, #7BA89D)', textDecoration: 'none',
+              fontWeight: 500,
+            }}
+          >
+            {label}
+          </Link>
+        ) : (
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: 'var(--cr8w-text, #2D2438)' }}>
+            {label}
+          </span>
+        )}
+      </span>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{
+          fontFamily: 'var(--font-label)', fontSize: '0.78rem', fontWeight: 700,
+          color: count > 0 ? 'var(--cr8w-text)' : 'var(--text-muted)',
+        }}>
+          {count}
+        </span>
+        {notionHref && (
+          <a
+            href={notionHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              fontFamily: 'var(--font-label)', fontSize: '0.65rem',
+              color: 'var(--text-muted)', textDecoration: 'none',
+              opacity: 0.7,
+            }}
+          >
+            ↗
+          </a>
+        )}
+      </span>
+    </div>
+  );
+}
+
+function LinkRow({ emoji, label, href }: { emoji: string; label: string; href: string }) {
+  const domain = (() => {
+    try { return new URL(href).hostname.replace(/^www\./, ''); } catch { return href; }
+  })();
   return (
     <div style={{
       display: 'flex',
@@ -55,12 +183,49 @@ function DataCountRow({ label, count, emoji }: { label: string; count: number; e
           {label}
         </span>
       </span>
-      <span style={{
-        fontFamily: 'var(--font-label)', fontSize: '0.78rem', fontWeight: 700,
-        color: count > 0 ? 'var(--cr8w-text)' : 'var(--text-muted)',
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          fontFamily: 'var(--font-label)', fontSize: '0.68rem',
+          color: 'var(--text-muted)', textDecoration: 'none',
+          opacity: 0.8,
+        }}
+      >
+        {domain} ↗
+      </a>
+    </div>
+  );
+}
+
+function RouteRow({ path, label, emoji, sources }: { path: string; label: string; emoji: string; sources: string }) {
+  return (
+    <div style={{
+      padding: '9px 0',
+      borderBottom: '1px solid var(--border-soft, rgba(196,164,132,0.12))',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: 'var(--cr8w-text, #2D2438)' }}>
+          {emoji} {label}
+        </span>
+        <Link
+          to={path}
+          style={{
+            fontFamily: 'var(--font-label)', fontSize: '0.73rem', fontWeight: 600,
+            color: 'var(--cr8w-primary, #7BA89D)', textDecoration: 'none',
+          }}
+        >
+          {path}
+        </Link>
+      </div>
+      <div style={{
+        fontFamily: 'var(--font-body)', fontSize: '0.68rem',
+        color: 'var(--text-muted)', marginTop: 2,
+        opacity: 0.75,
       }}>
-        {count}
-      </span>
+        {sources}
+      </div>
     </div>
   );
 }
@@ -114,7 +279,7 @@ export function SystemPage() {
             fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800,
             color: 'var(--cr8w-text, #2D2438)', margin: 0, letterSpacing: '-0.02em',
           }}>
-            What's running
+            What&apos;s running
           </h1>
           <p style={{
             fontFamily: 'var(--font-body)', fontSize: '0.8rem',
@@ -123,6 +288,10 @@ export function SystemPage() {
             Live status of data sync, modules, and system state.
           </p>
         </div>
+
+        {/* Google Calendar connection */}
+        <SectionHeader title="Calendar" />
+        <CalendarConnectCard profileKey="monny" />
 
         {/* Sync health */}
         <SectionHeader title="Data sync" />
@@ -174,47 +343,46 @@ export function SystemPage() {
           </div>
         )}
 
-        {/* Data counts */}
+        {/* Data inventory */}
         <SectionHeader title="Data inventory" />
         <div style={{
           background: 'var(--cr8w-card-bg, #F4F1ED)',
           border: '1px solid var(--border-soft, rgba(196,164,132,0.15))',
           borderRadius: 12, padding: '4px 16px',
         }}>
-          <DataCountRow label="Tasks" count={data.tasks.length} emoji="⛲️" />
-          <DataCountRow label="Stations" count={data.stations.length} emoji="🗂️" />
-          <DataCountRow label="Forum posts" count={data.forum.length} emoji="💬" />
-          <DataCountRow label="Messages" count={data.messages.length} emoji="📨" />
-          <DataCountRow label="Workshops" count={data.workshops.length} emoji="🛠️" />
-          <DataCountRow label="CoFlow dates" count={data.coFlowDates.length} emoji="🫧" />
-          <DataCountRow label="Check-ins" count={data.coFlowCheckins.length} emoji="✅" />
-          <DataCountRow label="Well notes" count={data.wellNotes.length} emoji="💧" />
-          <DataCountRow label="Brain dumps" count={data.brainDumps.length} emoji="🧠" />
-          <DataCountRow label="Announcements" count={data.announcements.length} emoji="📢" />
+          <DataCountRow label="Tasks"        count={data.tasks.length}          emoji="⛲️" internalPath="/moves"  notionHref={NOTION_DB_LINKS.tasks} />
+          <DataCountRow label="Stations"     count={data.stations.length}       emoji="🗂️" internalPath="/moves"  notionHref={NOTION_DB_LINKS.stations} />
+          <DataCountRow label="Forum posts"  count={data.forum.length}          emoji="💬" internalPath="/moves"  notionHref={NOTION_DB_LINKS.forum} />
+          <DataCountRow label="Messages"     count={data.messages.length}       emoji="📨" internalPath="/care"   notionHref={NOTION_DB_LINKS.messages} />
+          <DataCountRow label="Workshops"    count={data.workshops.length}      emoji="🛠️" internalPath="/flows"  notionHref={NOTION_DB_LINKS.workshops} />
+          <DataCountRow label="CoFlow dates" count={data.coFlowDates.length}    emoji="🫧" internalPath="/flows"  notionHref={NOTION_DB_LINKS.coFlowDates} />
+          <DataCountRow label="Check-ins"    count={data.coFlowCheckins.length} emoji="✅" internalPath="/care"   notionHref={NOTION_DB_LINKS.checkins} />
+          <DataCountRow label="Well notes"   count={data.wellNotes.length}      emoji="💧" internalPath="/"       notionHref={NOTION_DB_LINKS.wellNotes} />
+          <DataCountRow label="Brain dumps"  count={data.brainDumps.length}     emoji="🧠" internalPath="/"       notionHref={NOTION_DB_LINKS.brainDumps} />
+          <DataCountRow label="Announcements" count={data.announcements.length} emoji="📢" internalPath="/"       notionHref={NOTION_DB_LINKS.announcements} />
         </div>
 
-        {/* Module routes */}
-        <SectionHeader title="Registered routes" />
+        {/* Content channels */}
+        <SectionHeader title="Content channels" />
         <div style={{
           background: 'var(--cr8w-card-bg, #F4F1ED)',
           border: '1px solid var(--border-soft, rgba(196,164,132,0.15))',
           borderRadius: 12, padding: '4px 16px',
         }}>
-          {[
-            { path: '/', label: 'This Week at the Well', emoji: '💧' },
-            { path: '/moves', label: 'Moves: Now', emoji: '⛲️' },
-            { path: '/care', label: 'Care Loop', emoji: '🫧' },
-            { path: '/flows', label: 'FLOWS', emoji: '🛠️' },
-            { path: '/money', label: 'Money, Real Only', emoji: '💰' },
-            { path: '/decisions', label: 'Decision Queue', emoji: '⚡' },
-            { path: '/system', label: 'System Health', emoji: '🔧' },
-          ].map(route => (
-            <HealthRow
-              key={route.path}
-              label={`${route.emoji} ${route.label}`}
-              value={route.path}
-              status="ok"
-            />
+          {CONTENT_CHANNELS.map(ch => (
+            <LinkRow key={ch.label} emoji={ch.emoji} label={ch.label} href={ch.href} />
+          ))}
+        </div>
+
+        {/* Site architecture */}
+        <SectionHeader title="Site architecture" />
+        <div style={{
+          background: 'var(--cr8w-card-bg, #F4F1ED)',
+          border: '1px solid var(--border-soft, rgba(196,164,132,0.15))',
+          borderRadius: 12, padding: '4px 16px',
+        }}>
+          {ROUTE_ARCHITECTURE.map(route => (
+            <RouteRow key={route.path} path={route.path} label={route.label} emoji={route.emoji} sources={route.sources} />
           ))}
         </div>
 
@@ -225,10 +393,52 @@ export function SystemPage() {
           border: '1px solid var(--border-soft, rgba(196,164,132,0.15))',
           borderRadius: 12, padding: '4px 16px',
         }}>
-          <HealthRow label="Router" value="react-router v7 · data mode" status="ok" />
-          <HealthRow label="Data layer" value="DashboardContext · typed payload" status="ok" />
-          <HealthRow label="API" value="Supabase edge functions" status="neutral" />
-          <HealthRow label="Env" value={import.meta.env.MODE || 'production'} status="neutral" />
+          <HealthRow label="Router"     value="react-router v7 · data mode"      status="ok" />
+          <HealthRow label="Data layer" value="DashboardContext · typed payload"  status="ok" />
+          <HealthRow label="API"        value="Supabase edge functions"           status="neutral" />
+          <HealthRow label="Env"        value={import.meta.env.MODE || 'production'} status="neutral" />
+        </div>
+
+        {/* Suggested improvements */}
+        <SectionHeader title="Suggested improvements" />
+        <div style={{
+          background: 'var(--cr8w-card-bg, #F4F1ED)',
+          border: '1px solid var(--border-soft, rgba(196,164,132,0.15))',
+          borderRadius: 12, padding: '12px 16px',
+          opacity: 0.82,
+        }}>
+          <div style={{
+            fontFamily: 'var(--font-label)', fontSize: '0.6rem', fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.08em',
+            color: 'var(--text-muted)', marginBottom: 8,
+          }}>
+            aspirational · not production-ready
+          </div>
+          {SUGGESTED_IMPROVEMENTS.map(item => (
+            <div key={item.label} style={{
+              display: 'flex', alignItems: 'flex-start', gap: 8,
+              padding: '5px 0',
+              borderBottom: '1px solid var(--border-soft, rgba(196,164,132,0.07))',
+            }}>
+              <span style={{
+                fontSize: '0.75rem', marginTop: 1,
+                color: item.done ? '#30D158' : 'var(--text-muted)',
+                flexShrink: 0,
+              }}>
+                {item.done ? '✓' : '○'}
+              </span>
+              <span style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.76rem',
+                color: item.done ? 'var(--text-muted)' : 'var(--cr8w-text, #2D2438)',
+                fontStyle: item.done ? 'italic' : 'normal',
+                opacity: item.done ? 0.65 : 1,
+                lineHeight: 1.4,
+              }}>
+                {item.label}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </ViewShell>

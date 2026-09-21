@@ -150,12 +150,6 @@ export const getWellNotes = () => req<WellNote[]>('GET', '/well-notes');
 export const createWellNote = (n: { content: string }) => req<WellNote>('POST', '/well-notes', n);
 export const updateWellNote = (id: number, n: Partial<WellNote>) => req<WellNote>('PUT', `/well-notes/${id}`, n);
 
-// Money (Revenue & Sponsorships — Notion-backed dual-write)
-export const getMoney = () => req<RevenueItem[]>('GET', '/money');
-export const createMoney = (m: Omit<RevenueItem, 'id' | 'created_at'>) => req<RevenueItem>('POST', '/money', m);
-export const updateMoney = (id: number, m: Partial<RevenueItem>) => req<RevenueItem>('PUT', `/money/${id}`, m);
-export const deleteMoney = (id: number) => req<{ ok: boolean }>('DELETE', `/money/${id}`);
-
 // Settings (generic JSON config storage)
 export const getSetting = <T = any>(key: string) => req<{ value: T | null }>('GET', `/settings/${key}`);
 export const setSetting = <T = any>(key: string, value: T) => req<{ ok: boolean }>('PUT', `/settings/${key}`, { value });
@@ -179,12 +173,11 @@ const DASHBOARD_URL: string = (() => {
   return resolveApiBase().replace(/\/server$/, '') + '/dashboard';
 })();
 
-export async function fetchDashboard(forceRefresh = false): Promise<SyncData> {
+export async function fetchDashboard(): Promise<SyncData> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10_000);
   try {
-    const url = forceRefresh ? `${DASHBOARD_URL}?force=true` : DASHBOARD_URL;
-    const res = await fetch(url, {
+    const res = await fetch(DASHBOARD_URL, {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
       signal: controller.signal,
     });
@@ -240,30 +233,18 @@ export interface InviteCounts {
   updated_at?: string;
 }
 
-export interface NotionSyncResult {
-  state: 'written' | 'partial' | 'failed' | 'skipped';
-  db?: 'MOVES' | 'FLOWS' | 'PEOPLE' | 'CONTENT' | 'MONEY' | string;
-  pageId?: string;
-  dropped?: { property: string; reason: string }[];
-  message?: string;
-}
-
 export interface Task {
   id: number; person: string; title: string;
   status: 'todo' | 'in_progress' | 'done' | 'blocked' | 'dropped';
   priority: 'high' | 'medium' | 'low';
   due_date?: string; source?: string; category?: string; created_at?: string;
   notionPageId?: string;
-  notionSync?: NotionSyncResult;
 }
 
 export interface Station {
   id: number; emoji: string; name: string; status: string;
   description: string; owner: string; created_at?: string;
   notionPageId?: string;
-  pathwayStage?: string;
-  nextInvitation?: string;
-  notionSync?: NotionSyncResult;
 }
 
 export interface ForumPost {
@@ -344,7 +325,7 @@ export interface CoFlowDate {
   vibeCheck: string;
   sessionNotes?: string;
   attendees?: string[];
-  status: 'upcoming' | 'active' | 'archived';
+  status: 'idea' | 'ready' | 'approved' | 'scheduled' | 'happened' | 'wrapped' | 'cancelled';
   created_at?: string;
 }
 
@@ -368,18 +349,16 @@ export interface WellNote {
   created_at?: string;
 }
 
-export interface RevenueItem {
-  id: number;
-  notionPageId?: string;
-  title: string;
-  amount: number;
-  type: 'sponsorship' | 'workshop' | 'open_studio' | 'geyser' | 'grant' | 'other';
-  status: 'projected' | 'committed' | 'cleared' | 'invoiced' | 'wrapped';
-  date?: string;
-  flowId?: string;
-  closer?: string;
-  notes?: string;
-  created_at?: string;
+export interface MoneyRecord {
+  id:           number;
+  notionPageId: string;
+  name:         string;
+  amount:       number;
+  kind:         string;
+  date:         string;
+  flowId:       string;
+  docUrl:       string;
+  created_at:   string;
 }
 
 export interface SyncData {
@@ -397,7 +376,7 @@ export interface SyncData {
   coflowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
   calendarEvents: CalendarEventKV[];
-  money?: RevenueItem[];
+  money?: MoneyRecord[];
 }
 
 export interface CalendarEventKV {

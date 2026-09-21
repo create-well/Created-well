@@ -134,12 +134,12 @@ export function CoFlowD8sView({
   }, []);
 
   const upcomingD8s = useMemo(() =>
-    coflowDates.filter(d => (d.status === 'upcoming' || d.status === 'active') && isUpcoming(d.date))
+    coflowDates.filter(d => (['idea', 'ready', 'approved', 'scheduled'] as const).includes(d.status as never) && isUpcoming(d.date))
       .sort((a, b) => a.date.localeCompare(b.date)),
     [coflowDates]
   );
   const archivedD8s = useMemo(() =>
-    coflowDates.filter(d => d.status === 'archived').sort((a, b) => b.date.localeCompare(a.date)),
+    coflowDates.filter(d => (['happened', 'wrapped', 'cancelled'] as const).includes(d.status as never)).sort((a, b) => b.date.localeCompare(a.date)),
     [coflowDates]
   );
 
@@ -739,7 +739,7 @@ function CreateD8Form({ onSubmit }: {
         location: showCustomLoc ? customLocation.trim() || 'TBD' : location,
         host, theme: theme.trim(),
         rsvp,
-        agendaItems: [], notes: '', vibeCheck: '', status: 'upcoming',
+        agendaItems: [], notes: '', vibeCheck: '', status: 'idea',
       })} style={{ ...btnPrimary, marginTop: 16 }}>
         Schedule This D8
       </button>
@@ -1261,7 +1261,7 @@ function AgendaBuilder({ d8, onUpdateD8 }: {
             style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
           />
           <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
-            <button onClick={() => onUpdateD8({ status: 'archived' })} style={{
+            <button onClick={() => onUpdateD8({ status: 'wrapped' })} style={{
               ...btnSecondary, display: 'flex', alignItems: 'center', gap: 5,
             }}>
               <Archive size={13} /> Archive This D8

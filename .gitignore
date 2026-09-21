@@ -34,3 +34,5 @@ Thumbs.db
 
 # Figma Make — prevent re-adding workspace config
 pnpm-workspace.yaml
+.vercel
+dist

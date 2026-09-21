@@ -297,7 +297,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (method === 'POST') {
         const b = await body(req);
         const events = Array.isArray(b) ? b : (b.events ?? []);
-        const normalized = events.map((ev: any, i: number) => ({\n          id: ev.id || `gcal-${Date.now()}-${i}`,\n          title: ev.title || '(No title)',\n          start: ev.start || '',\n          end: ev.end || '',\n          location: ev.location || '',\n          description: ev.description || '',\n          creator: ev.creator || '',\n          synced_at: new Date().toISOString(),\n        }));
+        const normalized = events.map((ev: any, i: number) => ({
+          id: ev.id || `gcal-${Date.now()}-${i}`,
+          title: ev.title || '(No title)',
+          start: ev.start || '',
+          end: ev.end || '',
+          location: ev.location || '',
+          description: ev.description || '',
+          creator: ev.creator || '',
+          synced_at: new Date().toISOString(),
+        }));
         await setList('cr8w_calendar_events', normalized);
         res.json({ ok: true, count: normalized.length }); return;
       }

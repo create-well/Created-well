@@ -6,7 +6,7 @@ export const SECTION_LABELS = {
   QUICK_LINKS:      'Quick Access',
   FLOWS_EMPTY:      'No upcoming flows. Check back soon.',
   MOVES_EMPTY:      'No open moves right now.',
-  MONEY_EMPTY:      'No money records loaded yet.',
+  MONEY_EMPTY:      'No pleasure dollar records loaded yet.',
   CARE_EMPTY:       'No care loop items pending follow-up.',
 } as const;
 
@@ -49,11 +49,11 @@ export const FALLBACK_QUOTES = [
 export const GLOSSARY: Record<string, string> = {
   Geyser:        'An unexpected eruption of creative energy or community event format where creative energy erupts into form.',
   Podyap:        'A pop-up podcast or community conversation container.',
-  Depanty:       'The learning phase — wrap-up complete, what the water taught us, space cleared.',
+  Depanty:       'The distribution & integration phase — scheduling clips, podcast host, Substack, what the water taught us, space cleared.',
   'Co-Hoe':      'Core team collaborator / co-holder of the well.',
   Titration:     'Careful, calibrated exposure — idea refinement from ideation to operational reality.',
   CoFlow:        'A shared creative session or accountability container.',
-  Decomprocess:  'Debrief + somatic process — the reflective unwinding after shared experiences.',
+  Decomprocess:  '30-minute same-day reflective debrief ("what flowed, what flooded") led by the Flow Keeper.',
   Wellsheet:     'Pre-meeting self-reflection across 3 levels of depth.',
   Undercurrent:  'The deeper point of perspective in storytelling — what\'s flowing beneath the surface.',
   Monnyfesting:  'Sacral generator manifestation — bringing visions into grounded embodied reality.',

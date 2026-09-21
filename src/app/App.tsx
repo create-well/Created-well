@@ -1,4 +1,3 @@
-import "@cr8w/design-system/styles.css";
 import React, { useState, useEffect } from "react";
 import { RouterProvider } from "react-router";
 import { router } from "./routes";
@@ -9,7 +8,7 @@ import {
   getStoredProfile,
 } from "./components/AuthGate";
 import { useThemeInit } from "./components/ThemeProvider";
-import { GCAL_CLIENT_ID, GCAL_REDIRECT_URI } from "./components/data";
+import { GCAL_CLIENT_ID } from "./components/data";
 
 // ── Dev bypass (VITE_DEV_BYPASS) ────────────────────────────────────────────
 // Set in .env.local to skip the auth gate during local development.
@@ -77,7 +76,7 @@ const DEV_BYPASS_PROFILE = (() => {
           body: JSON.stringify({
             code,
             code_verifier: codeVerifier,
-            redirect_uri: GCAL_REDIRECT_URI,
+            redirect_uri: window.location.origin,
             client_id: GCAL_CLIENT_ID,
           }),
         })

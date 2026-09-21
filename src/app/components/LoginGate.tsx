@@ -87,7 +87,7 @@ export function LoginGate({ onAuthenticated }: Props) {
     try {
       const hash = await sha256hex(pw.trim());
       if (hash !== STORED_HASH) {
-        setError('Incorrect password — see the hint above for the default.');
+        setError('Incorrect password. Ask a team admin for the current password.');
         setPw('');
         setShowHint(true);
         triggerShake();
@@ -148,9 +148,9 @@ export function LoginGate({ onAuthenticated }: Props) {
               {/* Hint box */}
               {showHint && (
                 <div style={{ marginBottom: 10, padding: '10px 14px', borderRadius: 8, background: 'rgba(194,91,56,0.07)', border: '1px solid rgba(194,91,56,0.2)', fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.75rem', color: '#8A4020', lineHeight: 1.5 }}>
-                  💡 <strong>Default password:</strong> <code style={{ background: 'rgba(194,91,56,0.12)', padding: '1px 6px', borderRadius: 4, fontFamily: 'monospace', letterSpacing: '0.05em' }}>createwell</code>
+                  💡 <strong>Need the team password?</strong> Ask a Create Well admin.
                   <br />
-                  <span style={{ opacity: 0.75 }}>Your team admin can change this via the <code>VITE_APP_PASSWORD_HASH</code> env var.</span>
+                  <span style={{ opacity: 0.75 }}>Admins rotate it via the <code>VITE_APP_PASSWORD_HASH</code> env var.</span>
                 </div>
               )}
 

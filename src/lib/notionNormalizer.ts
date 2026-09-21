@@ -12,7 +12,7 @@
 //   CONTENT: Name, Flow (Relation→FLOWS), Content Type, Audience,
 //             Status, Final?, Publish Date, URL, Where
 
-import type { Task, Station, ForumPost, CoFlowDate, RevenueItem, Workshop } from '../app/components/api';
+import type { Task, Station, ForumPost, CoFlowDate, RevenueItem, Workshop } from '../app/components/api.js';
 
 // ── Notion property value types ───────────────────────────────────────────────
 
@@ -249,6 +249,7 @@ export function normalizePerson(page: NotionPage): Station {
 
   const roles = getMultiSelect(pick(p, 'Roles')).join(', ');
   const pathwayStage = getSelect(pick(p, 'Pathway Stage', 'Stage', 'Status', 'State'));
+  const nextInvitation = getText(pick(p, 'Next Invitation', 'Next invitation', 'Invitation'));
   const description =
     roles ||
     getText(pick(p, 'Description', 'Bio', 'Notes', 'About'));
@@ -261,6 +262,8 @@ export function normalizePerson(page: NotionPage): Station {
     status:       pathwayStage || getSelect(pick(p, 'Status', 'State')) || 'active',
     description,
     owner:        ownerRaw.toLowerCase(),
+    pathwayStage: pathwayStage || undefined,
+    nextInvitation: nextInvitation || undefined,
     created_at:   page.created_time,
   };
 }

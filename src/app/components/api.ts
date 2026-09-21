@@ -240,18 +240,30 @@ export interface InviteCounts {
   updated_at?: string;
 }
 
+export interface NotionSyncResult {
+  state: 'written' | 'partial' | 'failed' | 'skipped';
+  db?: 'MOVES' | 'FLOWS' | 'PEOPLE' | 'CONTENT' | 'MONEY' | string;
+  pageId?: string;
+  dropped?: { property: string; reason: string }[];
+  message?: string;
+}
+
 export interface Task {
   id: number; person: string; title: string;
   status: 'todo' | 'in_progress' | 'done' | 'blocked' | 'dropped';
   priority: 'high' | 'medium' | 'low';
   due_date?: string; source?: string; category?: string; created_at?: string;
   notionPageId?: string;
+  notionSync?: NotionSyncResult;
 }
 
 export interface Station {
   id: number; emoji: string; name: string; status: string;
   description: string; owner: string; created_at?: string;
   notionPageId?: string;
+  pathwayStage?: string;
+  nextInvitation?: string;
+  notionSync?: NotionSyncResult;
 }
 
 export interface ForumPost {

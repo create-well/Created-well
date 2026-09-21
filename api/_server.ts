@@ -372,25 +372,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ── Notion dual-write helper ───────────────────────────────────────────────
     // Fires-and-forgets a Notion sync; never throws so KV writes always succeed.
-    async function syncToNotion(action: 'create' | 'update' | 'archive', item?: any): Promise<string | undefined> {
+    async function syncToNotion(action: 'create' | 'update' | 'archive', item?: any): Promise<{
+      state: 'written' | 'partial' | 'failed' | 'skipped';
+      db?: string;
+      pageId?: string;
+      dropped?: { property: string; reason: string }[];
+      message?: string;
+    }> {
       const cfg = NOTION_RESOURCES[resource];
-      if (!cfg) return undefined;
+      if (!cfg) return { state: 'skipped', message: 'Resource not Notion-backed' };
       const dbId = process.env[cfg.dbIdEnvVar];
-      if (!dbId || !process.env.NOTION_SECRET) return undefined;
+      if (!dbId || !process.env.NOTION_SECRET) {
+        return { state: 'skipped', message: 'Notion integration token or database ID missing (local only)' };
+      }
+      const dbMap: Record<string, string> = {
+        tasks: 'MOVES',
+        stations: 'PEOPLE',
+        forum: 'CONTENT',
+        'coflow-dates': 'FLOWS',
+        money: 'MONEY',
+      };
+      const db = dbMap[resource];
+
       try {
         if (action === 'create' && item) {
-          return await notionCreate(dbId, cfg.toProperties(item));
+          const pageId = await notionCreate(dbId, cfg.toProperties(item));
+          return { state: 'written', db, pageId };
         }
         if (action === 'update' && item?.notionPageId) {
           await notionUpdate(item.notionPageId, cfg.toProperties(item));
+          return { state: 'written', db, pageId: item.notionPageId };
         }
         if (action === 'archive' && item?.notionPageId) {
           await notionArchive(item.notionPageId);
+          return { state: 'written', db, pageId: item.notionPageId };
         }
-      } catch (err) {
+        return { state: 'skipped', db, message: 'Item has no notionPageId' };
+      } catch (err: any) {
         console.error(`[notionWriter] ${action} failed for ${resource}:`, err);
+        return {
+          state: 'failed',
+          db,
+          pageId: item?.notionPageId,
+          message: err?.message ? String(err.message).slice(0, 200) : 'Notion rejected write',
+        };
       }
-      return undefined;
     }
 
     // ── Generic list CRUD (GET all / POST new / PUT :id / DELETE :id) ─────────
@@ -404,8 +430,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const list = await getList(kvKey);
         const item: Record<string, any> = { ...b, id: Date.now(), created_at: new Date().toISOString() };
         // Notion dual-write for the 4 CMS-backed types
-        const notionPageId = await syncToNotion('create', item);
-        if (notionPageId) item.notionPageId = notionPageId;
+        const syncResult = await syncToNotion('create', item);
+        if (syncResult.pageId) item.notionPageId = syncResult.pageId;
+        item.notionSync = syncResult;
         // Forum and messages prepend; others append
         if (resource === 'forum' || resource === 'braindumps' || resource === 'announcements') list.unshift(item);
         else if (resource === 'messages') { list.push(item); if (list.length > 500) list.splice(0, list.length - 500); }
@@ -418,9 +445,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const list = await getList(kvKey);
         const idx = list.findIndex((x: any) => String(x.id) === String(id));
         if (idx === -1) { res.status(404).json({ error: 'Not found' }); return; }
-        list[idx] = { ...list[idx], ...b, id: list[idx].id, updated_at: new Date().toISOString() };
-        // Notion dual-write: update if item has a notionPageId
-        await syncToNotion('update', list[idx]);
+        const updatedItem = { ...list[idx], ...b };
+        const syncResult = await syncToNotion('update', updatedItem);
+        list[idx] = { ...updatedItem, id: list[idx].id, updated_at: new Date().toISOString(), notionSync: syncResult };
         await setList(kvKey, list);
         res.json(list[idx]); return;
       }
@@ -428,9 +455,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const list = await getList(kvKey);
         const target = list.find((x: any) => String(x.id) === String(id));
         // Notion dual-write: archive if item has a notionPageId
-        if (target) await syncToNotion('archive', target);
+        let syncResult = undefined;
+        if (target) syncResult = await syncToNotion('archive', target);
         await setList(kvKey, list.filter((x: any) => String(x.id) !== String(id)));
-        res.json({ ok: true }); return;
+        res.json({ ok: true, notionSync: syncResult }); return;
       }
     }
 

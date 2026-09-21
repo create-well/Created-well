@@ -29,7 +29,8 @@ import {
   normalizeMoney,
   type NotionPage,
 } from '../src/lib/notionNormalizer.js';
-import type { SyncData } from '../src/app/components/api';
+import type { SyncData } from '../src/app/components/api.js';
+import { getNotionConfig } from './_notionConfig.js';
 
 // ── Supabase KV helpers ───────────────────────────────────────────────────────
 
@@ -128,12 +129,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const secret     = process.env.NOTION_SECRET;
-  const dbMoves    = process.env.NOTION_DB_MOVES;
-  const dbPeople   = process.env.NOTION_DB_PEOPLE;
-  const dbFlows    = process.env.NOTION_DB_FLOWS;
-  const dbContent  = process.env.NOTION_DB_CONTENT;
-  const dbMoney    = process.env.NOTION_DB_MONEY;
+  const { secret, databaseIds } = getNotionConfig();
+  const {
+    tasks: dbMoves,
+    stations: dbPeople,
+    'coflow-dates': dbFlows,
+    forum: dbContent,
+    money: dbMoney,
+  } = databaseIds;
 
   // KV keys for data not yet migrated to Notion
   const KV_KEYS = [

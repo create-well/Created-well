@@ -12,7 +12,8 @@
  *   NOTION_SECRET, NOTION_DB_MOVES, NOTION_DB_PEOPLE, NOTION_DB_FLOWS, NOTION_DB_CONTENT
  */
 
-import type { Task, Station, ForumPost, CoFlowDate, RevenueItem } from '../src/app/components/api';
+import type { Task, Station, ForumPost, CoFlowDate, RevenueItem } from '../src/app/components/api.js';
+import { NOTION_DB_ENV } from './_notionConfig.js';
 
 const NOTION_API     = 'https://api.notion.com/v1';
 const NOTION_VERSION = '2022-06-28';
@@ -76,6 +77,10 @@ export function stationToProperties(s: OmitMeta<Station>): Record<string, unknow
     Owner:       nRichText(s.owner || ''),
   };
   if (s.emoji) props['Emoji'] = nRichText(s.emoji);
+  if (s.pathwayStage) props['Pathway Stage'] = nSelect(s.pathwayStage);
+  if (s.nextInvitation !== undefined && s.nextInvitation !== null) {
+    props['Next Invitation'] = nRichText(s.nextInvitation);
+  }
   return props;
 }
 
@@ -177,23 +182,23 @@ export function moneyToProperties(m: OmitMeta<RevenueItem>): Record<string, unkn
 
 export const NOTION_RESOURCES: Record<string, NotionResourceConfig> = {
   tasks: {
-    dbIdEnvVar:   'NOTION_DB_MOVES',
+    dbIdEnvVar:   NOTION_DB_ENV.tasks,
     toProperties: (item) => taskToProperties(item as OmitMeta<Task>),
   },
   stations: {
-    dbIdEnvVar:   'NOTION_DB_PEOPLE',
+    dbIdEnvVar:   NOTION_DB_ENV.stations,
     toProperties: (item) => stationToProperties(item as OmitMeta<Station>),
   },
   forum: {
-    dbIdEnvVar:   'NOTION_DB_CONTENT',
+    dbIdEnvVar:   NOTION_DB_ENV.forum,
     toProperties: (item) => forumPostToProperties(item as OmitMeta<ForumPost>),
   },
   'coflow-dates': {
-    dbIdEnvVar:   'NOTION_DB_FLOWS',
+    dbIdEnvVar:   NOTION_DB_ENV['coflow-dates'],
     toProperties: (item) => coFlowDateToProperties(item as OmitMeta<CoFlowDate>),
   },
   money: {
-    dbIdEnvVar:   'NOTION_DB_MONEY',
+    dbIdEnvVar:   NOTION_DB_ENV.money,
     toProperties: (item) => moneyToProperties(item as OmitMeta<RevenueItem>),
   },
 };

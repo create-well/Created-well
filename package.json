@@ -42,7 +42,7 @@
     "@supabase/server": "latest",
     "@supabase/supabase-js": "2.116.0",
     "@vercel/node": "5.1.11",
-    "@vercel/speed-insights": "^2.0.0",
+    "@vercel/speed-insights": "2.0.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.1.1",

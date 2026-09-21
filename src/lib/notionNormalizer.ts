@@ -156,12 +156,20 @@ const TASK_PRIORITY_MAP: Record<string, Task['priority']> = {
   'low':    'low',
 };
 
-// FLOWS Status values (Create Well OS canonical): Scheduled, Planning, Confirmed, Wrapped, Cancelled
+// FLOWS Status values (Create Well OS canonical):
+//   Pre-event:  Idea, Ready, Approved, Scheduled, Planning, Confirmed → upcoming
+//   Post-event: Happened, Wrapped, Cancelled → archived
+// Note: Idea/Ready/Approved/Happened were missing and caused past flows to
+// display as upcoming (Happened fell through to the 'upcoming' default).
 const FLOW_STATUS_MAP: Record<string, CoFlowDate['status']> = {
   // Create Well FLOWS canonical values
+  'idea':       'upcoming',
+  'ready':      'upcoming',
+  'approved':   'upcoming',
   'scheduled':  'upcoming',
   'planning':   'upcoming',
   'confirmed':  'upcoming',
+  'happened':   'archived',
   'wrapped':    'archived',
   'cancelled':  'archived',
   'canceled':   'archived',

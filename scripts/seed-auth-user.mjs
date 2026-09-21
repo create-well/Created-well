@@ -6,16 +6,16 @@
  *   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key node scripts/seed-auth-user.mjs
  *
  * Find the service role key at:
- *   https://supabase.com/dashboard/project/axntibrdivccycxdwlzk/settings/api
+ *   https://supabase.com/dashboard/project/irtqcygriedvdijppntz/settings/api
  *   → "service_role" (secret) — keep it server-side only
  */
 
-const SUPABASE_URL = 'https://axntibrdivccycxdwlzk.supabase.co';
+const SUPABASE_URL = 'https://irtqcygriedvdijppntz.supabase.co';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SERVICE_ROLE_KEY) {
   console.error('Error: SUPABASE_SERVICE_ROLE_KEY env var is required.');
-  console.error('Get it from: https://supabase.com/dashboard/project/axntibrdivccycxdwlzk/settings/api');
+  console.error('Get it from: https://supabase.com/dashboard/project/irtqcygriedvdijppntz/settings/api');
   process.exit(1);
 }
 

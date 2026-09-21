@@ -16,6 +16,9 @@ Production: `https://dash.cr8w.com`
 | VITE_DEV_BYPASS — auth gate bypass for local dev | ✅ Done — commit `9a9694c` |
 | `.env.local.example` for developer onboarding | ✅ Done — commit `9a9694c` |
 | `CrButton.tsx` — Button source staged for kit publish | ✅ Done — `src/CrButton.tsx` |
+| `notionNormalizer.ts` FLOW_STATUS_MAP — Idea/Ready/Approved/Happened | ✅ Done — past flows now correctly show archived |
+| `seed-username-map.mjs` — KV table corrected to live table | ✅ Done — was writing to dead `kv_store_8dcd9693` |
+| `seed-auth-user.mjs` + `seed-mb-admin.mjs` — Supabase project ID fix | ✅ Done — now point to `irtqcygriedvdijppntz` |
 | Vercel FIGMA_REGISTRY_TOKEN update | ⏳ **Needs Vercel dashboard** |
 | Google Calendar OAuth — redirect URIs | ⏳ **Needs GCP console** |
 | Google Calendar OAuth — test users | ⏳ **Needs GCP console** |
@@ -109,7 +112,7 @@ SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/seed-mb-admin.mjs
 
 Service role key location: [Supabase dashboard](https://supabase.com/dashboard/project/irtqcygriedvdijppntz/settings/api) → API → service_role (secret).
 
-**Note:** `seed-auth-user.mjs` and `seed-mb-admin.mjs` currently reference Supabase project `axntibrdivccycxdwlzk`. Verify that this matches the correct project (production uses `irtqcygriedvdijppntz`). Update `SUPABASE_URL` in those files if needed.
+All three scripts now reference the correct production project `irtqcygriedvdijppntz`.
 
 ---
 

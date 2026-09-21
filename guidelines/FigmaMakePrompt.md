@@ -1,10 +1,11 @@
 # Figma Make — Finalized Next Prompt & System Context
 
 > **Figma Make File:** [Created-well Canvas (H5p9jZz5h7VwzE0WzbBQ5G)](https://www.figma.com/make/H5p9jZz5h7VwzE0WzbBQ5G/created-well?t=YUma33Ul36rzVaB1-1)  
-> **Repository:** `create-well/Created-well` (Default branch: `migration/v3-handoff` / `main`)  
+> **Repository:** `create-well/Created-well` (Default branch: `main` / `migration/v3-handoff`)  
 > **Production Target:** `https://dash.cr8w.com` | **API Base:** `/api/server/`  
 > **Operational Cache:** Supabase `irtqcygriedvdijppntz` (`kv_store_dabe1c74`)  
-> **Canonical CMS:** Notion Hub CMS Four (`MOVES`, `PEOPLE`, `FLOWS`, `CONTENT`) + `MONEY` (Read-only)
+> **Canonical CMS:** Notion Hub CMS Four (`MOVES`, `PEOPLE`, `FLOWS`, `CONTENT`) + `MONEY` (Read-only)  
+> **Architecture Reference:** `docs/ARCHITECTURE_AUDIT_FLOWS_WORKSHOPS_PODYAPS.md`
 
 ---
 
@@ -19,7 +20,7 @@ ROLE & OBJECTIVE:
 Design and generate production-ready UI/UX components for the Create Well team dashboard (dash.cr8w.com). Create Well is a creative wellness and restorative community ecosystem in Las Vegas for artists and neurodivergent creators. The interface must balance operational rigor with warmth, embodiment, and creative flow ("flowing > forcing"). It is NOT a sterile corporate SaaS tool.
 
 CORE ARCHITECTURE & CONFIGURATION LAYER:
-All code you generate must align with the repository's centralized config layer (src/config/):
+All code you generate must align with the repository's centralized config layer (src/config/) and the Page Layer Architecture Audit:
 1. Profiles & Identity Tokens (src/config/profiles.ts):
    - Sunshine: ☀️ #C25B38
    - Monny: 🌊 #7BA89D
@@ -31,15 +32,22 @@ All code you generate must align with the repository's centralized config layer 
    - Profile colors are IDENTITY TOKENS, not text colors. Use them for avatar fills, borders, dots, and 10-15% tinted backgrounds only.
    - All accompanying label text uses Dark Slate (#2C2C2C).
    - Never render a profile name in its own profile color on a light surface.
-2. Navigation (src/config/routes.ts):
-   - Home (/)
-   - Moves (/moves)
-   - Care (/care)
-   - Flows (/flows)
-   - Pleasure Dollars (/money)
-   - Decisions (/decisions)
-   - System (/system)
-   *(Note: /team is omitted from nav as it is a feature-flagged stub)*
+
+2. Navigation Hierarchy & Page Roles (src/config/routes.ts):
+   ── Today:
+      - This Week / Home (/)
+   ── The Well (FLOWS Container — 7 typed event layers):
+      - Flows Hub (/flows): The parent hub for ALL 7 FLOWS types. Renders CommunityEventsView only.
+      - Podyaps (/podyaps): Public listener/episode view PLUS "Podyap Preflight" operational cockpit.
+      - Workshops (/workshops): Dedicated view for Wellshops, Expresshops, and Playshops (filtered by flowType === 'Workshop').
+   ── Team Operations:
+      - Moves (/moves)
+      - Care (/care)
+      - Pleasure Dollars (/money)
+      - Decisions (/decisions)
+   ── Meta:
+      - System (/system)
+
 3. Data Layer & Supabase KV Keys (src/config/sync.ts):
    - Primary KV Store: Supabase project irtqcygriedvdijppntz, table kv_store_dabe1c74.
    - Batch sync endpoint GET /api/server/sync returns:
@@ -49,6 +57,7 @@ All code you generate must align with the repository's centralized config layer 
      cr8w_coflow_checkins, cr8w_well_notes, cr8w_calendar_events,
      cr8w_invite_counts, cr8w_parking_lot.
    - Dual-write CMS: Asynchronous write-through to Notion Hub CMS (MOVES, PEOPLE, CONTENT, FLOWS). MONEY is strictly read-only.
+
 4. Voice & System Guardrails:
    - "Stale beats wrong": Always display timestamped sync status; never show a false "fresh" on fallback data.
    - Recovery Lock: 24–72h post-gathering period where analytics and retros are locked to protect space holders' somatic recovery.
@@ -94,57 +103,44 @@ DESIGN SYSTEM SPECIFICATIONS:
 *Paste this prompt into the **active chat/instruction input** in Figma Make:*
 
 ```text
-TASK: Generate the "Weekly Production & Flow Command Center" (/flows and Home integration).
+TASK: Re-architect and Generate Page Layers for FLOWS, Podyaps, and Workshops (/flows, /podyaps, /workshops).
 
-Refine the weekly operational rhythm for the CR8W team dashboard, integrating the exact Podyaps production sequence, rotating episode roles, live gear specs, and the dual Decomprocessing / Recovery Lock rhythm.
+Resolve the architecture defect where FlowCommandCenter was erroneously rendered on /workshops and stacked on top of /flows, burying community events and hiding workshop content.
 
-DESIGN REQUIREMENTS:
+ARCHITECTURAL ALIGNMENT:
 
-1. Weekly Rhythm Strip (Podyaps Production Bible Sequence):
-   - 6-Day Operational Timeline:
-     - Mon: Cohoe-lite, Topic Well drops open (anonymous or named)
-     - Tue: Prime the Pump, Omar's gear check, Pre-Wee(cording) review
-     - Wed: Topic Well synthesis by Monny, Flow Keeper's call (Topic Lock Day)
-     - Thu: Media submission deadline, Omar pre-loads media, final gear check
-     - Recording Day: The Weeecording (features the 25-minute DJI cutaway breath marker)
-     - Post: Decomprocessing (30-min same-day ritual) -> Edit -> Depanty (Distribution: clips, host, Substack)
-   - Episode Role Banner (Rotating per episode, NOT static job titles):
-     - Flow Keeper (Lead holder)
-     - Closer
-     - Benediction
-     - Tech Anchor
-     - Plus: Locked Topic badge, Recording Day & Time, and Omar's Gear Status pill
+1. Workshops Page (/workshops) — Restore True Workshop Surface:
+   - REMOVE FlowCommandCenter from WorkshopsPage.tsx.
+   - Render dedicated Workshop layout for Wellshops, Expresshops, and Playshops:
+     - Filter data.coFlowDates using canonical filter `flowType === 'Workshop'` (or theme matches).
+     - Upcoming Workshops list with date, time, facilitator (Monny/Sunshine/Bingle/Pia/Omar), capacity, and venue.
+     - Workshop Planning Notes section (from agendaItems and sessionNotes).
+     - Empty state: "Workshops, Wellshops, Expresshops, and Playshops will appear here" when no workshops are scheduled.
+     - Contextual back-link: "← All events (/flows)".
 
-2. Topic Well & Question Bank Module:
-   - Drop Card: "drop it in" CTA with an "Anonymous drop" toggle (when enabled, synthesizer Monny sees only content, no member identity).
-   - Topic Stack: Topics categorized by verified event types from config (Podyap, Open Studio, Book Club, Workshop, Pop-Up, Surprise-ment, Geyser, Internal).
-   - Decision State: Shows collective resonance ("mmm-hmm / unh-unh"), plus the Flow Keeper Override state banner:
-     "Flow Keeper's gut overrode the vote. The topic is [X]".
-   - Question Bank: Expandable community prompt selector with undercurrent depth indicators (Surface, Cultural, Somatic).
+2. Flows Hub Page (/flows) — The Canonical All-Types Event Hub:
+   - REMOVE FlowCommandCenter from the top of FlowsPage.tsx.
+   - CommunityEventsView is the sole, primary render on /flows:
+     - Tabs: Upcoming, Podyaps, Workshops & Shops, Open Studio, Team (Pop-Up / Geyser / Internal), All.
+     - Add in-tab footer links:
+       - In Podyaps tab: "Full Podyap view & preflight → /podyaps"
+       - In Workshops tab: "Full Workshops view → /workshops"
 
-3. Live Gear Card (Exact Hardware Values — No Placeholders):
-   - Rodecaster Pro: Noise Gate OFF, Compressor ON, Limiter ON at -3 dB
-   - Mics: On boom stands with pop filters, calibrated to -16 dB to -12 dB
-   - Cameras: DJI Osmo synced, battery status 100%, backup audio rolling
-   - Omar's Shortcut of the Week: Compact tip chip for rapid technical workflow
+3. Podyaps Page (/podyaps) — Listener Surface + Podyap Preflight:
+   - Primary view: Upcoming episode hero card, past episodes list, platform chips (Spotify, Apple, YouTube, Amazon, Instagram).
+   - Relocated Section: Mount FlowCommandCenter as a secondary, collapsible section titled "Podyap Preflight (Omar's Operations Room)":
+     - Weekly Rhythm Strip (Mon Cohoe-lite → Thu Media submission → The Weeecording → Decomprocessing).
+     - Episode Roles banner (Flow Keeper, Closer, Benediction, Tech Anchor).
+     - Topic Well & Question Bank (Undercurrent depth tags: Surface, Cultural, Somatic).
+     - Live Gear Specs (Rodecaster Pro II, DJI Osmo, Boom mics).
+   - Contextual back-link: "← All events (/flows)".
 
-4. The Weeecording Timeline & Dual Cooldown Handling:
-   - Recording Timeline: Explicit "25-Minute Breath" milestone marker (planned DJI cutaway executed by Omar while dialogue flows uninterrupted).
-   - Same-Day Decomprocessing Ritual: 30-minute scheduled session card led by the Flow Keeper covering "what flowed, what flooded" (feeds next Monday's pooling).
-   - Recovery Lock Banner: 24–72h post-gathering lock on analytics and retro metrics ("Space in Recovery Lock — metrics unlock in [X]h").
-
-5. Gathering Status Badges (Canonical Live Set Only):
-   - Support only active statuses from FLOW_STATUS_MAP:
-     - Upcoming: Idea, Ready, Approved, Scheduled
-     - Archived: Happened, Wrapped, Cancelled
-     (Do not include dead statuses like Planning or Confirmed).
-
-6. Provenance & Sync Status:
-   - Compact status chip in top right: Synced from Notion FLOWS with live timestamp and sync health badge (fresh / stale).
+4. Canonical Filtering Standard:
+   - Enforce single filter logic `matchesFlowType(f: CoFlowDate, type: FlowType)` preferring structured Notion `flowType` over `theme`.
 
 DELIVERABLES:
-- Desktop frame (1280px) and Mobile frame (375px) with Figma Auto Layout.
-- Strict adherence to the language table ("drop it in", "the well", "flow motion", "mmm-hmm / unh-unh", "Pleasure Dollars").
-- Component tokens mapped to Tailwind CSS classes.
-- React component skeleton for FlowCommandCenter.tsx wired to useDashboard().
+- Desktop (1280px) and Mobile (375px) frames for the corrected /workshops, /flows, and /podyaps pages.
+- Clean component separation between FlowCommandCenter (scoped to /podyaps only) and CommunityEventsView (scoped to /flows and /workshops).
+- Component tokens mapped to Tailwind CSS utility classes and design system tokens.
+- React 18 TypeScript code matching the updated page structure.
 ```

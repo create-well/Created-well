@@ -11,6 +11,16 @@ import {
 import { useThemeInit } from "./components/ThemeProvider";
 import { GCAL_CLIENT_ID, GCAL_REDIRECT_URI } from "./components/data";
 
+// ── Dev bypass (VITE_DEV_BYPASS) ────────────────────────────────────────────
+// Set in .env.local to skip the auth gate during local development.
+// Value: 'true' → monny profile; or any profile key: sunshine/bingle/omar/pia/event-support
+const _VALID_PROFILES = ['sunshine','monny','bingle','omar','pia','event-support'];
+const DEV_BYPASS_PROFILE = (() => {
+  const v = (import.meta.env.VITE_DEV_BYPASS as string | undefined) ?? '';
+  if (!v || v === 'false') return null;
+  return _VALID_PROFILES.includes(v) ? v : 'monny';
+})();
+
 
 // ── Google Calendar OAuth: capture auth code at module-eval time ──────────────
 (function captureOAuthCode() {
@@ -125,7 +135,7 @@ import { GCAL_CLIENT_ID, GCAL_REDIRECT_URI } from "./components/data";
   }
 })();
 
-// ── PWA meta tags + service worker registration ───────────────────────────────
+// ── PWA meta tags + service worker registration ─────────────────────────────────
 function usePWA() {
   useEffect(() => {
     const metaTags: { name: string; content: string }[] = [
@@ -197,11 +207,21 @@ export default function App() {
   useThemeInit();
   usePWA();
 
-  const [authed, setAuthed] = useState(() => isAuthenticated());
+  const [authed, setAuthed] = useState(
+    () => !!DEV_BYPASS_PROFILE || isAuthenticated()
+  );
   const [chatActiveUser, setChatActiveUser] = useState(() => {
+    if (DEV_BYPASS_PROFILE) return DEV_BYPASS_PROFILE;
     const p = getStoredProfile();
     return p && p !== "event-support" ? p : "monny";
   });
+
+  // Seed localStorage so downstream reads of cr8w_user_profile work in bypass mode
+  useEffect(() => {
+    if (DEV_BYPASS_PROFILE) {
+      localStorage.setItem("cr8w_user_profile", DEV_BYPASS_PROFILE);
+    }
+  }, []);
 
   function handleAuthenticated(profileKey: string) {
     setAuthed(true);

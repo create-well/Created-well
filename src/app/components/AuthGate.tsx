@@ -36,23 +36,10 @@ function client(): SupabaseClient {
   return window.__cr8w_supabase__;
 }
 
-// ── Profiles ──────────────────────────────────────────────────────────────────
-export const PROFILES = [
-  { key: 'sunshine',      emoji: '☀️', display: 'Sunshine',       role: 'Remote',          color: '#C25B38', bg: '#FFF0EB', border: '#F2B49B' },
-  { key: 'monny',         emoji: '🌊', display: 'Monica (Monny)', role: 'Open Invitation', color: '#2A6A9A', bg: '#EAF4FC', border: '#A9D6F8' },
-  { key: 'bingle',        emoji: '✨', display: 'Bingle',          role: 'In-Person',       color: '#7A5010', bg: '#FFF8EC', border: '#D4A771' },
-  { key: 'omar',          emoji: '🌟', display: 'Omar',            role: 'New Member',      color: '#5C4A9A', bg: '#F0ECFB', border: '#B8A9D4' },
-  { key: 'pia',           emoji: '🌸', display: 'Pia',             role: 'Community',       color: '#9B3A5A', bg: '#FDF0F5', border: '#E8A8C0' },
-  { key: 'event-support', emoji: '🎪', display: 'Event Support',   role: 'Day-Of',          color: '#7A4A20', bg: '#FFF5EE', border: '#E8AF93' },
-];
-
-// ── Admin / owner access ──────────────────────────────────────────────────────
-// Emails listed here receive full admin access (all panels, all controls).
-export const ADMIN_EMAILS = new Set(['mb@tablante.com']);
-
-export function isAdmin(email?: string | null): boolean {
-  return !!email && ADMIN_EMAILS.has(email.trim().toLowerCase());
-}
+// ── Profiles & Access Control (canonical source: src/config/profiles.ts) ──────
+import { PROFILES_LIST, ADMIN_EMAILS, isAdmin } from '../../config/profiles';
+export const PROFILES = PROFILES_LIST;
+export { ADMIN_EMAILS, isAdmin };
 
 export function getStoredAdmin(): boolean {
   try { return localStorage.getItem('cr8w_is_admin') === 'true'; } catch { return false; }

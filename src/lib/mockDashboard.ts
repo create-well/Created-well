@@ -1,5 +1,5 @@
 // MOCK: Placeholder data for development. Replace with live DashboardContext when connected.
-import type { DashboardPayload } from '../types/dashboard';
+import type { DashboardPayload } from '../types/dashboard.js';
 
 export const MOCK_PAYLOAD: DashboardPayload = {
   tasks: [],

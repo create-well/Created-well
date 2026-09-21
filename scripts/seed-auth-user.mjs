@@ -20,7 +20,8 @@ if (!SERVICE_ROLE_KEY) {
 }
 
 const EMAIL    = 'monny@createwell.co';
-const PASSWORD = 'createwell2026!';
+const PASSWORD = process.env.SEED_PASSWORD;
+if (!PASSWORD) throw new Error('Missing SEED_PASSWORD env var');
 const PROFILE  = 'monny';
 const NAME     = 'Monica (Monny)';
 

@@ -44,6 +44,15 @@ export const PERSONS: Record<string, Person> = {
       detail: 'Reflector: You are the rare mirror of the community. Your openness is your superpower — notice how spaces and people feel to you.'
     }
   },
+  'event-support': {
+    name: 'Event Support', fullName: 'Event Support', role: 'Day-Of · Logistics & Setup',
+    expression: 'Support / All-Hands Expression', color: '#E8AF93', emoji: '🎪', authority: 'none',
+    energyReminder: {
+      type: 'Support Check',
+      text: 'Flow in real time. Setup, space clearing, and live engagement.',
+      detail: 'Event Support: Present, grounded, and adaptive for community gatherings.'
+    }
+  },
 };
 
 export interface Person {

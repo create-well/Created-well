@@ -2,7 +2,6 @@ import React from 'react';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { CommunityEventsView } from '../components/CommunityEventsView';
-import { FlowCommandCenter } from '../components/FlowCommandCenter';
 
 export function FlowsPage() {
   const { data, actions } = useDashboard();
@@ -20,7 +19,6 @@ export function FlowsPage() {
       emptyBody="Podyaps, Book Club sessions, and Workshops from FLOWS will appear here once scheduled in Notion."
       onRetry={actions.retrySync}
     >
-      <FlowCommandCenter />
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
         <CommunityEventsView />
       </div>

@@ -318,6 +318,7 @@ export interface CoFlowDate {
   location: string;
   host?: string;
   theme?: string;
+  flowType?: string;
   rsvp: Record<string, string>;
   agendaItems: { id: number; text: string; lead: string; timeEstimate: number; done: boolean }[];
   agendaLocked?: boolean;

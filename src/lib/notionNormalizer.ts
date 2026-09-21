@@ -386,6 +386,7 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
       'TBD',
     host:         hostRaw.toLowerCase() || undefined,
     theme:        themeRaw || undefined,
+    flowType:     typeRaw || undefined,
     rsvp:         {},
     agendaItems:  [],
     agendaLocked: false,

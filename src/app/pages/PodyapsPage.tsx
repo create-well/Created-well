@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import type { CoFlowDate } from '../components/api';
+import { FlowCommandCenter } from '../components/FlowCommandCenter';
+import { isPodyap } from '../../lib/flows';
 
 const PODCAST_PLATFORMS = [
   { label: 'Spotify',        emoji: '🎵', href: 'https://open.spotify.com/show/0Tj253e1ZAE7vsKd4Tffvi',                                                                                color: '#1DB954' },
@@ -11,10 +13,6 @@ const PODCAST_PLATFORMS = [
   { label: 'Amazon Music',   emoji: '🎶', href: 'https://music.amazon.com/podcasts/e1ff7602-912c-488b-a11f-e6fb6027dbba',                                                             color: '#1AD0D3' },
   { label: 'Instagram',      emoji: '📸', href: 'https://www.instagram.com/brbcreatingwell',                                                                                          color: '#E1306C' },
 ];
-
-function isPodyap(f: CoFlowDate) {
-  return ['yapcast', 'playdate'].includes((f.theme || '').toLowerCase());
-}
 
 function daysUntil(dateStr: string): number {
   const target = new Date(dateStr + 'T00:00:00');
@@ -188,6 +186,7 @@ export function PodyapsPage() {
   const navigate = useNavigate();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showPast, setShowPast] = useState(false);
+  const [showPreflight, setShowPreflight] = useState(false);
 
   const state =
     data.syncStatus === 'loading' ? 'loading' :
@@ -217,6 +216,25 @@ export function PodyapsPage() {
 
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
+          <button
+            onClick={() => navigate('/flows')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              fontFamily: 'var(--font-label)',
+              fontSize: '0.68rem',
+              fontWeight: 600,
+              color: 'var(--text-muted, #8A7060)',
+              marginBottom: 8,
+            }}
+          >
+            ← All events (/flows)
+          </button>
           <div style={{
             fontFamily: 'var(--font-label)', fontSize: '0.62rem', fontWeight: 700,
             textTransform: 'uppercase', letterSpacing: '0.1em',
@@ -236,6 +254,64 @@ export function PodyapsPage() {
           }}>
             Yapcasts · Playdates · recording sessions
           </p>
+        </div>
+
+        {/* Podyap Preflight (Omar's Operations Room) */}
+        <div style={{ marginBottom: 24 }}>
+          <button
+            onClick={() => setShowPreflight(v => !v)}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              borderRadius: 14,
+              border: showPreflight
+                ? '1.5px solid #C25B38'
+                : '1px solid var(--border-soft, rgba(196,164,132,0.25))',
+              background: showPreflight
+                ? 'rgba(194,91,56,0.06)'
+                : 'var(--cr8w-card-bg, #F4F1ED)',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: '1.2rem' }}>⚡</span>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  color: showPreflight ? '#C25B38' : 'var(--cr8w-text, #2D2438)',
+                }}>
+                  Podyap Preflight (Omar's Operations Room)
+                </div>
+                <div style={{
+                  fontFamily: 'var(--font-label)',
+                  fontSize: '0.65rem',
+                  color: 'var(--text-muted)',
+                }}>
+                  Rhythm strip · Episode roles · Live gear · Weeecording timeline
+                </div>
+              </div>
+            </div>
+            <span style={{
+              fontFamily: 'var(--font-label)',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              color: showPreflight ? '#C25B38' : 'var(--text-muted)',
+            }}>
+              {showPreflight ? 'Collapse ▲' : 'Open ▼'}
+            </span>
+          </button>
+
+          {showPreflight && (
+            <div style={{ marginTop: 16 }}>
+              <FlowCommandCenter />
+            </div>
+          )}
         </div>
 
         {/* Next podyap hero — only if upcoming */}

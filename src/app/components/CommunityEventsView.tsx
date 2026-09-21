@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useDashboard } from '../../contexts/DashboardContext';
 import {
-  PERSONS, TASK_ROLES, COMMUNITY_EVENT_TYPES, HD_PROFILES,
+  PERSONS, TASK_ROLES, HD_PROFILES,
   getDaysToNextEvent, formatDate,
 } from './data';
 import type { CoFlowDate, Task } from './api';
+import {
+  isPodyap,
+  isWorkshop,
+  isBookClub,
+  isGroupEvent,
+  isCommunityFlow,
+} from '../../lib/flows';
 
 type Tab = 'upcoming' | 'podyaps' | 'workshops' | 'moves' | 'team';
 
@@ -15,21 +23,6 @@ const TABS: { key: Tab; label: string; emoji: string }[] = [
   { key: 'moves',      label: 'Moves',               emoji: '📋' },
   { key: 'team',       label: 'Team',                emoji: '✨' },
 ];
-
-function isCommunityFlow(f: CoFlowDate) {
-  const theme = (f.theme || '').toLowerCase();
-  return COMMUNITY_EVENT_TYPES.some(t => t.toLowerCase() === theme);
-}
-
-function isPodyap(f: CoFlowDate) {
-  const theme = (f.theme || '').toLowerCase();
-  return ['yapcast', 'playdate'].includes(theme);
-}
-
-function isGroupEvent(f: CoFlowDate) {
-  const theme = (f.theme || '').toLowerCase();
-  return ['workshop', 'book club'].includes(theme);
-}
 
 const FLOW_ARCHIVED = new Set(['happened', 'wrapped', 'cancelled']);
 const FLOW_STATUS_LABELS: Record<string, string> = {
@@ -193,6 +186,7 @@ function UpcomingTab({ flows }: { flows: CoFlowDate[] }) {
 // ── Podyaps tab ───────────────────────────────────────────────────────────────
 
 function PodyapsTab({ flows }: { flows: CoFlowDate[] }) {
+  const navigate = useNavigate();
   if (!flows.length) return (
     <EmptyState emoji="🎙️" title="No Podyaps yet" body="Yapcasts and Playdates from FLOWS will appear here. Add a FLOW in Notion with Type = Yapcast or Playdate." />
   );
@@ -215,6 +209,18 @@ function PodyapsTab({ flows }: { flows: CoFlowDate[] }) {
           {past.map(f => <FlowCard key={f.id} flow={f} />)}
         </>
       )}
+      <div style={{ marginTop: 8, paddingTop: 10, borderTop: '1px solid rgba(0,0,0,0.06)', textAlign: 'center' }}>
+        <button
+          onClick={() => navigate('/podyaps')}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600,
+            color: '#7B5FD4', textTransform: 'uppercase', letterSpacing: '0.04em',
+          }}
+        >
+          Full Podyap view &amp; preflight →
+        </button>
+      </div>
     </div>
   );
 }
@@ -222,9 +228,10 @@ function PodyapsTab({ flows }: { flows: CoFlowDate[] }) {
 // ── Workshops tab ─────────────────────────────────────────────────────────────
 
 function WorkshopsTab({ flows }: { flows: CoFlowDate[] }) {
+  const navigate = useNavigate();
   const [sub, setSub] = useState<'book-club' | 'workshops'>('workshops');
-  const bookClub  = flows.filter(f => (f.theme || '').toLowerCase() === 'book club');
-  const workshops = flows.filter(f => (f.theme || '').toLowerCase() === 'workshop');
+  const bookClub  = flows.filter(isBookClub);
+  const workshops = flows.filter(isWorkshop);
   const shown = sub === 'book-club' ? bookClub : workshops;
 
   return (
@@ -271,6 +278,18 @@ function WorkshopsTab({ flows }: { flows: CoFlowDate[] }) {
           {shown.sort((a, b) => b.date.localeCompare(a.date)).map(f => <FlowCard key={f.id} flow={f} />)}
         </div>
       )}
+      <div style={{ marginTop: 8, paddingTop: 10, borderTop: '1px solid rgba(0,0,0,0.06)', textAlign: 'center' }}>
+        <button
+          onClick={() => navigate('/workshops')}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600,
+            color: 'var(--cr8w-primary, #7BA89D)', textTransform: 'uppercase', letterSpacing: '0.04em',
+          }}
+        >
+          Full Workshops view →
+        </button>
+      </div>
     </div>
   );
 }
@@ -470,9 +489,9 @@ function TeamTab() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function CommunityEventsView() {
+export function CommunityEventsView({ defaultTab = 'upcoming' }: { defaultTab?: Tab } = {}) {
   const { data } = useDashboard();
-  const [activeTab, setActiveTab] = useState<Tab>('upcoming');
+  const [activeTab, setActiveTab] = useState<Tab>(defaultTab);
 
   const allFlows = data.coFlowDates ?? [];
   const communityFlows = allFlows.filter(isCommunityFlow);

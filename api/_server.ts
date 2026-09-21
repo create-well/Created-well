@@ -315,8 +315,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ── Calendar iCal Sync (Zero-OAuth shared team feed) ─────────────────────
     if (resource === 'calendar-ical-sync' && (method === 'POST' || method === 'GET')) {
       const b = await body(req).catch(() => ({}));
-      const icalUrl = b.url || process.env.CR8W_ICAL_URL;
-      if (!icalUrl) { res.status(400).json({ error: 'CR8W_ICAL_URL not configured.' }); return; }
+      const icalUrl = b.url || process.env.CR8W_ICAL_URL || process.env.GCAL_CREATEWELL_ICS_URL;
+      if (!icalUrl) { res.status(400).json({ error: 'iCal feed not configured (set GCAL_CREATEWELL_ICS_URL).' }); return; }
 
       try {
         const icalRes = await fetch(icalUrl);

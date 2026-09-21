@@ -37,3 +37,7 @@ pnpm-workspace.yaml
 .vercel
 dist
 .env*
+
+# Allow example env files
+!.env*.example
+!.env.local.example

@@ -22,14 +22,9 @@ async function sha256hex(text: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// ── Profiles ──────────────────────────────────────────────────────────────────
-export const PROFILES = [
-  { key: 'sunshine',      emoji: '☀️', display: 'Sunshine',      role: 'Remote',           desc: 'Advance building · Content · Sponsor comms',      color: '#C25B38', bg: '#FFF0EB', border: '#F2B49B' },
-  { key: 'monny',         emoji: '🌊', display: 'Monica (Monny)', role: 'Open Invitation',  desc: 'Outreach · Systems · Bridge building',             color: '#2A6A9A', bg: '#EAF4FC', border: '#A9D6F8' },
-  { key: 'bingle',        emoji: '✨', display: 'Bingle',         role: 'In-Person',         desc: 'Space-holding · Community · Workshops',            color: '#7A5010', bg: '#FFF8EC', border: '#D4A771' },
-  { key: 'omar',          emoji: '🌟', display: 'Omar',           role: 'New Member',        desc: 'Community · Creative collaboration · Fresh energy', color: '#5C4A9A', bg: '#F0ECFB', border: '#B8A9D4' },
-  { key: 'event-support', emoji: '🎪', display: 'Event Support',  role: 'Day-Of',            desc: 'Setup · Cleanup · Engagement',                    color: '#7A4A20', bg: '#FFF5EE', border: '#E8AF93' },
-];
+// ── Profiles (canonical source: src/config/profiles.ts) ──────────────────────
+import { PROFILES_LIST } from '../../config/profiles';
+export const PROFILES = PROFILES_LIST;
 
 // ── Auth state helpers ────────────────────────────────────────────────────────
 export function isAuthenticated(): boolean {

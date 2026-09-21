@@ -14,6 +14,7 @@
 
 import type { Task, Station, ForumPost, CoFlowDate, RevenueItem } from '../src/app/components/api.js';
 import { NOTION_DB_ENV } from './_notionConfig.js';
+import { assertNotionIdNotBlocked } from '../src/config/notion.js';
 
 const NOTION_API     = 'https://api.notion.com/v1';
 const NOTION_VERSION = '2022-06-28';
@@ -121,6 +122,7 @@ export async function notionCreate(
   databaseId: string,
   properties: Record<string, unknown>,
 ): Promise<string> {
+  assertNotionIdNotBlocked(databaseId, 'notionCreate');
   const { id } = await notionFetch<{ id: string }>('POST', '/pages', {
     parent: { database_id: databaseId },
     properties,

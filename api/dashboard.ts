@@ -31,10 +31,11 @@ import {
 } from '../src/lib/notionNormalizer.js';
 import type { SyncData } from '../src/app/components/api.js';
 import { getNotionConfig } from './_notionConfig.js';
+import { KV_TABLE, SYNC_POLICY } from '../src/config/sync.js';
 
 // ── Supabase KV helpers ───────────────────────────────────────────────────────
 
-const KV_TABLE = 'kv_store_dabe1c74';
+// KV_TABLE imported from config/sync.js
 
 function supabaseClient() {
   const url = process.env.SUPABASE_URL;
@@ -108,7 +109,7 @@ interface CacheEntry {
 }
 
 let cache: CacheEntry | null = null;
-const PROCESS_CACHE_TTL = 55_000; // slightly under CDN 60s
+const PROCESS_CACHE_TTL = SYNC_POLICY.CACHE_TTL_MS; // slightly under CDN 60s
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 

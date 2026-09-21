@@ -156,12 +156,16 @@ const TASK_PRIORITY_MAP: Record<string, Task['priority']> = {
   'low':    'low',
 };
 
-// FLOWS Status values (Create Well OS canonical): Scheduled, Planning, Confirmed, Wrapped, Cancelled
+// FLOWS Status values (Create Well OS canonical): Scheduled, Planning, Confirmed, Wrapped, Cancelled, Idea, Ready, Approved, Happened
 const FLOW_STATUS_MAP: Record<string, CoFlowDate['status']> = {
   // Create Well FLOWS canonical values
+  'idea':       'upcoming',
+  'ready':      'upcoming',
+  'approved':   'upcoming',
   'scheduled':  'upcoming',
   'planning':   'upcoming',
   'confirmed':  'upcoming',
+  'happened':   'archived',
   'wrapped':    'archived',
   'cancelled':  'archived',
   'canceled':   'archived',
@@ -374,59 +378,75 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
 
 // ── MONEY → RevenueItem ──────────────────────────────────────────────────────
 // Canonical MONEY schema (Create Well OS):
-//   Name     : Title (Opportunity / Sponsor / Item name)
-//   Amount   : Number (Currency value)
-//   Type     : Select (Sponsorship / Workshop / Open Studio / Geyser / Grant)
-//   Status   : Select (Projected / Committed / Cleared / Invoiced / Wrapped)
-//   Date     : Date (Transaction or commitment date)
-//   Flow     : Relation → FLOWS (associated gathering or program)
-//   Closer   : Relation → PEOPLE (lead holder)
-//   Notes    : Rich Text
+//   Name          : Title (Opportunity / Sponsor / Item name)
+//   Stage         : Select (Possible / Committed / Invoiced / Received / Paid)
+//   Kind          : Select (Sponsorship / Ticket / Workshop Fee / Facilitator Pay / Venue / Production)
+//   Direction     : Select (In / Out)
+//   Amount        : Number (Currency value)
+//   Expected      : Date (Target / expected date)
+//   Actual        : Date (Received / transaction date)
+//   Doc           : URL (Invoice / contract / receipt link)
+//   Flow          : Relation → FLOWS (associated gathering or program)
+//   Person or Org : Relation → PEOPLE (counterparty)
+//   Owner         : Relation → PEOPLE (lead holder)
+//   Notes         : Rich Text
 
 export function normalizeMoney(page: NotionPage): RevenueItem {
   const p = page.properties;
 
-  const rawType = getSelect(pick(p, 'Type', 'Category', 'Stream')).toLowerCase();
-  const rawStatus = getSelect(pick(p, 'Status', 'State', 'Payment Status')).toLowerCase();
+  const rawKind = getSelect(pick(p, 'Kind', 'Type', 'Category', 'Stream')).toLowerCase();
+  const rawStage = getSelect(pick(p, 'Stage', 'Status', 'State', 'Payment Status')).toLowerCase();
 
   const TYPE_MAP: Record<string, RevenueItem['type']> = {
-    sponsorship: 'sponsorship',
-    sponsor: 'sponsorship',
-    workshop: 'workshop',
-    'open studio': 'open_studio',
-    open_studio: 'open_studio',
-    geyser: 'geyser',
-    grant: 'grant',
+    sponsorship:       'sponsorship',
+    sponsor:           'sponsorship',
+    ticket:            'open_studio',
+    'open studio':     'open_studio',
+    open_studio:       'open_studio',
+    'workshop fee':    'workshop',
+    workshop:          'workshop',
+    geyser:            'geyser',
+    grant:             'grant',
+    'facilitator pay': 'other',
+    venue:             'other',
+    production:        'other',
   };
 
   const STATUS_MAP: Record<string, RevenueItem['status']> = {
+    possible:  'projected',
     projected: 'projected',
     committed: 'committed',
-    cleared: 'cleared',
-    paid: 'cleared',
-    invoiced: 'invoiced',
-    wrapped: 'wrapped',
+    invoiced:  'invoiced',
+    received:  'cleared',
+    paid:      'cleared',
+    cleared:   'cleared',
+    wrapped:   'wrapped',
   };
 
-  const closerRelationId = getRelationFirstId(pick(p, 'Closer', 'Lead', 'Owner'));
+  const closerRelationId = getRelationFirstId(pick(p, 'Person or Org', 'Owner', 'Closer', 'Lead'));
   const closerText =
-    getPeople(pick(p, 'Closer', 'Lead', 'Owner')) ||
-    getSelect(pick(p, 'Closer', 'Lead', 'Owner'));
+    getPeople(pick(p, 'Person or Org', 'Owner', 'Closer', 'Lead')) ||
+    getSelect(pick(p, 'Person or Org', 'Owner', 'Closer', 'Lead'));
 
   const flowRelationId = getRelationFirstId(pick(p, 'Flow', 'Gathering', 'Event'));
+  const dateStr = getDate(pick(p, 'Actual', 'Expected', 'Date', 'Due Date', 'Cleared Date'));
+  const docUrl = getUrl(pick(p, 'Doc', 'URL', 'Link'));
+  const rawNotes = getText(pick(p, 'Notes', 'Description'));
+  const direction = getSelect(pick(p, 'Direction'));
+  const combinedNotes = [direction ? '[' + direction + ']' : '', rawNotes, docUrl ? 'Doc: ' + docUrl : ''].filter(Boolean).join(' | ');
 
   return {
-    id: stableId(page.id),
+    id:           stableId(page.id),
     notionPageId: page.id,
-    title: getText(pick(p, 'Name', 'Title', 'Item')) || 'Untitled Stream',
-    amount: (pick(p, 'Amount', 'Value', 'Total') as NPropNumber)?.number ?? 0,
-    type: TYPE_MAP[rawType] ?? 'other',
-    status: STATUS_MAP[rawStatus] ?? 'projected',
-    date: getDate(pick(p, 'Date', 'Due Date', 'Cleared Date')) || undefined,
-    flowId: flowRelationId || undefined,
-    closer: (closerText || closerRelationId).toLowerCase() || undefined,
-    notes: getText(pick(p, 'Notes', 'Description')) || undefined,
-    created_at: page.created_time,
+    title:        getText(pick(p, 'Name', 'Title', 'Item')) || 'Untitled Stream',
+    amount:       (pick(p, 'Amount', 'Value', 'Total') as NPropNumber)?.number ?? 0,
+    type:         TYPE_MAP[rawKind] ?? 'other',
+    status:       STATUS_MAP[rawStage] ?? 'projected',
+    date:         dateStr || undefined,
+    flowId:       flowRelationId || undefined,
+    closer:       (closerText || closerRelationId).toLowerCase() || undefined,
+    notes:        combinedNotes || undefined,
+    created_at:   page.created_time,
   };
 }
 

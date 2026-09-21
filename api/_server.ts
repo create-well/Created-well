@@ -183,7 +183,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'cr8w_braindumps', 'cr8w_announcements', 'cr8w_forum_replies',
         'cr8w_workshops', 'cr8w_workshop_programs', 'cr8w_workshop_resources',
         'cr8w_coflow_dates', 'cr8w_coflow_checkins', 'cr8w_well_notes',
-        'cr8w_calendar_events', 'cr8w_money',
+        'cr8w_calendar_events', 'cr8w_money', 'cr8w_parking_lot', 'cr8w_braindumps',
       ];
       const sb = supabase();
       const { data, error } = await sb.from(TABLE).select('key,value').in('key', SYNC_KEYS);
@@ -312,8 +312,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ── Calendar iCal Sync (Zero-OAuth shared team feed) ─────────────────────
     if (resource === 'calendar-ical-sync' && (method === 'POST' || method === 'GET')) {
       const b = await body(req).catch(() => ({}));
-      const DEFAULT_TEAM_ICAL = 'https://calendar.google.com/calendar/ical/mb%40tablante.com/private-91a14bbdbb0a5032f1b1860f2204a6c5/basic.ics';
-      const icalUrl = b.url || process.env.CR8W_ICAL_URL || DEFAULT_TEAM_ICAL;
+      const icalUrl = b.url || process.env.CR8W_ICAL_URL;
+      if (!icalUrl) { res.status(400).json({ error: 'CR8W_ICAL_URL not configured.' }); return; }
 
       try {
         const icalRes = await fetch(icalUrl);
@@ -494,6 +494,140 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       map[key] = email.trim().toLowerCase();
       await kvSet('cr8w_username_map', JSON.stringify(map));
       res.json({ ok: true });
+      return;
+    }
+
+    // ── Canva OAuth ── DEV ONLY ──────────────────────────────────────────────
+    // main branch (dash.cr8w.com) keeps these dark until stable.
+    // Set CANVA_ENABLED=true in Vercel Preview env ONLY — never in production.
+    if (resource === 'canva') {
+      if (process.env.CANVA_ENABLED !== 'true') {
+        res.status(503).json({ error: 'Canva integration not enabled on this environment.' });
+        return;
+      }
+
+      const CLIENT_ID     = process.env.CANVA_CLIENT_ID!;
+      const CLIENT_SECRET = process.env.CANVA_CLIENT_SECRET!;
+      const REDIRECT_URI  = process.env.CANVA_REDIRECT_URI
+        ?? 'https://dash.cr8w.com/api/server/canva/callback';
+      const sb = supabase();
+
+      // GET /canva/auth — initiate PKCE flow, write state to canva_oauth_states
+      if (id === 'auth' && method === 'GET') {
+        const state          = crypto.randomUUID();
+        const code_verifier  = crypto.randomUUID().replace(/-/g,'')
+                             + crypto.randomUUID().replace(/-/g,'');
+        const redirect_after = (req.query.redirect_after as string) ?? '/';
+        const expires_at     = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+        await sb.from('canva_oauth_states')
+          .insert({ state, code_verifier, redirect_after, expires_at });
+
+        const enc       = new TextEncoder();
+        const hash      = await crypto.subtle.digest('SHA-256', enc.encode(code_verifier));
+        const b64       = btoa(String.fromCharCode(...new Uint8Array(hash)));
+        const challenge = b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+
+        const params = new URLSearchParams({
+          response_type: 'code',
+          client_id: CLIENT_ID,
+          redirect_uri: REDIRECT_URI,
+          state,
+          scope: 'design:content:read design:meta:read asset:read profile:read',
+          code_challenge: challenge,
+          code_challenge_method: 'S256',
+        });
+        res.redirect(302, `https://www.canva.com/api/oauth/authorize?${params}`);
+        return;
+      }
+
+      // GET /canva/callback — exchange code for tokens, write to canva_connections with user_id
+      if (id === 'callback' && method === 'GET') {
+        const { code, state, error: oErr } = req.query as Record<string, string>;
+        if (oErr)            { res.redirect(302, `/?error=canva_${oErr}`); return; }
+        if (!code || !state) { res.status(400).json({ error: 'Missing code or state.' }); return; }
+
+        const { data: row } = await sb.from('canva_oauth_states')
+          .select('*').eq('state', state).maybeSingle();
+        if (!row) { res.status(400).json({ error: 'Invalid or expired state.' }); return; }
+        await sb.from('canva_oauth_states').delete().eq('state', state);
+        if (new Date(row.expires_at) < new Date()) {
+          res.status(400).json({ error: 'State expired.' }); return;
+        }
+
+        const tokenRes = await fetch('https://api.canva.com/rest/v1/oauth/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: REDIRECT_URI,
+            client_id: CLIENT_ID,
+            client_secret: CLIENT_SECRET,
+            code_verifier: row.code_verifier,
+          }).toString(),
+        });
+        const token = await tokenRes.json();
+        if (!token.access_token) {
+          res.status(400).json({ error: token.error ?? 'Token exchange failed.' }); return;
+        }
+
+        const profile = await (await fetch('https://api.canva.com/rest/v1/users/me', {
+          headers: { Authorization: `Bearer ${token.access_token}` },
+        })).json();
+        const canva_user_id = profile?.user?.id ?? null;
+
+        const jwt = (req.headers.authorization ?? '').replace('Bearer ', '') || null;
+        let user_id: string | null = null;
+        if (jwt) {
+          const { data: { user } } = await sb.auth.getUser(jwt);
+          if (user) user_id = user.id;
+        }
+
+        const expires_at = new Date(
+          Date.now() + (token.expires_in ?? 3600) * 1000
+        ).toISOString();
+
+        await sb.from('canva_connections').upsert({
+          ...(user_id ? { user_id } : {}),
+          canva_user_id,
+          access_token: token.access_token,
+          refresh_token: token.refresh_token ?? '',
+          scope: token.scope ?? '',
+          token_type: token.token_type ?? 'Bearer',
+          expires_at,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: user_id ? 'user_id' : 'canva_user_id' });
+
+        res.redirect(302, row.redirect_after ?? '/');
+        return;
+      }
+
+      // GET /canva/status — check connection for current user
+      if (id === 'status' && method === 'GET') {
+        const jwt = (req.headers.authorization ?? '').replace('Bearer ', '') || null;
+        if (!jwt) { res.json({ connected: false }); return; }
+        const { data: { user } } = await sb.auth.getUser(jwt);
+        if (!user) { res.json({ connected: false }); return; }
+        const { data: conn } = await sb.from('canva_connections')
+          .select('canva_user_id, expires_at, scope')
+          .eq('user_id', user.id).maybeSingle();
+        if (!conn) { res.json({ connected: false }); return; }
+        res.json({ connected: new Date(conn.expires_at) > new Date(), ...conn });
+        return;
+      }
+
+      // POST /canva/disconnect
+      if (id === 'disconnect' && method === 'POST') {
+        const jwt = (req.headers.authorization ?? '').replace('Bearer ', '') || null;
+        if (!jwt) { res.status(401).json({ error: 'Unauthorized.' }); return; }
+        const { data: { user } } = await sb.auth.getUser(jwt);
+        if (!user) { res.status(401).json({ error: 'Invalid session.' }); return; }
+        await sb.from('canva_connections').delete().eq('user_id', user.id);
+        res.json({ ok: true }); return;
+      }
+
+      res.status(404).json({ error: `Unknown Canva route: ${id}` });
       return;
     }
 

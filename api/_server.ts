@@ -14,6 +14,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './_notionWriter.js';
+import { getNotionConfig } from './_notionConfig.js';
+import { KV_TABLE, KV_KEYS } from '../src/config/sync.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 function supabase() {
@@ -23,7 +25,7 @@ function supabase() {
   return createClient(url, key);
 }
 
-const TABLE = 'kv_store_dabe1c74';
+const TABLE = KV_TABLE;
 
 // ── KV helpers ────────────────────────────────────────────────────────────────
 async function kvGet(key: string): Promise<any> {
@@ -183,7 +185,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'cr8w_braindumps', 'cr8w_announcements', 'cr8w_forum_replies',
         'cr8w_workshops', 'cr8w_workshop_programs', 'cr8w_workshop_resources',
         'cr8w_coflow_dates', 'cr8w_coflow_checkins', 'cr8w_well_notes',
-        'cr8w_calendar_events', 'cr8w_money', 'cr8w_parking_lot', 'cr8w_braindumps',
+        'cr8w_calendar_events', 'cr8w_money', 'cr8w_parking_lot',
       ];
       const sb = supabase();
       const { data, error } = await sb.from(TABLE).select('key,value').in('key', SYNC_KEYS);
@@ -206,6 +208,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         wellNotes: map['cr8w_well_notes'] ?? [],
         calendarEvents: map['cr8w_calendar_events'] ?? [],
         money: map['cr8w_money'] ?? [],
+        parkingLot: map['cr8w_parking_lot'] ?? [],
       });
       return;
     }
@@ -381,10 +384,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }> {
       const cfg = NOTION_RESOURCES[resource];
       if (!cfg) return { state: 'skipped', message: 'Resource not Notion-backed' };
-      const dbId = process.env[cfg.dbIdEnvVar];
-      if (!dbId || !process.env.NOTION_SECRET) {
-        return { state: 'skipped', message: 'Notion integration token or database ID missing (local only)' };
-      }
+
       const dbMap: Record<string, string> = {
         tasks: 'MOVES',
         stations: 'PEOPLE',
@@ -393,6 +393,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         money: 'MONEY',
       };
       const db = dbMap[resource];
+
+      // Enforce write policy: MONEY is read-only in Phase 1
+      if (db === 'MONEY') {
+        return { state: 'skipped', db, message: 'MONEY is read-only (Phase 2)' };
+      }
+
+      const { databaseIds, secret } = getNotionConfig();
+      const dbId = process.env[cfg.dbIdEnvVar] || databaseIds[resource as keyof typeof databaseIds];
+      if (!dbId || !secret) {
+        return { state: 'skipped', message: 'Notion integration token or database ID missing (local only)' };
+      }
 
       try {
         if (action === 'create' && item) {

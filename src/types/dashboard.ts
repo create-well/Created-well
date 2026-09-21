@@ -1,13 +1,13 @@
 import type {
   Task, Station, ForumPost, ForumReply, Message, BrainDump,
   Announcement, Workshop, WorkshopProgram, WorkshopResource,
-  CoFlowDate, CoFlowCheckin, WellNote,
+  CoFlowDate, CoFlowCheckin, WellNote, RevenueItem, ParkingLotItem,
 } from '../app/components/api';
 
 export type {
   Task, Station, ForumPost, ForumReply, Message, BrainDump,
   Announcement, Workshop, WorkshopProgram, WorkshopResource,
-  CoFlowDate, CoFlowCheckin, WellNote,
+  CoFlowDate, CoFlowCheckin, WellNote, RevenueItem, ParkingLotItem,
 };
 
 export type SyncStatus = 'loading' | 'fresh' | 'stale' | 'failed';
@@ -30,6 +30,8 @@ export interface DashboardPayload {
   coFlowDates: CoFlowDate[];
   coFlowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
+  money: RevenueItem[];
+  parkingLot?: ParkingLotItem[];
   syncStatus: SyncStatus;
   lastSynced: Date | null;
   permissions: DashboardPermissions;

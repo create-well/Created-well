@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
-import { SyncStatusBadge } from '../components/SyncStatusBadge';
-import * as api from '../components/api';
 
 interface MoneyEntry {
   id: string;
@@ -11,7 +9,6 @@ interface MoneyEntry {
   date: string;
   category: 'revenue' | 'expense';
   verified: boolean;
-  notionPageId?: string;
 }
 
 function EmptySection({ label }: { label: string }) {
@@ -106,11 +103,8 @@ function MoneySection({
                 <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: 'var(--cr8w-text, #2D2438)' }}>
                   {entry.label}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                  <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted, #6B5F7A)' }}>
-                    {new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </span>
-                  {entry.notionPageId && <SyncStatusBadge notionPageId={entry.notionPageId} />}
+                <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted, #6B5F7A)', marginTop: 1 }}>
+                  {new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </div>
               </div>
               <span style={{
@@ -212,7 +206,7 @@ function MoneySection({
 
 export function MoneyPage() {
   const { data } = useDashboard();
-  const [localEntries, setLocalEntries] = useState<MoneyEntry[]>([]);
+  const [entries, setEntries] = useState<MoneyEntry[]>([]);
   const [nextMove, setNextMove] = useState('');
   const [editingNextMove, setEditingNextMove] = useState(false);
 
@@ -220,45 +214,12 @@ export function MoneyPage() {
     data.syncStatus === 'loading' ? 'loading' :
     data.syncStatus === 'failed' ? 'failed' : 'fresh';
 
-  // Synced revenue streams from Notion / backend
-  const syncedRevenue: MoneyEntry[] = (data.money || []).map(m => ({
-    id: `notion-${m.id}`,
-    label: m.title,
-    amount: m.amount,
-    date: m.date || new Date(m.created_at || Date.now()).toISOString().split('T')[0],
-    category: 'revenue',
-    verified: true,
-    notionPageId: m.notionPageId,
-  }));
-
-  const entries = [
-    ...syncedRevenue,
-    ...localEntries.filter(l => !syncedRevenue.some(s => s.notionPageId && s.notionPageId === l.notionPageId)),
-  ];
-
   const revenue = entries.filter(e => e.category === 'revenue');
   const expenses = entries.filter(e => e.category === 'expense');
   const net = revenue.reduce((s, e) => s + e.amount, 0) - expenses.reduce((s, e) => s + e.amount, 0);
 
-  async function addEntry(entry: Omit<MoneyEntry, 'id' | 'verified'>) {
-    const tempId = String(Date.now());
-    setLocalEntries(prev => [...prev, { ...entry, id: tempId, verified: true }]);
-    if (entry.category === 'revenue') {
-      try {
-        const created = await api.createMoney({
-          title: entry.label,
-          amount: entry.amount,
-          date: entry.date,
-          type: 'other',
-          status: 'cleared',
-        });
-        if (created.notionPageId) {
-          setLocalEntries(prev => prev.map(e => e.id === tempId ? { ...e, notionPageId: created.notionPageId } : e));
-        }
-      } catch (err) {
-        console.error('Dual-write createMoney error:', err);
-      }
-    }
+  function addEntry(entry: Omit<MoneyEntry, 'id' | 'verified'>) {
+    setEntries(prev => [...prev, { ...entry, id: String(Date.now()), verified: true }]);
   }
 
   return (

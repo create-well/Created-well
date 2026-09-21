@@ -3,12 +3,12 @@ import type { WellNote } from './api';
 import { showToast } from './Toast';
 
 const SEED_NOTES = [
-  "you don’t have to finish it today. you just have to touch it.",
-  "the project you keep avoiding? it’s not resistance. it’s respect. you know it deserves your full attention.",
+  "you don\u2019t have to finish it today. you just have to touch it.",
+  "the project you keep avoiding? it\u2019s not resistance. it\u2019s respect. you know it deserves your full attention.",
   "rest is not the reward for creating. rest is the soil.",
-  "your creative block isn’t a wall. it’s a door you haven’t found the handle for yet.",
-  "somebody in this community is doing the exact thing you’re scared to start. reach out.",
-  "the version of you that stopped creating didn’t die. they’re just sleeping. wake them up gently.",
+  "your creative block isn\u2019t a wall. it\u2019s a door you haven\u2019t found the handle for yet.",
+  "somebody in this community is doing the exact thing you\u2019re scared to start. reach out.",
+  "the version of you that stopped creating didn\u2019t die. they\u2019re just sleeping. wake them up gently.",
   "you are not behind.",
   "what if the mess IS the masterpiece right now?",
   "creating is not content. creating is conversation.",
@@ -54,13 +54,13 @@ export function NotesFromTheWell({ wellNotes, onAddNote, onLandNote }: Props) {
     setInput('');
     setSubmitted(true);
     setTimeout(() => setSubmitted(false), 3500);
-    showToast('💧 it’s in the well now.', 'well');
+    showToast('\uD83D\uDCA7 it\u2019s in the well now.', 'well');
   }
 
   function handleLanded() {
     if (currentNote.id > 0) onLandNote(currentNote.id);
     setLocalLanded(true);
-    showToast('🌱 +1', 'well');
+    showToast('\uD83C\uDF31 +1', 'well');
   }
 
   return (
@@ -135,7 +135,7 @@ export function NotesFromTheWell({ wellNotes, onAddNote, onLandNote }: Props) {
               textAlign: 'center',
               padding: '6px 0',
             }}>
-              it's in the well now. someone will find it when they need it. 💧
+              it's in the well now. someone will find it when they need it. \uD83D\uDCA7
             </div>
           ) : (
             <button
@@ -156,7 +156,7 @@ export function NotesFromTheWell({ wellNotes, onAddNote, onLandNote }: Props) {
                 transition: 'all 0.15s',
                 letterSpacing: '0.03em',
               }}
-            >drop it in 💧</button>
+            >drop it in \uD83D\uDCA7</button>
           )}
         </div>
 
@@ -203,7 +203,7 @@ export function NotesFromTheWell({ wellNotes, onAddNote, onLandNote }: Props) {
                 cursor: localLanded ? 'default' : 'pointer',
                 transition: 'all 0.15s',
               }}
-            >{localLanded ? '✅ landed' : '🌱 this landed'}</button>
+            >{localLanded ? '\u2705 landed' : '\uD83C\uDF31 this landed'}</button>
             {/* Landed count — community resonance indicator */}
             {(() => {
               const landedCount = (currentNote?.landed || 0) + (localLanded && currentNote?.id && currentNote.id < 0 ? 0 : localLanded ? 1 : 0);

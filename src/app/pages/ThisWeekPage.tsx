@@ -8,7 +8,9 @@ import { AddTaskModal } from '../components/AddTaskModal';
 const VIEW_ROUTE_MAP: Record<string, string> = {
   hub: '/',
   geyser: '/moves',
-  workshops: '/flows',
+  'community-events': '/flows',
+  podyaps: '/podyaps',
+  workshops: '/workshops',
   coflow: '/care',
   playground: '/',
 };
@@ -23,7 +25,7 @@ export function ThisWeekPage() {
     data.syncStatus === 'failed' ? 'failed' : 'fresh';
 
   function handleNavigate(view: string) {
-    if (view === 'geyser' || view === 'moves') {
+    if (view === 'geyser' || view === 'moves' || view === 'community-events') {
       ui.setMovesDefaultTab('overview');
     }
     navigate(VIEW_ROUTE_MAP[view] ?? '/');

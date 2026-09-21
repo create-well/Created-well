@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Plus, X, Users, Calendar, MapPin, ExternalLink, FileText, Video, StickyNote, BookOpen, ChevronDown, ChevronUp, Trash2, GripVertical, Tag, RefreshCw, Unlink, Edit3, Clock, Check } from 'lucide-react';
-import { PERSONS, GCAL_CLIENT_ID } from './data';
+import { PERSONS, GCAL_CLIENT_ID, GCAL_REDIRECT_URI } from './data';
 import type { Workshop, WorkshopProgram, WorkshopResource, CalendarEventKV } from './api';
 import { getSetting, setSetting, getCalendarEvents } from './api';
 
@@ -1600,7 +1600,7 @@ function CalendarSection({ workshops }: { workshops: Workshop[] }) {
 
   // ── Connect Google Calendar ──────────────────────────────────────────────
   async function connectGcal() {
-    const REDIRECT_URI = window.location.origin;
+    const REDIRECT_URI = GCAL_REDIRECT_URI;
     const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = await generateCodeChallenge(codeVerifier);

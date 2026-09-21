@@ -22,9 +22,15 @@ async function sha256hex(text: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// ── Profiles (canonical source: src/config/profiles.ts) ──────────────────────
-import { PROFILES_LIST } from '../../config/profiles';
-export const PROFILES = PROFILES_LIST;
+// ── Profiles ──────────────────────────────────────────────────────────────────
+export const PROFILES = [
+  { key: 'sunshine',      emoji: '☀️', display: 'Sunshine',      role: 'Remote',           desc: 'Advance building · Content · Sponsor comms',      color: '#C25B38', bg: '#FFF0EB', border: '#F2B49B' },
+  { key: 'monny',         emoji: '🌊', display: 'Monica (Monny)', role: 'Open Invitation',  desc: 'Outreach · Systems · Bridge building',             color: '#2A6A9A', bg: '#EAF4FC', border: '#A9D6F8' },
+  { key: 'bingle',        emoji: '✨', display: 'Bingle',         role: 'In-Person',         desc: 'Space-holding · Community · Workshops',            color: '#7A5010', bg: '#FFF8EC', border: '#D4A771' },
+  { key: 'pia',           emoji: '🌸', display: 'Pia',            role: 'Reflective',        desc: 'Feedback · Community health · Space-reading',      color: '#9B3A5A', bg: '#FFF0F6', border: '#D4849A' },
+  { key: 'omar',          emoji: '🌟', display: 'Omar',           role: 'New Member',        desc: 'Community · Creative collaboration · Fresh energy', color: '#5C4A9A', bg: '#F0ECFB', border: '#B8A9D4' },
+  { key: 'event-support', emoji: '🎪', display: 'Event Support',  role: 'Day-Of',            desc: 'Setup · Cleanup · Engagement',                    color: '#7A4A20', bg: '#FFF5EE', border: '#E8AF93' },
+];
 
 // ── Auth state helpers ────────────────────────────────────────────────────────
 export function isAuthenticated(): boolean {
@@ -87,7 +93,7 @@ export function LoginGate({ onAuthenticated }: Props) {
     try {
       const hash = await sha256hex(pw.trim());
       if (hash !== STORED_HASH) {
-        setError('Incorrect password. Ask a team admin for the current password.');
+        setError('Incorrect password — see the hint above for the default.');
         setPw('');
         setShowHint(true);
         triggerShake();
@@ -148,9 +154,9 @@ export function LoginGate({ onAuthenticated }: Props) {
               {/* Hint box */}
               {showHint && (
                 <div style={{ marginBottom: 10, padding: '10px 14px', borderRadius: 8, background: 'rgba(194,91,56,0.07)', border: '1px solid rgba(194,91,56,0.2)', fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.75rem', color: '#8A4020', lineHeight: 1.5 }}>
-                  💡 <strong>Need the team password?</strong> Ask a Create Well admin.
+                  💡 <strong>Default password:</strong> <code style={{ background: 'rgba(194,91,56,0.12)', padding: '1px 6px', borderRadius: 4, fontFamily: 'monospace', letterSpacing: '0.05em' }}>createwell</code>
                   <br />
-                  <span style={{ opacity: 0.75 }}>Admins rotate it via the <code>VITE_APP_PASSWORD_HASH</code> env var.</span>
+                  <span style={{ opacity: 0.75 }}>Your team admin can change this via the <code>VITE_APP_PASSWORD_HASH</code> env var.</span>
                 </div>
               )}
 

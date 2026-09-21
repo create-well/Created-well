@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 import { showToast } from './Toast';
 import {
-  CALENDAR_EVENTS, PERSONS, getDaysToLaunch, formatTimestamp, capitalize,
+  CALENDAR_EVENTS, PERSONS, getDaysToNextEvent, formatTimestamp, capitalize,
   GCAL_CLIENT_ID,
   type BrainDump, type Announcement
 } from './data';
@@ -393,15 +393,8 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
       const apiBase = (import.meta.env.VITE_API_BASE as string | undefined)
         ?? (() => {
           const h = window.location.hostname;
-          const isFirstParty =
-            h.endsWith('.vercel.app') ||
-            h === 'cr8w.com' ||
-            h.endsWith('.cr8w.com') ||
-            h === 'createwell.monnyfest.co' ||
-            h.endsWith('.monnyfest.co') ||
-            h === 'localhost' ||
-            h === '127.0.0.1';
-          return isFirstParty ? '/api/server' : 'https://cr8w-home-v2.vercel.app/api/server';
+          return (h.endsWith('.vercel.app') || h === 'createwell.monnyfest.co' || h === 'localhost')
+            ? '/api/server' : 'https://cr8w-home-v2.vercel.app/api/server';
         })();
       const res = await fetch(`${apiBase}/calendar-ical-sync`, {
         method: 'POST',
@@ -465,6 +458,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
     sunshine: { hdType: 'ManiGen 5/1', zone: 'internal expression — the atmosphere architect', craft: 'space, atmosphere, playlists' },
     monny: { hdType: 'Generator 5/1', zone: 'systems, narrative, somatic', craft: 'systems, narrative, somatic' },
     bingle: { hdType: 'Projector 2/4', zone: 'lens, identity, visual story', craft: 'lens, identity, visual story' },
+    pia: { hdType: 'Reflector 1/3', zone: 'mirror, community health, space-reading', craft: 'feedback, reflection, community pulse' },
   };
 
   // Close profile card on outside click
@@ -507,7 +501,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
 
   const [showPersonalEvents, setShowPersonalEvents] = useState(() => !!localStorage.getItem(userTokenKey));
   const [gcalConnected, setGcalConnected] = useState(() => !!localStorage.getItem(userTokenKey));
-  const [gcalEvents, setGcalEvents] = useState<{ date: string; time: string; name: string }[]>([]);
+  const [gcalEvents, setGcalEvents] = useState<{ time: string; name: string }[]>([]);
   const [gcalLoading, setGcalLoading] = useState(() => localStorage.getItem('gcal_token_fresh') === 'pending');
   const [gcalError, setGcalError] = useState('');
   const [gcalCalendarName, setGcalCalendarName] = useState(() => localStorage.getItem(userNameKey) || '');
@@ -561,11 +555,11 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
         localStorage.setItem(userNameKey, name);
       }
 
-      // Fetch upcoming events for the next 90 days, including all-day events.
+      // Fetch today's events
       const now = new Date();
-      const timeMin = now.toISOString();
-      const timeMax = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate()).toISOString();
-      const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=250`;
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+      const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(startOfDay)}&timeMax=${encodeURIComponent(endOfDay)}&singleEvents=true&orderBy=startTime`;
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -584,14 +578,13 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
       }
       const data = await res.json();
       const events = (data.items || []).map((ev: any) => {
-        const start = ev.start?.dateTime || ev.start?.date;
-        const date = start
-          ? new Date(`${start}${ev.start?.dateTime ? '' : 'T00:00:00'}`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-          : '';
-        const time = ev.start?.dateTime
-          ? new Date(ev.start.dateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()
-          : 'All day';
-        return { date, time, name: ev.summary || '(No title)' };
+        let time = '';
+        if (ev.start?.dateTime) {
+          time = new Date(ev.start.dateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+        } else {
+          time = 'All day';
+        }
+        return { time, name: ev.summary || '(No title)' };
       });
       setGcalEvents(events);
     } catch (e: any) {
@@ -712,7 +705,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
     setGcalCalendarName('');
   }
 
-  const daysToLaunch = getDaysToLaunch();
+  const daysToNextEvent = getDaysToNextEvent(coFlowDates);
 
   // today reference for event computations
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -920,7 +913,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
             : null;
         const nextMilestoneLabel = nextMilestone
           ? `${nextMilestone.title.replace(/\s*🚀/, '')} · ${new Date(nextMilestone.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-          : 'Launch day approaching';
+          : daysToNextEvent > 0 ? `${daysToNextEvent} days to next event` : 'No upcoming events';
         // Team role check
         const assignedRoles = ['sunshine', 'monny', 'bingle'].filter(p => stations.some(s => s.owner === p));
         const rolesLabel = assignedRoles.length >= 3 ? 'roles assigned' : 'needs update';
@@ -981,61 +974,63 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
               subtitle={`${openTasks.length} in motion this week`}
               onClick={() => onNavigate('geyser')}
             />
-            {/* Stations */}
+            {/* Podyaps */}
             <MiniCard
-              emoji={'\u{1F4CD}'}
-              title="Stations"
+              emoji="🎙️"
+              title="Podyaps"
               borderColor="var(--cr8w-secondary, #B8A9D4)"
-              badge={confirmedStations}
-              subtitle={`${confirmedStations} of ${totalStations} confirmed`}
-              onClick={() => onNavigateGeyserStations()}
+              subtitle="Yapcasts · Playdates · Book Club"
+              onClick={() => onNavigate('podyaps')}
             />
-            {/* Guests */}
+            {/* Workshops */}
             <MiniCard
-              emoji={'\u{1F4E8}'}
-              title="Guests"
+              emoji="🎨"
+              title="Workshops"
               borderColor="#6BAF6B"
-              badge={inviteLoaded ? inviteCounts.confirmed : '—'}
-              subtitle={inviteLoaded && inviteCounts.total > 0 ? `${inviteCounts.confirmed} confirmed of ${inviteCounts.total}` : 'synced from invite sheet'}
-              onClick={() => onNavigate('geyser')}
+              subtitle="Wellshop · Expresshop · Playshop"
+              onClick={() => onNavigate('workshops')}
             />
             {/* Team */}
             <MiniCard
               emoji={'\u{1F465}'}
               title="Team"
               borderColor="#E8C875"
-              subtitle={rolesLabel}
-              onClick={() => onNavigate('geyser')}
+              subtitle="all five co-creators"
+              onClick={() => onNavigate('community-events')}
             >
               <div style={{ display: 'flex', marginTop: 2, marginBottom: 2 }}>
                 {[
                   { key: 'sunshine', emoji: '☀️', color: '#D4A5A5' },
-                  { key: 'monny', emoji: '🌊', color: '#7BA89D' },
-                  { key: 'bingle', emoji: '✨', color: '#B8A9D4' },
+                  { key: 'monny',    emoji: '🌊', color: '#7BA89D' },
+                  { key: 'bingle',   emoji: '✨', color: '#B8A9D4' },
+                  { key: 'pia',      emoji: '🌸', color: '#9B3A5A' },
+                  { key: 'omar',     emoji: '🌟', color: '#9B7FD4' },
                 ].map((p, i) => (
                   <div key={p.key} style={{
                     width: 24, height: 24, borderRadius: '50%',
                     background: `${p.color}33`, border: `1.5px solid ${p.color}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '0.7rem', marginLeft: i > 0 ? -4 : 0,
-                    position: 'relative', zIndex: 3 - i,
+                    position: 'relative', zIndex: 5 - i,
                   }}>{p.emoji}</div>
                 ))}
               </div>
             </MiniCard>
-            {/* Timeline */}
+            {/* Next Up \u2014 days to next community event */}
             <MiniCard
-              emoji={'\u23F1\uFE0F'}
-              title="Timeline"
+              emoji={'\u{1F4C5}'}
+              title="Next Up"
               borderColor="#D4A0A0"
               subtitle={nextMilestoneLabel}
-              onClick={() => onNavigate('geyser')}
+              onClick={() => onNavigate('community-events')}
             >
               <div style={{
                 fontSize: '1.2rem', fontWeight: 800, color: 'var(--cr8w-text, #2D2438)',
                 fontFamily: "var(--font-display)", lineHeight: 1.1,
                 marginTop: 1, marginBottom: 1,
-              }}>{daysToLaunch} days</div>
+              }}>
+                {daysToNextEvent > 0 ? `${daysToNextEvent} days` : daysToNextEvent === 0 ? 'Today \uD83C\uDF89' : 'Nothing yet'}
+              </div>
             </MiniCard>
           </div>
         );
@@ -1204,13 +1199,13 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                     <button onClick={connectGoogleCalendar} style={{ marginLeft: 8, background: 'none', border: 'none', color: '#1A73E8', cursor: 'pointer', textDecoration: 'underline', fontSize: 'inherit', fontFamily: 'inherit' }}>Reconnect</button>
                   </div>
                 ) : gcalEvents.length === 0 ? (
-                  <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', fontFamily: 'var(--font-body)' }}>No upcoming personal events in the next 90 days</div>
+                  <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', fontFamily: 'var(--font-body)' }}>No personal events scheduled for today</div>
                 ) : (
                   <div className="hub-schedule-list">
                     {gcalEvents.map((ev, i) => (
                       <div key={i} className="hub-schedule-item">
                         <span className="hub-schedule-dot" style={{ background: '#1A73E8' }} />
-                        <span className="hub-schedule-time">{ev.date} · {ev.time}</span>
+                        <span className="hub-schedule-time">{ev.time}</span>
                         <span className="hub-schedule-name">{ev.name}</span>
                       </div>
                     ))}
@@ -2251,6 +2246,8 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
               <option value="sunshine">☀️ Sunshine</option>
               <option value="monny">🌊 Monny</option>
               <option value="bingle">✨ Bingle</option>
+              <option value="pia">🌸 Pia</option>
+              <option value="omar">🌟 Omar</option>
               <option value="collective">🌀 Collective</option>
                 </>
               )}
@@ -2290,6 +2287,8 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
               { key: 'sunshine', label: '☀️ Sunshine' },
               { key: 'monny', label: '🌊 Monny' },
               { key: 'bingle', label: '✨ Bingle' },
+              { key: 'pia', label: '🌸 Pia' },
+              { key: 'omar', label: '🌟 Omar' },
               { key: 'collective', label: '🌀 Collective' },
               ...(brainDumps.some(d => d.author === 'anonymous') ? [{ key: 'anonymous', label: '🫧 Anon' }] : []),
             ].map(f => (

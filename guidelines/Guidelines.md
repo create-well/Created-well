@@ -1,78 +1,54 @@
-# Create Well (CR8W) — Development & Contribution Guidelines
+# CR8W Create Well — Make Kit
 
-Welcome to the **Created-well** repository. This document outlines the engineering principles, architectural patterns, design standards, and contribution workflows for developers and AI agents working on the Create Well platform (`cr8w.com` and `dash.cr8w.com`).
+This is the authoring workspace for the CR8W Create Well design system kit.  
+Components live in `src/app/components/ui/`. Barrel export is `src/index.ts`.
 
----
+## Required reading order
 
-## 1. System Overview & Tech Stack
+1. **[setup.md](./setup.md)** — CSS imports, font wiring, Tailwind 4 config
+2. **[overview.md](./overview.md)** — brand character, design philosophy, density
+3. **[tokens.md](./tokens.md)** — all color, radius, and typography tokens
+4. **[components.md](./components.md)** — full component catalog (44 components)
+5. **[icons.md](./icons.md)** — icon system rules
 
-- **Frontend SPA:** Vite + React 18 + TypeScript + React Router v7.
-- **Styling & UI:** Tailwind CSS v4, Radix UI primitives, Lucide React icons, and tokenized custom theme (`default_shadcn_theme.css`, `cr8w.css`).
-- **Telemetry:** `@vercel/speed-insights`.
-- **Backend & Functions:** Vercel Node Serverless Functions (`/api/`) running under Node ESM.
-- **Data Layer:** 
-  - **Supabase:** Primary fast operational data store (`kv_store_dabe1c74`), real-time sync, and user authentication.
-  - **Notion REST API:** Content management system of record for 4 core operational databases:
-    - `MOVES` → Tasks
-    - `PEOPLE` → Stations & Directory
-    - `CONTENT` → Forum Posts & Stories
-    - `FLOWS` → CoFlow Gatherings & Events
+## MUST READ before writing any code
 
----
+- `setup.md` — ensures fonts and tokens are wired before anything renders
+- `tokens.md` — no raw hex anywhere; always use CSS custom property names
+- `components.md` — scan the catalog before reaching for raw HTML
 
-## 2. Frontend & Component Engineering Guidelines
+## Published kit package — `@cr8w/design-system`
 
-### Token-Based Theming & Styling
-- **Design Tokens:** Always utilize tokenized utility classes and semantic CSS variables for colors, typography, border radius, and spacing. Never introduce arbitrary hardcoded hex codes or pixel dimensions unless strictly required for third-party widget embeds.
-- **Color Palette:** Warm earth tones (`#C25B38` terracotta, warm neutrals, sage, dark slate). Components must support dark/light theme switching via `next-themes` and `ThemeProvider`.
-- **Iconography:** Use `lucide-react` icons uniformly. Keep icon sizing consistent (`w-4 h-4` for compact buttons, `w-5 h-5` for standard navigation items).
+This workspace is also the authoring source for the `@cr8w/design-system` npm package  
+(Figma private registry, `v0.0.2`). The published package is installed in `node_modules/`  
+and is the foundation layer that consumer Figma Make projects import.
 
-### Responsive & Accessible Layouts
-- **Mobile-First:** Layouts must render cleanly on mobile viewports (375px–430px) before scaling up to tablet (`md:`) and desktop (`lg:`) views.
-- **Semantic Structure:** Use appropriate HTML landmark elements (`<header>`, `<nav>`, `<main>`, `<section>`, `<article>`, `<aside>`).
-- **Accessibility (a11y):**
-  - Ensure interactive elements are keyboard navigable (`tabIndex`, `onKeyDown`).
-  - Provide descriptive `aria-label` attributes on icon-only buttons and modal dialogs.
-  - Maintain WCAG AA contrast ratios across all text elements on background colors.
+See **[kit-package.md](./kit-package.md)** for the full API reference and token docs.
 
-### State & Performance
-- **Local vs. Global State:** Encapsulate component-specific state with `useState` and `useReducer`. Access synced workspace state via `useDashboard()` from `DashboardContext`.
-- **Memoization:** Leverage `useMemo` and `useCallback` on heavy data transformations (e.g., filtering large message histories or calendar schedules).
+Quick reference:
+- Install: `npm install @cr8w/design-system`
+- CSS: `import '@cr8w/design-system/styles.css'` (once, at app root — already in `App.tsx`)
+- Components: `import { Button } from '@cr8w/design-system'`
 
----
+## Kit import paths (within this workspace)
 
-## 3. Backend & API Rules (Vercel Serverless & Node ESM)
+```ts
+import { Button } from "@/app/components/ui/button";
+import { Card, CardHeader, CardContent } from "@/app/components/ui/card";
+import { cn } from "@/app/components/ui/utils";
+```
 
-These rules are critical to preventing production downtime under Vercel's Node runtime.
+All components are also barrel-exported from `src/index.ts`.
 
-### Mandatory `.js` Extensions on Relative Imports
-- Under Node ESM, TypeScript relative imports in `api/` and shared files reachable by `api/` (such as `src/lib/notionNormalizer.ts`) **MUST** explicitly end with `.js` (e.g., `import { ... } from './_notionWriter.js'`).
-- Omitting `.js` results in `ERR_MODULE_NOT_FOUND` at serverless runtime.
-- Pure type-only imports (`import type { ... } from '...'`) do not emit runtime code and are safe, but preserving `.js` across shared modules is strongly encouraged.
+## Brand identity at a glance
 
-### Route Governance & Private Modules
-- **Route Delegation:** Route `/api/server/*` traffic through the single catch-all handler `api/server/[[...path]].ts`, which delegates to `api/_server.ts`.
-- **Private Prefixes:** Any shared logic or helper files in `api/` must begin with an underscore (e.g., `_server.ts`, `_notionWriter.ts`). Vercel ignores `_` files and will not deploy them as separate endpoints.
-- **Collision Avoidance:** Never create both `api/x.ts` and `api/x/` directory handlers, as Vercel routing resolves them unpredictably.
-
-### Dual-Write Pattern
-- **Fast Path:** Write immediately to the Supabase KV store (`kv_store_dabe1c74`) to guarantee responsive UI feedback.
-- **CMS Sync:** Dual-write asynchronously to Notion for the 4 supported types. Notion operations are best-effort: failure to write to Notion must log a warning but never block or fail the primary KV write.
-
----
-
-## 4. Voice, Copywriting & Cultural Integrity
-
-Create Well builds invitations for artists, cultural practitioners, and creatives to return to sustainable creative wellness. When generating copy, documentation, or interface labels, follow these standards:
-
-- **Flow:** Move in the sequence: **Sensation → Story → Strategy**.
-- **Tone:** Grounded, warm, conversational, and direct. Avoid corporate jargon (banned words: *tapestry, landscape, pivotal, foster, underscore, interplay, intricate, enhance, embark, beacon, multifaceted, myriad*).
-- **Wellness Boundaries:** Somatic and nervous system language should encourage gentle observation (breath, posture, pauses) without making diagnostic or medical claims.
-
----
-
-## 5. Git & PR Workflow
-
-1. **Branching:** Work in dedicated feature branches (e.g. `feature/name`, `copilot/*`).
-2. **Review & Test:** Validate API changes against Vercel preview deployment URLs rather than production (`cr8w.com`).
-3. **Commit Granularity:** One conceptual change per PR. Avoid bundling dependency upgrades, feature logic, and refactors into a single PR.\n4. **Pull Requests:** Provide clear descriptions citing modified files, expected behavior, and verified status codes for all touched endpoints.
+| | |
+|---|---|
+| Primary | Sage green `#7BA89D` |
+| Secondary | Lavender `#B8A9D4` |
+| Accent/CTA | Brand orange `#C25B38` |
+| Dark base | Deep purple `#2D2438` |
+| Radius | `0.625rem` (10 px) |
+| Display font | Fredoka (300–700) |
+| UI font | Blinker (300–900) |
+| Body font | Montserrat (300–700, italic) |

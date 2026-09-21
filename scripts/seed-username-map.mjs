@@ -18,7 +18,7 @@
 
 const SUPABASE_URL      = 'https://irtqcygriedvdijppntz.supabase.co';
 const SERVICE_ROLE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const KV_TABLE          = 'kv_store_dabe1c74';
+const KV_TABLE          = 'kv_store_8dcd9693';
 const KV_KEY            = 'cr8w_username_map';
 
 if (!SERVICE_ROLE_KEY) {

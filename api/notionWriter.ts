@@ -52,19 +52,20 @@ const nDate     = (start: string) => ({ date: { start } });
 type OmitMeta<T> = Omit<T, 'id' | 'created_at' | 'notionPageId'>;
 
 export function taskToProperties(t: OmitMeta<Task>): Record<string, unknown> {
+  // Canonical MOVES (Create Well OS 3da8c564...) Status: Now, Next, Done, Dropped
   const STATUS: Record<string, string> = {
-    todo: 'Not Started', in_progress: 'In Progress', done: 'Done', blocked: 'Blocked',
+    todo:        'Next',
+    in_progress: 'Now',
+    done:        'Done',
+    blocked:     'Now',
   };
-  const PRIORITY: Record<string, string> = { high: 'High', medium: 'Medium', low: 'Low' };
   const props: Record<string, unknown> = {
-    Name:     nTitle(t.title || 'Untitled'),
-    Status:   nSelect(STATUS[t.status]   ?? 'Not Started'),
-    Priority: nSelect(PRIORITY[t.priority] ?? 'Medium'),
+    Name:   nTitle(t.title || 'Untitled'),
+    Status: nSelect(STATUS[t.status] ?? 'Next'),
   };
-  if (t.person)   props['Person']   = nSelect(t.person);
-  if (t.due_date) props['Due Date'] = nDate(t.due_date);
-  if (t.category) props['Category'] = nSelect(t.category);
-  if (t.source)   props['Source']   = nRichText(t.source);
+  if (t.due_date) props['Due']        = nDate(t.due_date);
+  if (t.category) props['Type']       = nSelect(t.category);
+  if (t.source)   props['Blocked By'] = nRichText(t.source);
   return props;
 }
 

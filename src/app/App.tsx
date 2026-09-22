@@ -1,4 +1,3 @@
-import "@cr8w/design-system/styles.css";
 import React, { useState, useEffect } from "react";
 import { RouterProvider } from "react-router";
 import { router } from "./routes";

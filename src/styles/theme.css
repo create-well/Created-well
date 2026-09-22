@@ -45,6 +45,9 @@
   --color-warning-bg: rgba(150, 66, 25, 0.08);
   --color-error: #a12c7b;
   --color-error-bg: rgba(161, 44, 123, 0.08);
+  --cw-brand-primary: #2f2a26;
+  --cw-space-md: 16px;
+  --cw-corner-md: 8px;
 }
 
 .dark {

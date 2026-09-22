@@ -4,18 +4,25 @@ import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { CalendarConnectCard } from '../components/CalendarConnectCard';
 
-// Notion database source URLs (one per top-level DB — multiple collections share a DB)
+// Hub CMS database URLs — these are the four DBs the dashboard reads/writes.
+// Distinct from the operational five (PEOPLE/FLOWS/MOVES/MONEY/CONTENT) which
+// are the team's source of truth; the hub DBs are the dashboard-specific cache layer.
+// IDs sourced from CR8W — API ID Registry (last verified 2026-09-18).
 const NOTION_DB_LINKS: Record<string, string> = {
-  tasks:         'https://app.notion.com/p/3da8c56469e948e489836ea8773d6354',
-  stations:      'https://app.notion.com/p/3da8c56469e948e489836ea8773d6354',
-  forum:         'https://app.notion.com/p/3da8c56469e948e489836ea8773d6354',
-  messages:      'https://app.notion.com/p/ea53d1eddde243adb0344582cbeaf4c5',
-  workshops:     'https://app.notion.com/p/17d69cdfab1f4bb78ba197ec0a829ff5',
-  coFlowDates:   'https://app.notion.com/p/17d69cdfab1f4bb78ba197ec0a829ff5',
-  checkins:      'https://app.notion.com/p/ea53d1eddde243adb0344582cbeaf4c5',
-  wellNotes:     'https://app.notion.com/p/bffdc8056b984515935b9496524198f8',
-  brainDumps:    'https://app.notion.com/p/bffdc8056b984515935b9496524198f8',
-  announcements: 'https://app.notion.com/p/bffdc8056b984515935b9496524198f8',
+  // MOVES hub (DB: 49faf111…)  — tasks, stations, forum posts
+  tasks:         'https://app.notion.com/p/49faf1111bbe43458c3e6a4dcec63b5c',
+  stations:      'https://app.notion.com/p/49faf1111bbe43458c3e6a4dcec63b5c',
+  forum:         'https://app.notion.com/p/49faf1111bbe43458c3e6a4dcec63b5c',
+  // PEOPLE hub (DB: 81fc482d…)  — messages, check-ins
+  messages:      'https://app.notion.com/p/81fc482da44d43cb9c426952654944ab',
+  checkins:      'https://app.notion.com/p/81fc482da44d43cb9c426952654944ab',
+  // FLOWS hub (DB: 8d9ebf0c…)   — coflow dates (Type: Podyap/Workshop/…), workshops
+  workshops:     'https://app.notion.com/p/8d9ebf0c04cb47219ca2e3942cee6212',
+  coFlowDates:   'https://app.notion.com/p/8d9ebf0c04cb47219ca2e3942cee6212',
+  // CONTENT hub (DB: 08a0e011…) — well notes, brain dumps, announcements
+  wellNotes:     'https://app.notion.com/p/08a0e011142a4512a3dc8075800db7db',
+  brainDumps:    'https://app.notion.com/p/08a0e011142a4512a3dc8075800db7db',
+  announcements: 'https://app.notion.com/p/08a0e011142a4512a3dc8075800db7db',
 };
 
 const CONTENT_CHANNELS = [
@@ -31,38 +38,44 @@ const CONTENT_CHANNELS = [
 
 const ROUTE_ARCHITECTURE = [
   { path: '/',          label: 'This Week at the Well', emoji: '💧',
-    sources: 'brain dumps · announcements · well notes · coflow dates' },
+    sources: 'CONTENT hub (brain dumps · well notes · announcements) + FLOWS hub' },
   { path: '/moves',     label: 'Moves: Now',            emoji: '⛲️',
-    sources: 'tasks · stations · forum posts' },
+    sources: 'MOVES hub (tasks, stations, forum) — Status: Not Started / In Progress / Done / Blocked' },
   { path: '/care',      label: 'Care Loop',             emoji: '🫧',
-    sources: 'messages · check-ins · well notes' },
-  { path: '/flows',     label: 'FLOWS',                 emoji: '🛠️',
-    sources: 'workshops · coflow dates' },
+    sources: 'PEOPLE hub (messages, check-ins, well notes)' },
+  { path: '/flows',     label: 'Flows',                 emoji: '🛠️',
+    sources: 'FLOWS hub — all Types · workshops' },
   { path: '/podyaps',   label: 'Podyaps',               emoji: '🎙️',
-    sources: 'coflow dates (theme: yapcast · playdate)' },
+    sources: 'FLOWS hub — Type: Podyap (Status: Upcoming / Active / Archived)' },
   { path: '/workshops', label: 'Workshops',             emoji: '🎨',
-    sources: 'workshops · coflow dates (theme: workshop)' },
+    sources: 'FLOWS hub — Type: Workshop · MOVES hub (workshop tasks)' },
   { path: '/money',     label: 'Money, Real Only',      emoji: '💰',
-    sources: 'MONEY database (read-only)' },
+    sources: 'MONEY DB — Stage: Possible → Committed → Invoiced → Received → Paid (read-only)' },
   { path: '/decisions', label: 'Decision Queue',        emoji: '⚡',
-    sources: 'decisions database (pending)' },
+    sources: 'pending — not yet connected to Notion' },
   { path: '/system',    label: 'System Health',         emoji: '🔧',
-    sources: 'all collections · build info' },
+    sources: 'all hub collections · build info · API ID Registry' },
 ];
 
 const SUGGESTED_IMPROVEMENTS = [
-  { label: 'Notion deep links from every data row',                            done: true },
-  { label: 'Add Omar to Moves task filter',                                    done: true },
-  { label: 'Dedicated /podyaps mini-dashboard (Yapcast + Playdate + Bookclub)',done: true },
-  { label: 'Dedicated /workshops mini-dashboard (FlowCommandCenter)',          done: true },
-  { label: 'Fix Hub MiniCard navigation (was all → /flows)',                   done: true },
-  { label: 'Real-time announcement push (replace prompt() with modal form)',   done: false },
-  { label: 'Weekly digest email/Notion page auto-generated from brain dumps',  done: false },
-  { label: 'Per-person coflow date RSVP tracking',                             done: false },
-  { label: 'Hub hero: lead with next upcoming Podyap instead of generic card', done: false },
-  { label: 'Hub widget: "last sync from Notion" visible on home page',         done: false },
-  { label: 'Decision Queue (/decisions) connected to Notion database',         done: false },
-  { label: 'Money page (/money) linked to Google Sheets source',               done: false },
+  { label: 'Notion deep links from every data row',                              done: true },
+  { label: 'Add Omar to Moves task filter',                                      done: true },
+  { label: 'Dedicated /podyaps mini-dashboard',                                  done: true },
+  { label: 'Dedicated /workshops mini-dashboard',                                done: true },
+  { label: 'Fix Hub MiniCard navigation (was all → /flows)',                     done: true },
+  { label: 'Add Type select to FLOWS hub DB (Podyap/Workshop/Book Club/…)',      done: true },
+  { label: 'Fix FLOW_STATUS_MAP for hub DB values (Upcoming/Active/Archived)',   done: true },
+  { label: 'Fix isPodyap filter: use flowType field, not theme guessing',        done: true },
+  { label: 'Fix notionWriter coflow Status mapping (idea→Upcoming, etc.)',       done: true },
+  { label: 'SystemPage DB links point to hub CMS DBs (not operational five)',    done: true },
+  { label: 'Fix scripts/seed-username-map.mjs — writes to dead kv_store_8dcd9693 table', done: false },
+  { label: 'Real-time announcement push (replace prompt() with modal form)',     done: false },
+  { label: 'Weekly digest auto-generated from brain dumps into Notion CONTENT',  done: false },
+  { label: 'Per-person Flow RSVP tracking (links to PEOPLE hub)',               done: false },
+  { label: 'Hub hero: surface next Podyap card instead of generic CoFlow',      done: false },
+  { label: 'Hub widget: last Notion sync timestamp visible on home page',        done: false },
+  { label: 'Decision Queue (/decisions) connected to Notion database',           done: false },
+  { label: 'Money page (/money) — Phase 2 write bridge to MONEY DB',            done: false },
 ];
 
 function HealthRow({ label, value, status }: { label: string; value: string; status: 'ok' | 'warn' | 'error' | 'neutral' }) {

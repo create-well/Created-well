@@ -12,7 +12,7 @@
 //   CONTENT: Name, Flow (Relation→FLOWS), Content Type, Audience,
 //             Status, Final?, Publish Date, URL, Where
 
-import type { Task, Station, ForumPost, CoFlowDate } from '../app/components/api';
+import type { Task, Station, ForumPost, CoFlowDate, FlowType } from '../app/components/api';
 
 // ── Notion property value types ───────────────────────────────────────────────
 
@@ -156,8 +156,15 @@ const TASK_PRIORITY_MAP: Record<string, Task['priority']> = {
   'low':    'low',
 };
 
-// FLOWS Status values (Create Well OS canonical): Idea, Ready, Approved, Scheduled, Happened, Wrapped, Cancelled
+// FLOWS Status values — hub CMS DB uses Upcoming/Active/Archived;
+// operational FLOWS DB uses Idea/Scheduled/Ready/Approved/Happened/Wrapped/Cancelled.
+// Both sets are handled here so either source round-trips cleanly.
 const FLOW_STATUS_MAP: Record<string, CoFlowDate['status']> = {
+  // Hub CMS (FLOWS hub DB — source of truth for dashboard reads)
+  'upcoming':  'scheduled',
+  'active':    'happened',
+  'archived':  'wrapped',
+  // Operational FLOWS DB canonical values
   'idea':      'idea',
   'ready':     'ready',
   'approved':  'approved',
@@ -357,9 +364,13 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
 
   const rawStatus = getSelect(pick(p, 'Status', 'State', 'Phase')).toLowerCase();
 
-  // Type describes the kind of gathering; use as theme when no theme field exists
+  // Type (hub FLOWS DB select: Podyap/Workshop/Book Club/Open Studio/Pop-Up/Geyser/Internal)
+  // Theme (hub FLOWS DB free text — freeform topic label, used alongside Type)
   const typeRaw  = getSelect(pick(p, 'Type', 'Kind', 'Category'));
   const themeRaw = getText(pick(p, 'Theme', 'Topic')) || typeRaw;
+
+  const FLOW_TYPES: FlowType[] = ['Podyap', 'Workshop', 'Book Club', 'Open Studio', 'Pop-Up', 'Geyser', 'Internal'];
+  const flowType = FLOW_TYPES.find(t => t.toLowerCase() === typeRaw.toLowerCase()) ?? undefined;
 
   // Notes: combine Hard Stop and Retro as supplementary context
   const hardStop = getText(pick(p, 'Hard Stop', 'Hard stop', 'Notes', 'Description'));
@@ -385,6 +396,7 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
       getUrl(pick(p, 'Public URL', 'Public Url', 'Link')) ||
       'TBD',
     host:         hostRaw.toLowerCase() || undefined,
+    flowType,
     theme:        themeRaw || undefined,
     rsvp:         {},
     agendaItems:  [],

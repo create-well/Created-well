@@ -308,6 +308,8 @@ export interface WorkshopResource {
   created_at?: string;
 }
 
+export type FlowType = 'Podyap' | 'Workshop' | 'Book Club' | 'Open Studio' | 'Pop-Up' | 'Geyser' | 'Internal';
+
 export interface CoFlowDate {
   id: number;
   notionPageId?: string;
@@ -317,6 +319,9 @@ export interface CoFlowDate {
   endTime?: string;
   location: string;
   host?: string;
+  /** Structured Type from FLOWS hub DB select (Podyap/Workshop/Book Club/…). Prefer over `theme` for filtering. */
+  flowType?: FlowType;
+  /** Free-text topic label; fallback when flowType is absent. */
   theme?: string;
   rsvp: Record<string, string>;
   agendaItems: { id: number; text: string; lead: string; timeEstimate: number; done: boolean }[];

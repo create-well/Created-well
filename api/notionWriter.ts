@@ -90,21 +90,27 @@ export function forumPostToProperties(p: OmitMeta<ForumPost>): Record<string, un
 }
 
 export function coFlowDateToProperties(d: OmitMeta<CoFlowDate>): Record<string, unknown> {
+  // Hub FLOWS DB Status options: Upcoming / Active / Archived
   const STATUS: Record<string, string> = {
-    upcoming: 'Upcoming', active: 'Active', archived: 'Archived',
+    idea:      'Upcoming',
+    ready:     'Upcoming',
+    approved:  'Upcoming',
+    scheduled: 'Upcoming',
+    happened:  'Active',
+    wrapped:   'Archived',
+    cancelled: 'Archived',
   };
-  // FLOWS databases typically use the date as the primary identifier.
-  // "Name" is Notion's default title property; adapt if your DB uses a different name.
   const label = d.date ? `CoFlow – ${d.date}` : 'CoFlow';
   const props: Record<string, unknown> = {
-    Name:     nTitle(label),
-    Location: nRichText(d.location || 'TBD'),
-    Status:   nSelect(STATUS[d.status] ?? 'Upcoming'),
-    Notes:    nRichText(d.notes || ''),
+    Name:   nTitle(label),
+    Status: nSelect(STATUS[d.status] ?? 'Upcoming'),
+    Notes:  nRichText(d.notes || ''),
   };
   if (d.date)         props['Date']          = nDate(d.date);
   if (d.host)         props['Host']          = nSelect(d.host);
+  if (d.flowType)     props['Type']          = nSelect(d.flowType);
   if (d.theme)        props['Theme']         = nRichText(d.theme);
+  if (d.location && d.location !== 'TBD') props['Location'] = nRichText(d.location);
   if (d.timeRange)    props['Time Range']    = nRichText(d.timeRange);
   if (d.sessionNotes) props['Session Notes'] = nRichText(d.sessionNotes);
   return props;

@@ -14,6 +14,7 @@ const PODCAST_PLATFORMS = [
   { label: 'Instagram',      emoji: '📸', href: 'https://www.instagram.com/brbcreatingwell',                                                                                          color: '#E1306C' },
 ];
 
+
 function daysUntil(dateStr: string): number {
   const target = new Date(dateStr + 'T00:00:00');
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -52,7 +53,7 @@ function PodyapCard({ p, expanded, onToggle }: { p: CoFlowDate; expanded: boolea
   const days = daysUntil(p.date);
   const isPast = days < 0;
   const isToday = days === 0;
-  const themeLabel = (p.theme || '').toLowerCase() === 'yapcast' ? 'Yapcast' : 'Playdate';
+  const themeLabel = p.flowType ?? (p.theme || 'Podyap');
 
   return (
     <div
@@ -252,7 +253,7 @@ export function PodyapsPage() {
             fontFamily: 'var(--font-body)', fontSize: '0.8rem',
             color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5,
           }}>
-            Yapcasts · Playdates · recording sessions
+            Create Well's recorded gatherings — Podyaps, Book Clubs & more
           </p>
         </div>
 

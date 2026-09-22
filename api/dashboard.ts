@@ -29,7 +29,7 @@ import {
   normalizeMoney,
   type NotionPage,
   type MoneyRecord,
-} from '../src/lib/notionNormalizer';
+} from '../src/lib/notionNormalizer.js';
 import type { SyncData } from '../src/app/components/api';
 
 // ── Supabase KV helpers ───────────────────────────────────────────────────────

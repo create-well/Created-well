@@ -13,6 +13,13 @@ const SEED_NOTES = [
   "what if the mess IS the masterpiece right now?",
   "creating is not content. creating is conversation.",
   "the well is deep. take what you need. leave what you can.",
+  "flow over force: an agent or system may prepare the water. it never decides when the water moves.",
+  "the 6 offering levels: the foundation is tended before the geyser is recognized.",
+  "decomprocessing is not administrative overhead. it is collective integration.",
+  "the weeecording rhythm: 25-minute breath marker, calibrated sound, and listening for the undercurrent.",
+  "titration in motion: sunshine ideates, monny bridges, bingle distills, the collective operationalizes.",
+  "your energy budget is finite and potent. rest is strategy, not indulgence.",
+  "the invitation is the permission slip your genius was waiting for.",
 ];
 
 interface Props {

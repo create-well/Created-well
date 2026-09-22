@@ -13,7 +13,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './notionWriter';
+import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './notionWriter.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 function supabase() {
@@ -218,6 +218,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }));
         await setList('cr8w_calendar_events', normalized);
         res.json({ ok: true, count: normalized.length }); return;
+      }
+    }
+
+    // ── Calendar iCal sync ───────────────────────────────────────────────────
+    if (resource === 'calendar-ical-sync' && (method === 'POST' || method === 'GET')) {
+      const b = await body(req).catch(() => ({}));
+      const icalUrl = b.url || process.env.CR8W_ICAL_URL || process.env.GCAL_CREATEWELL_ICS_URL;
+      if (!icalUrl) {
+        res.status(400).json({ error: 'Missing iCal URL. Pass url in body or set CR8W_ICAL_URL / GCAL_CREATEWELL_ICS_URL.' });
+        return;
+      }
+      try {
+        const icalRes = await fetch(icalUrl);
+        if (!icalRes.ok) {
+          res.status(502).json({ error: `Failed to fetch iCal feed: ${icalRes.status} ${icalRes.statusText}` });
+          return;
+        }
+        const text = await icalRes.text();
+        const events: any[] = [];
+        const lines = text.split(/\r?\n/);
+        let inEvent = false;
+        let cur: any = {};
+        for (let i = 0; i < lines.length; i++) {
+          let line = lines[i];
+          while (i + 1 < lines.length && (lines[i+1].startsWith(' ') || lines[i+1].startsWith('\t'))) {
+            line += lines[++i].slice(1);
+          }
+          if (line === 'BEGIN:VEVENT') { inEvent = true; cur = {}; continue; }
+          if (line === 'END:VEVENT') {
+            if (cur.summary && cur.dtstart) {
+              events.push({
+                id: cur.uid || `ical-${Date.now()}-${events.length}`,
+                title: cur.summary,
+                start: cur.dtstart,
+                end: cur.dtend || cur.dtstart,
+                location: cur.location || '',
+                description: cur.description || '',
+                synced_at: new Date().toISOString(),
+              });
+            }
+            inEvent = false; cur = {}; continue;
+          }
+          if (!inEvent) continue;
+          const [rawKey, ...rest] = line.split(':');
+          const val = rest.join(':').replace(/\\n/g, '\n').replace(/\\,/g, ',').replace(/\\;/g, ';');
+          const key = rawKey.split(';')[0].toUpperCase();
+          if (key === 'SUMMARY') cur.summary = val;
+          else if (key === 'DTSTART') cur.dtstart = val;
+          else if (key === 'DTEND') cur.dtend = val;
+          else if (key === 'LOCATION') cur.location = val;
+          else if (key === 'DESCRIPTION') cur.description = val;
+          else if (key === 'UID') cur.uid = val;
+        }
+        await setList('cr8w_calendar_events', events);
+        res.json({ ok: true, count: events.length, synced_at: new Date().toISOString() });
+        return;
+      } catch (err: any) {
+        res.status(500).json({ error: `iCal sync failed: ${err.message}` });
+        return;
       }
     }
 

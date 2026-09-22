@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  PERSONS, MILESTONES, GUEST_JOURNEY,
+  PERSONS, MILESTONES, GUEST_JOURNEY, PLACEHOLDER_GUESTS,
   formatDate, capitalize, formatTimestamp,
   PHASE_TAGS, PHASE_META, TASK_ROLES,
   type NoteItem,
@@ -511,6 +511,54 @@ export function GeyserView({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Community Guests Roster */}
+        <div className="geyser-section" style={{ marginTop: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h3 className="geyser-section-title" style={{ margin: 0 }}>👥 Community Guests (Placeholder Roster)</h3>
+            <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+              {PLACEHOLDER_GUESTS.filter(g => g.status === 'confirmed').length} confirmed · {PLACEHOLDER_GUESTS.length} total
+            </span>
+          </div>
+          <div className="card" style={{ padding: '12px 16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+              {PLACEHOLDER_GUESTS.map(guest => (
+                <div key={guest.id} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '8px 12px', borderRadius: 8,
+                  background: 'rgba(var(--cr8w-primary-rgb, 123,168,157),0.04)',
+                  border: '1px solid var(--border-soft)',
+                }}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {guest.name}
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                      {guest.role} {guest.dietary && guest.dietary !== 'None' ? `· ${guest.dietary}` : ''}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      fontFamily: 'var(--font-label)', fontSize: '0.6rem', fontWeight: 600,
+                      padding: '2px 6px', borderRadius: 6,
+                      background: guest.status === 'confirmed' ? 'rgba(48,209,88,0.12)' : 'rgba(212,167,113,0.12)',
+                      color: guest.status === 'confirmed' ? '#30D158' : '#D4A771',
+                    }}>
+                      {guest.status}
+                    </span>
+                    <span style={{
+                      fontFamily: 'var(--font-label)', fontSize: '0.58rem',
+                      color: 'var(--cr8w-primary)', background: 'rgba(123,168,157,0.1)',
+                      borderRadius: 4, padding: '1px 4px',
+                    }}>
+                      {guest.pathwayStage}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

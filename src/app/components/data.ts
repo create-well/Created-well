@@ -111,7 +111,15 @@ export const GLOSSARY = [
   { term: 'Monnyfesting', def: 'Monny-specific manifesting — when the sacral generator brings visions into embodied reality.' }
 ];
 
-export const MILESTONES: { text: string; done: boolean }[] = [];
+export const MILESTONES: { text: string; done: boolean }[] = [
+  { text: 'Venue & Taverna Costera space alignment confirmed', done: true },
+  { text: 'Flow Keeper & team role rotation locked', done: true },
+  { text: 'Live audio & recording gear calibrated (-14 dB target)', done: true },
+  { text: '33 community guests confirmed on invite pipeline', done: true },
+  { text: 'The Topic Well seeded with core Podyap & workshop arcs', done: true },
+  { text: 'Activation stations mapped (Art Well, Sound Bath, Letter Station)', done: false },
+  { text: 'Decomprocessing debrief & depanty templates pre-loaded', done: false },
+];
 
 export interface Station {
   id: number; emoji: string; name: string; status: string;
@@ -127,7 +135,124 @@ export const GOOGLE_ACCOUNTS: Record<string, { calendarSrc: string }> = {
   pia: { calendarSrc: '' },
 };
 
-export const GUEST_JOURNEY: { step: number; icon: string; title: string; desc: string; status: string }[] = [];
+export interface GuestJourneyStage {
+  step: number;
+  icon: string;
+  emoji: string;
+  title: string;
+  name: string;
+  desc: string;
+  description: string;
+  status: 'planning' | 'in_progress' | 'confirmed';
+  color: string;
+}
+
+export const GUEST_JOURNEY: GuestJourneyStage[] = [
+  {
+    step: 1,
+    icon: '💌',
+    emoji: '💌',
+    title: 'Invitation',
+    name: 'Invitation & First Touch',
+    desc: 'Personal, curated invites sent to the 100-person community list. Each invitation feels intentional and grounded.',
+    description: 'Personal, curated invites sent to the 100-person community list. Each invitation feels intentional and grounded.',
+    status: 'in_progress',
+    color: '#B8A9D4',
+  },
+  {
+    step: 2,
+    icon: '✅',
+    emoji: '✅',
+    title: 'RSVP Confirmation',
+    name: 'RSVP & Needs Intake',
+    desc: 'Capturing dietary, accessibility, and sensory preferences. 33 confirmed so far toward the 100 guest milestone.',
+    description: 'Capturing dietary, accessibility, and sensory preferences. 33 confirmed so far toward the 100 guest milestone.',
+    status: 'in_progress',
+    color: '#7BA89D',
+  },
+  {
+    step: 3,
+    icon: '🚗',
+    emoji: '🚗',
+    title: 'Arrival & Grounding',
+    name: 'Arrival & Directional Flow',
+    desc: 'Guests arrive at the gathering space. Visible directional signage, parking ease, and welcome greeter team ready.',
+    description: 'Guests arrive at the gathering space. Visible directional signage, parking ease, and welcome greeter team ready.',
+    status: 'planning',
+    color: '#D4A771',
+  },
+  {
+    step: 4,
+    icon: '🤝',
+    emoji: '🤝',
+    title: 'Welcome & Orientation',
+    name: 'Welcome Drink & Token Badges',
+    desc: 'Warm arrival moment — name cards, identity token badges, herbal refreshments, and space orientation.',
+    description: 'Warm arrival moment — name cards, identity token badges, herbal refreshments, and space orientation.',
+    status: 'planning',
+    color: '#A9D6F8',
+  },
+  {
+    step: 5,
+    icon: '⚡',
+    emoji: '⚡',
+    title: 'Open Exploration & Activations',
+    name: 'Station Flow (The Well In Motion)',
+    desc: 'Free flow through interactive stations: Art Well, Sound Bath, Letter Writing Station, and Portrait Booth.',
+    description: 'Free flow through interactive stations: Art Well, Sound Bath, Letter Writing Station, and Portrait Booth.',
+    status: 'planning',
+    color: '#E8AF93',
+  },
+  {
+    step: 6,
+    icon: '🕯️',
+    emoji: '🕯️',
+    title: 'Circle & Community Flow',
+    name: 'Gathering Circle & Weeecording',
+    desc: 'Collective intention-setting, CR8W story sharing, community reflections, and live Podyap podcast recording.',
+    description: 'Collective intention-setting, CR8W story sharing, community reflections, and live Podyap podcast recording.',
+    status: 'planning',
+    color: '#9B3A5A',
+  },
+  {
+    step: 7,
+    icon: '🌊',
+    emoji: '🌊',
+    title: 'Decomprocessing & Departure',
+    name: 'Decomprocessing & Parting Gifts',
+    desc: 'Post-gathering debrief: small group reflection, somatic grounding, and each guest takes home a living plant keepsake.',
+    description: 'Post-gathering debrief: small group reflection, somatic grounding, and each guest takes home a living plant keepsake.',
+    status: 'planning',
+    color: '#7BA89D',
+  },
+];
+
+export interface Guest {
+  id: string;
+  name: string;
+  email?: string;
+  role?: string;
+  status: 'confirmed' | 'pending' | 'declined' | 'maybe';
+  pathwayStage: 'Arrive' | 'Exhale' | 'Come Home' | 'Return' | 'Deepen';
+  dietary?: string;
+  notes?: string;
+  checkedIn?: boolean;
+}
+
+export const PLACEHOLDER_GUESTS: Guest[] = [
+  { id: 'g-01', name: 'Karl Uy', role: 'Collaborator · Design Systems', status: 'confirmed', pathwayStage: 'Deepen', dietary: 'None', checkedIn: true, notes: 'Design leadership & creative flow' },
+  { id: 'g-02', name: 'Walbert Castillo', role: 'Founder · Istorya', status: 'confirmed', pathwayStage: 'Deepen', dietary: 'None', checkedIn: true, notes: 'Cultural storytelling anchor' },
+  { id: 'g-03', name: 'Camille Reyes', role: 'Artist’s Way Cohort Vol 002', status: 'confirmed', pathwayStage: 'Return', dietary: 'Vegetarian', checkedIn: false, notes: 'Morning pages & creative recovery' },
+  { id: 'g-04', name: 'Dante Mendoza', role: 'Community Creative · Las Vegas', status: 'confirmed', pathwayStage: 'Come Home', dietary: 'Vegan', checkedIn: false, notes: 'Photographer & visual storyteller' },
+  { id: 'g-05', name: 'Aria Santos', role: 'Somatic Practitioner', status: 'confirmed', pathwayStage: 'Deepen', dietary: 'Gluten-Free', checkedIn: true, notes: 'Breathwork & nervous system pacing' },
+  { id: 'g-06', name: 'Jordan Cruz', role: 'Ceramics & Open Studio Regular', status: 'confirmed', pathwayStage: 'Return', dietary: 'None', checkedIn: false, notes: 'Hand-building clay & tactile art' },
+  { id: 'g-07', name: 'Maya Lin-Torres', role: 'Writer & Essayist', status: 'confirmed', pathwayStage: 'Exhale', dietary: 'Vegetarian', checkedIn: false, notes: 'Writing from the body undercurrent' },
+  { id: 'g-08', name: 'Sammy Valenzuela', role: 'Audio Engineer / Collaborator', status: 'confirmed', pathwayStage: 'Come Home', dietary: 'None', checkedIn: true, notes: 'Live sound assist with Omar' },
+  { id: 'g-09', name: 'Eleni K.', role: 'Movement & Dance Facilitator', status: 'pending', pathwayStage: 'Arrive', dietary: 'Gluten-Free', checkedIn: false, notes: 'Connecting for movement circle' },
+  { id: 'g-10', name: 'Toni Morales', role: 'Zine Publisher & Printmaker', status: 'pending', pathwayStage: 'Arrive', dietary: 'None', checkedIn: false, notes: 'Print station contributor' },
+  { id: 'g-11', name: 'Rico H.', role: 'Culinary Storyteller', status: 'confirmed', pathwayStage: 'Return', dietary: 'None', checkedIn: false, notes: 'Herbal tonics & tea service' },
+  { id: 'g-12', name: 'Chloe Chen', role: 'Floral & Botanical Designer', status: 'confirmed', pathwayStage: 'Deepen', dietary: 'Vegan', checkedIn: false, notes: 'Plant Bar curation & parting botanicals' },
+];
 
 export const QUOTES = [
   "Here, is where you fall in love with the process.",

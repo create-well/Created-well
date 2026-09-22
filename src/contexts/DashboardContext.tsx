@@ -50,6 +50,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   // ── Sync metadata ────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
   const dataLoadedRef = useRef(false);
   const silentFailCount = useRef(0);
   const fetchSyncRef = useRef<((silent?: boolean) => Promise<void>) | undefined>(undefined);
@@ -151,12 +153,14 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
         setSyncStatus(usedFallback ? 'stale' : 'fresh');
+        setSyncError(usedFallback ? 'Primary dashboard source unavailable; showing fallback data.' : null);
         setLastSynced(new Date());
         silentFailCount.current = 0;
         if (!dataLoadedRef.current) { dataLoadedRef.current = true; }
       } catch (e) {
         silentFailCount.current += 1;
         console.error('Dashboard sync error:', e);
+        setSyncError(e instanceof Error ? e.message : 'Dashboard sync failed.');
         // On first load: show empty data as stale rather than hard-failing.
         // The UI stays usable; the status bar tells the team the backend is unreachable.
         // On subsequent failures (≥2): degrade to failed so the persistent
@@ -189,7 +193,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     schedulePoll();
 
     return () => { if (pollRef.current) clearTimeout(pollRef.current as any); };
-  }, []);
+  }, [retryNonce]);
 
   // ── Wednesday reminder ───────────────────────────────────────────────────────
   const wednesdayReminderSent = useRef(false);
@@ -527,7 +531,10 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
 
     // Sync + auth
     retrySync() {
-      fetchSyncRef.current?.(false);
+      silentFailCount.current = 0;
+      setSyncError(null);
+      setSyncStatus('loading');
+      setRetryNonce(value => value + 1);
     },
     async signOut() {
       await onSignOut();
@@ -560,6 +567,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     wellNotes,
     syncStatus: computedSyncStatus,
     lastSynced,
+    syncError,
     permissions: {
       careConsent: true,
     },

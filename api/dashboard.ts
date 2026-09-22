@@ -21,6 +21,9 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { getNotionDb } from '../src/config/notion.js';
+import { getServerEnv } from '../src/config/env.js';
+import { KV_KEYS, KV_TABLE, SYNC_POLICY } from '../src/config/sync.js';
 import {
   normalizeMove,
   normalizePerson,
@@ -34,11 +37,9 @@ import type { SyncData } from '../src/app/components/api';
 
 // ── Supabase KV helpers ───────────────────────────────────────────────────────
 
-const KV_TABLE = 'kv_store_dabe1c74';
-
 function supabaseClient() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = getServerEnv('SUPABASE_URL');
+  const key = getServerEnv('SUPABASE_SERVICE_ROLE_KEY');
   if (!url || !key) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
   return createClient(url, key);
 }
@@ -108,7 +109,6 @@ interface CacheEntry {
 }
 
 let cache: CacheEntry | null = null;
-const PROCESS_CACHE_TTL = 55_000; // slightly under CDN 60s
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
@@ -121,32 +121,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
   // Serve from in-process cache if still fresh
-  if (cache && Date.now() - cache.ts < PROCESS_CACHE_TTL) {
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
+  if (cache && Date.now() - cache.ts < SYNC_POLICY.CACHE_TTL_MS) {
+    res.setHeader('Cache-Control', `s-maxage=${SYNC_POLICY.CDN_MAXAGE_S}, stale-while-revalidate=30`);
     res.setHeader('X-Cache', 'HIT');
     res.json(cache.payload);
     return;
   }
 
-  const secret     = process.env.NOTION_SECRET;
-  const dbMoves    = process.env.NOTION_DB_MOVES;
-  const dbPeople   = process.env.NOTION_DB_PEOPLE;
-  const dbFlows    = process.env.NOTION_DB_FLOWS;
-  const dbContent  = process.env.NOTION_DB_CONTENT;
-  const dbMoney    = process.env.NOTION_DB_MONEY;
+  const secret     = getServerEnv('NOTION_SECRET');
+  const dbMoves    = getNotionDb('MOVES');
+  const dbPeople   = getNotionDb('PEOPLE');
+  const dbFlows    = getNotionDb('FLOWS');
+  const dbContent  = getNotionDb('CONTENT');
+  const dbMoney    = getNotionDb('MONEY');
 
   // KV keys for data not yet migrated to Notion
-  const KV_KEYS = [
-    'cr8w_messages',
-    'cr8w_braindumps',
-    'cr8w_announcements',
-    'cr8w_forum_replies',
-    'cr8w_workshops',
-    'cr8w_workshop_programs',
-    'cr8w_workshop_resources',
-    'cr8w_coflow_checkins',
-    'cr8w_well_notes',
-    'cr8w_calendar_events',
+  const dashboardKvKeys = [
+    KV_KEYS.messages,
+    KV_KEYS.braindumps,
+    KV_KEYS.announcements,
+    KV_KEYS.forum_replies,
+    KV_KEYS.workshops,
+    KV_KEYS.workshop_programs,
+    KV_KEYS.workshop_resources,
+    KV_KEYS.coflow_checkins,
+    KV_KEYS.well_notes,
+    KV_KEYS.calendar_events,
   ] as const;
 
   try {
@@ -160,7 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         secret && dbContent ? queryNotionDatabase(dbContent, secret) : Promise.resolve([]),
         secret && dbMoney   ? queryNotionDatabase(dbMoney, secret)   : Promise.resolve([]),
       ]),
-      Promise.all(KV_KEYS.map(k => kvGetList(k))),
+      Promise.all(dashboardKvKeys.map(k => kvGetList(k))),
     ]);
 
     const [movesPages, peoplePages, flowsPages, contentPages, moneyPages] = notionResults;
@@ -192,7 +192,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     cache = { payload, ts: Date.now() };
 
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
+    res.setHeader('Cache-Control', `s-maxage=${SYNC_POLICY.CDN_MAXAGE_S}, stale-while-revalidate=30`);
     res.setHeader('X-Cache', 'MISS');
     res.json(payload);
   } catch (err) {

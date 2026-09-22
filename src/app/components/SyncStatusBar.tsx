@@ -20,7 +20,7 @@ const STATUS_CONFIG = {
 
 export function SyncStatusBar() {
   const { data, actions } = useDashboard();
-  const { syncStatus, lastSynced } = data;
+  const { syncStatus, lastSynced, syncError } = data;
   const [, setTick] = useState(0);
 
   // Refresh relative time every 30 seconds
@@ -40,6 +40,8 @@ export function SyncStatusBar() {
     <div
       role="status"
       aria-live="polite"
+      aria-busy={syncStatus === 'loading'}
+      title={syncError || undefined}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -65,6 +67,11 @@ export function SyncStatusBar() {
         }}
       />
       <span>{timeLabel}{cfg.label ? ` · ${cfg.label}` : ''}</span>
+      {syncError && syncStatus !== 'loading' && (
+        <span style={{ maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {syncError}
+        </span>
+      )}
       {(syncStatus === 'failed' || syncStatus === 'stale') && (
         <button
           onClick={() => actions.retrySync()}

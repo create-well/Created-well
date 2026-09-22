@@ -16,6 +16,16 @@ out/
 .env.test.local
 .env.production.local
 
+# Local secret-manager exports and key material
+.envrc
+.secrets/
+*.pem
+*.p12
+*.key
+*.crt
+credentials*.json
+service-account*.json
+
 # npm registry — literal-token local overrides (never commit these)
 .npmrc.local
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { CoFlowD8sView } from '../components/CoFlowD8sView';
+import { CarePeopleRegistry } from '../components/CarePeopleRegistry';
 
 export function CarePage() {
   const { data, actions } = useDashboard();
@@ -22,6 +23,7 @@ export function CarePage() {
       restrictedBody="Contact CTAs and scheduling are suppressed until consent is confirmed. Reach out directly to update your settings."
       onRetry={actions.retrySync}
     >
+      <CarePeopleRegistry people={data.stations} syncStatus={data.syncStatus} />
       <CoFlowD8sView
         coflowDates={data.coFlowDates}
         coflowCheckins={data.coFlowCheckins}

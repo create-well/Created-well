@@ -43,3 +43,10 @@ test('Care page includes a read-only People & Pathways registry', async () => {
   assert.match(registry, /aria-labelledby="care-people-registry-title"/);
   assert.match(registry, /setExpandedId/);
 });
+
+test('local environment defaults do not enable authentication bypass', async () => {
+  const env = await read('.env.local.example');
+  const packageJson = await read('package.json');
+  assert.match(env, /^VITE_DEV_BYPASS=false$/m);
+  assert.match(packageJson, /check:secrets/);
+});

@@ -15,6 +15,8 @@ Vercel runs `GET /api/server/workspace-sync` every five minutes. The adapter mai
 
 Configure the Vercel project with `GOOGLE_WORKSPACE_SPREADSHEET_ID`, plus either `GOOGLE_SHEETS_ACCESS_TOKEN` or `GOOGLE_SERVICE_ACCOUNT_JSON`. For a service account, share the target workbook with the service account email as an editor. `GOOGLE_WORKSPACE_NOTES_SHEET` and `GOOGLE_WORKSPACE_CHECKINS_SHEET` are optional and default to `Well Notes` and `Care Loop Check-ins`.
 
+The confirmed workbook is [Create Well — History Mirror](https://docs.google.com/spreadsheets/d/1_ElHNCUl-SdI7vc4cRFJyBFP3ICV0iYfhahYb5nKFlg/edit), with spreadsheet ID `1_ElHNCUl-SdI7vc4cRFJyBFP3ICV0iYfhahYb5nKFlg`. Its two tabs are currently empty; the first configured sync will write the headers and canonical history rows.
+
 `CRON_SECRET` is optional. When present, the sync endpoint requires `Authorization: Bearer $CRON_SECRET`; Vercel Cron supplies this header when configured in the project settings.
 
 ## Conflict rule

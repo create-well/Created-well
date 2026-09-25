@@ -14,7 +14,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './notionWriter.js';
-import { canonicalCheckinHash, canonicalNoteHash, syncHistoryToWorkspace } from './workspaceSync.js';
+import { appendCheckinToWorkspace, appendWellNoteToWorkspace, canonicalCheckinHash, canonicalNoteHash, syncWorkspaceToDatabase, updateWellNoteInWorkspace } from './workspaceSync.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 function supabase() {
@@ -150,12 +150,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (resource === 'well-notes') {
       const sb = supabase();
       if (method === 'GET' && !id) {
+        if (process.env.GOOGLE_WORKSPACE_SPREADSHEET_ID) await syncWorkspaceToDatabase();
         const { data, error } = await sb.from('well_notes').select('id,content,landed,created_at,updated_at').order('created_at', { ascending: false }).limit(5000);
         if (error) { res.status(500).json({ error: error.message }); return; }
         res.json(data ?? []); return;
       }
       if (method === 'POST' && !id) {
         const b = await body(req);
+        if (process.env.GOOGLE_WORKSPACE_SPREADSHEET_ID) {
+          const created = await appendWellNoteToWorkspace(String(b.content || ''));
+          await syncWorkspaceToDatabase();
+          res.status(201).json(created); return;
+        }
         const item = { id: Date.now(), content: String(b.content || '').trim(), landed: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), source: 'dashboard' };
         if (!item.content) { res.status(400).json({ error: 'content required' }); return; }
         const { data, error } = await sb.from('well_notes').insert({ ...item, source_hash: canonicalNoteHash(item) }).select('id,content,landed,created_at,updated_at').single();
@@ -163,6 +169,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.status(201).json(data); return;
       }
       if (method === 'PUT' && id) {
+        if (process.env.GOOGLE_WORKSPACE_SPREADSHEET_ID) {
+          const b = await body(req);
+          const current = await updateWellNoteInWorkspace(Number(id), Number(b.landed || 0));
+          await syncWorkspaceToDatabase();
+          res.json(current); return;
+        }
         const { data: existing, error: readError } = await sb.from('well_notes').select('id,content,landed,created_at').eq('id', Number(id)).maybeSingle();
         if (readError) { res.status(500).json({ error: readError.message }); return; }
         if (!existing) { res.status(404).json({ error: 'Not found' }); return; }
@@ -177,6 +189,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (resource === 'coflow-checkins') {
       const sb = supabase();
       if (method === 'GET' && !id) {
+        if (process.env.GOOGLE_WORKSPACE_SPREADSHEET_ID) await syncWorkspaceToDatabase();
         const { data, error } = await sb.from('care_loop_checkins').select('id,week_of,author,confirm_time,location_suggestion,agenda_items,mood,time_preference,notes,created_at,updated_at').order('created_at', { ascending: false }).limit(5000);
         if (error) { res.status(500).json({ error: error.message }); return; }
         res.json((data ?? []).map((checkin: any) => ({ ...checkin, weekOf: checkin.week_of, confirmTime: checkin.confirm_time, locationSuggestion: checkin.location_suggestion, agendaItems: checkin.agenda_items, timePreference: checkin.time_preference }))); return;
@@ -199,12 +212,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (resource === 'workspace-sync' && (method === 'GET' || method === 'POST')) {
       const secret = process.env.CRON_SECRET;
       if (secret && req.headers.authorization !== `Bearer ${secret}`) { res.status(401).json({ error: 'Unauthorized' }); return; }
-      const result = await syncHistoryToWorkspace();
+      const result = await syncWorkspaceToDatabase();
       res.status(result.status === 'failed' ? 500 : result.status === 'conflict' ? 409 : 200).json(result); return;
     }
 
     if (resource === 'reports' && (id === 'history' || id === 'history.csv')) {
       const sb = supabase();
+      if (process.env.GOOGLE_WORKSPACE_SPREADSHEET_ID) await syncWorkspaceToDatabase();
       const from = typeof req.query.from === 'string' ? req.query.from : null;
       const to = typeof req.query.to === 'string' ? req.query.to : null;
       let noteQuery = sb.from('well_notes').select('id,content,landed,created_at,updated_at').order('created_at', { ascending: false }).limit(5000);

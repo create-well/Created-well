@@ -106,7 +106,7 @@ export async function syncHistoryToWorkspace(): Promise<SyncResult> {
   try {
     const spreadsheetId = process.env.GOOGLE_WORKSPACE_SPREADSHEET_ID;
     const notesSheet = process.env.GOOGLE_WORKSPACE_NOTES_SHEET || 'Well Notes';
-    const checkinsSheet = process.env.GOOGLE_WORKSPACE_CHECKINS_SHEET || 'Care Loop Check-ins';
+    const checkinsSheet = process.env.GOOGLE_WORKSPACE_CHECKINS_SHEET || 'Check-ins';
     if (!spreadsheetId) throw new Error('Workspace sync is not configured: set GOOGLE_WORKSPACE_SPREADSHEET_ID');
     const token = await accessToken();
     await ensureHeader(token, spreadsheetId, notesSheet, NOTE_HEADERS);
@@ -167,4 +167,122 @@ export async function syncHistoryToWorkspace(): Promise<SyncResult> {
     await sb.from('workspace_sync_runs').update({ status: 'failed', error: error instanceof Error ? error.message : String(error), completed_at: new Date().toISOString() }).eq('id', runId);
     throw error;
   }
+}
+
+
+type WorkspaceHistory = { notes: Note[]; checkins: Checkin[] };
+
+function isDateValue(value: unknown): boolean {
+  return typeof value === 'string' && value.length > 8 && !Number.isNaN(Date.parse(value));
+}
+
+function parseWorkspaceNote(row: SheetRow): Note | null {
+  const v = row.values;
+  const id = Number(v[0]);
+  if (!Number.isFinite(id) || !String(v[1] || '').trim()) return null;
+  const legacyLayout = isDateValue(v[2]);
+  const landed = Number(legacyLayout ? v[3] || 0 : v[2] || 0);
+  const createdAt = String(legacyLayout ? v[2] : v[3] || new Date().toISOString());
+  const updatedAt = String(legacyLayout ? v[6] || v[2] : v[4] || createdAt);
+  return { id, content: String(v[1]), landed: Number.isFinite(landed) ? landed : 0, created_at: createdAt, updated_at: updatedAt, source_hash: String(legacyLayout ? '' : v[5] || '') || remoteNoteHash(v) };
+}
+
+function parseWorkspaceCheckin(row: SheetRow): Checkin | null {
+  const v = row.values;
+  const id = Number(v[0]);
+  if (!Number.isFinite(id) || !String(v[2] || v[1] || '').trim()) return null;
+  let agenda: unknown[] = [];
+  try { agenda = JSON.parse(String(v[5] || v[3] || '[]')); } catch { agenda = [String(v[5] || v[3] || '')]; }
+  return { id, week_of: String(v[1] || '') || null, author: String(v[2] || ''), confirm_time: String(v[3]).toLowerCase() === 'true' || String(v[4]).toLowerCase() === 'true', location_suggestion: String(v[4] || ''), agenda_items: agenda, mood: String(v[6] || '') || null, time_preference: String(v[7] || '') || null, notes: String(v[8] || '') || null, created_at: String(v[9] || new Date().toISOString()), updated_at: String(v[10] || v[9] || new Date().toISOString()), source_hash: String(v[11] || '') || remoteCheckinHash(v) };
+}
+
+export async function readHistoryFromWorkspace(): Promise<WorkspaceHistory> {
+  const spreadsheetId = process.env.GOOGLE_WORKSPACE_SPREADSHEET_ID;
+  const notesSheet = process.env.GOOGLE_WORKSPACE_NOTES_SHEET || 'Well Notes';
+  const checkinsSheet = process.env.GOOGLE_WORKSPACE_CHECKINS_SHEET || 'Check-ins';
+  if (!spreadsheetId) throw new Error('Workspace source is not configured: set GOOGLE_WORKSPACE_SPREADSHEET_ID');
+  const token = await accessToken();
+  const [noteRows, checkinRows] = await Promise.all([readSheet(token, spreadsheetId, notesSheet), readSheet(token, spreadsheetId, checkinsSheet)]);
+  return { notes: noteRows.map(parseWorkspaceNote).filter(Boolean) as Note[], checkins: checkinRows.map(parseWorkspaceCheckin).filter(Boolean) as Checkin[] };
+}
+
+export async function syncWorkspaceToDatabase(): Promise<SyncResult> {
+  const startedAt = new Date().toISOString();
+  const sb = db();
+  const run = await sb.from('workspace_sync_runs').insert({ status: 'running', started_at: startedAt }).select('id').single();
+  if (run.error) throw new Error(run.error.message);
+  try {
+    const history = await readHistoryFromWorkspace();
+    const notes = history.notes.map(note => ({ ...note, source: 'google_sheets', source_hash: canonicalNoteHash(note) }));
+    const checkins = history.checkins.map(checkin => ({ ...checkin, source: 'google_sheets', source_hash: canonicalCheckinHash(checkin) }));
+    const [{ error: notesError }, { error: checkinsError }] = await Promise.all([
+      sb.from('well_notes').upsert(notes, { onConflict: 'id' }),
+      sb.from('care_loop_checkins').upsert(checkins, { onConflict: 'id' }),
+    ]);
+    if (notesError) throw new Error(notesError.message);
+    if (checkinsError) throw new Error(checkinsError.message);
+    const [{ data: cachedNotes }, { data: cachedCheckins }] = await Promise.all([
+      sb.from('well_notes').select('id').limit(5000),
+      sb.from('care_loop_checkins').select('id').limit(5000),
+    ]);
+    const noteIds = new Set(notes.map(note => note.id));
+    const checkinIds = new Set(checkins.map(checkin => checkin.id));
+    const staleNoteIds = (cachedNotes || []).map(row => Number(row.id)).filter(id => !noteIds.has(id));
+    const staleCheckinIds = (cachedCheckins || []).map(row => Number(row.id)).filter(id => !checkinIds.has(id));
+    if (staleNoteIds.length) await sb.from('well_notes').delete().in('id', staleNoteIds);
+    if (staleCheckinIds.length) await sb.from('care_loop_checkins').delete().in('id', staleCheckinIds);
+    await sb.from('workspace_sync_runs').update({ status: 'completed', notes_inserted: notes.length, checkins_inserted: checkins.length, completed_at: new Date().toISOString() }).eq('id', run.data.id);
+    return { status: 'completed', notesInserted: notes.length, notesUpdated: 0, checkinsInserted: checkins.length, checkinsUpdated: 0, conflicts: 0 };
+  } catch (error) {
+    await sb.from('workspace_sync_runs').update({ status: 'failed', error: error instanceof Error ? error.message : String(error), completed_at: new Date().toISOString() }).eq('id', run.data.id);
+    throw error;
+  }
+}
+
+export async function appendWellNoteToWorkspace(content: string): Promise<Note> {
+  const spreadsheetId = process.env.GOOGLE_WORKSPACE_SPREADSHEET_ID;
+  const sheetName = process.env.GOOGLE_WORKSPACE_NOTES_SHEET || 'Well Notes';
+  if (!spreadsheetId) throw new Error('Workspace source is not configured: set GOOGLE_WORKSPACE_SPREADSHEET_ID');
+  const note = { id: Date.now(), content: content.trim(), landed: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), source_hash: '' };
+  const token = await accessToken();
+  await appendRows(token, spreadsheetId, sheetName, [noteValues(note)]);
+  return { ...note, source_hash: canonicalNoteHash(note) };
+}
+
+export async function updateWellNoteInWorkspace(id: number, landed: number): Promise<Note> {
+  const spreadsheetId = process.env.GOOGLE_WORKSPACE_SPREADSHEET_ID;
+  const sheetName = process.env.GOOGLE_WORKSPACE_NOTES_SHEET || 'Well Notes';
+  if (!spreadsheetId) throw new Error('Workspace source is not configured: set GOOGLE_WORKSPACE_SPREADSHEET_ID');
+  const token = await accessToken();
+  const row = (await readSheet(token, spreadsheetId, sheetName)).find(item => Number(item.values[0]) === id);
+  if (!row) throw new Error(`Well Note ${id} was not found in Google Sheets`);
+  const note = parseWorkspaceNote(row);
+  if (!note) throw new Error(`Well Note ${id} has invalid Google Sheets data`);
+  const updated = { ...note, landed, updated_at: new Date().toISOString() };
+  await updateRow(token, spreadsheetId, sheetName, row.rowNumber, noteValues(updated));
+  return { ...updated, source_hash: canonicalNoteHash(updated) };
+}
+
+
+export async function appendCheckinToWorkspace(input: Record<string, unknown>): Promise<Checkin> {
+  const spreadsheetId = process.env.GOOGLE_WORKSPACE_SPREADSHEET_ID;
+  const sheetName = process.env.GOOGLE_WORKSPACE_CHECKINS_SHEET || 'Check-ins';
+  if (!spreadsheetId) throw new Error('Workspace source is not configured: set GOOGLE_WORKSPACE_SPREADSHEET_ID');
+  const checkin: Checkin = {
+    id: Date.now(),
+    week_of: String(input.weekOf || '') || null,
+    author: String(input.author || 'unknown'),
+    confirm_time: Boolean(input.confirmTime),
+    location_suggestion: String(input.locationSuggestion || ''),
+    agenda_items: Array.isArray(input.agendaItems) ? input.agendaItems : [],
+    mood: String(input.mood || '') || null,
+    time_preference: String(input.timePreference || '') || null,
+    notes: String(input.notes || '') || null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    source_hash: '',
+  };
+  const token = await accessToken();
+  await appendRows(token, spreadsheetId, sheetName, [checkinValues(checkin)]);
+  return { ...checkin, source_hash: canonicalCheckinHash(checkin) };
 }

@@ -514,7 +514,10 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         const created = await api.createWellNote({ content });
         setWellNotes(prev => [...prev, created]);
         sendSystemMessage('💧 someone dropped a note in the well — pull from the spring to find it');
-      } catch (e) { console.error('Add well note error:', e); }
+      } catch (e) {
+        console.error('Add well note error:', e);
+        throw e;
+      }
     },
     async landWellNote(id: number) {
       try {

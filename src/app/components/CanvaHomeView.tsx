@@ -12,7 +12,7 @@ interface CanvaHomeViewProps {
   syncTime: string;
   activeUser?: string;
   wellNotes: WellNote[];
-  onAddWellNote: (content: string) => void;
+  onAddWellNote: (content: string) => Promise<void>;
   onLandWellNote: (id: number) => void;
   workshops?: Workshop[];
   coFlowDates?: CoFlowDate[];
@@ -49,6 +49,8 @@ export function CanvaHomeView({
   const [mood, setMood] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [showBrainDump, setShowBrainDump] = useState(false);
+  const [noteState, setNoteState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [noteError, setNoteError] = useState('');
 
   const person = PERSONS[activeUser] ?? PERSONS.monny;
   const openTasks = actionItems.filter(task => task.status !== 'done' && task.status !== 'completed');
@@ -62,10 +64,19 @@ export function CanvaHomeView({
     weekday: 'long', month: 'short', day: 'numeric',
   }).format(new Date()), []);
 
-  function addNote() {
-    if (!note.trim()) return;
-    onAddWellNote(note.trim());
-    setNote('');
+  async function addNote() {
+    const content = note.trim();
+    if (!content || noteState === 'saving') return;
+    setNoteState('saving');
+    setNoteError('');
+    try {
+      await onAddWellNote(content);
+      setNote('');
+      setNoteState('saved');
+    } catch (_) {
+      setNoteState('error');
+      setNoteError('The note stayed with you. Try again when the current is clear.');
+    }
   }
 
   function addDump() {
@@ -150,7 +161,28 @@ export function CanvaHomeView({
 
       <section className="cw-v2-card cw-v2-care">
         <div className="cw-v2-care-copy"><div className="cw-v2-eyebrow">care loop</div><h3>Leave a note in the well</h3><p>One honest sentence is enough. It can be landed later.</p></div>
-        <div className="cw-v2-care-action"><textarea value={note} onChange={event => setNote(event.target.value)} placeholder="What’s present?" rows={2} aria-label="Add a note to the well" /><div><button className="cw-v2-secondary" onClick={() => setShowBrainDump(!showBrainDump)}>brain dump</button><button className="cw-v2-primary" onClick={showBrainDump ? addDump : addNote}>let it flow</button></div></div>
+        <div className="cw-v2-care-action">
+          <textarea
+            value={note}
+            onChange={event => { setNote(event.target.value); if (noteState !== 'idle') setNoteState('idle'); setNoteError(''); }}
+            placeholder="What’s present?"
+            rows={2}
+            aria-label="Add a note to the well"
+            aria-describedby="cw-v2-care-status"
+            disabled={noteState === 'saving'}
+          />
+          <div className="cw-v2-care-controls">
+            <button className="cw-v2-secondary" onClick={() => setShowBrainDump(!showBrainDump)} disabled={noteState === 'saving'}>brain dump</button>
+            <button className="cw-v2-primary" onClick={showBrainDump ? addDump : addNote} disabled={noteState === 'saving' || !note.trim()}>
+              {noteState === 'saving' ? 'holding…' : showBrainDump ? 'drop the thought' : noteState === 'saved' ? 'landed ✓' : 'let it flow'}
+            </button>
+          </div>
+          <div id="cw-v2-care-status" className={`cw-v2-care-status ${noteState}`} role="status" aria-live="polite">
+            {noteState === 'saving' && 'Making room for this note…'}
+            {noteState === 'saved' && 'Your note is in the well.'}
+            {noteState === 'error' && noteError}
+          </div>
+        </div>
       </section>
 
       <section className="cw-v2-card cw-v2-notes">

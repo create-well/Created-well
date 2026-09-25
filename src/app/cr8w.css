@@ -2284,3 +2284,53 @@ a.gcc-pill-link:hover { background: rgba(255,255,255,0.52); transform: translate
   .cw-v2-welcome h2 { font-size: 1.15rem; }
   .cw-v2-footer { gap: 5px; }
 }
+
+
+/* ── v2 mobile refinement + Care Loop feedback ───────────────────────────── */
+.cw-v2-care-action { min-width: 0; }
+.cw-v2-care-controls { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 8px; }
+.cw-v2-care-controls button { min-height: 40px; }
+.cw-v2-care-controls button:disabled { cursor: not-allowed; opacity: .55; }
+.cw-v2-care-action textarea:disabled { cursor: wait; opacity: .72; }
+.cw-v2-care-status { min-height: 1.1em; margin-top: 7px; color: var(--text-muted); font: .68rem/1.35 var(--font-label); }
+.cw-v2-care-status.saving { color: #8A6A2F; }
+.cw-v2-care-status.saved { color: #4D896F; }
+.cw-v2-care-status.error { color: #A9553D; }
+
+@media (max-width: 720px) {
+  .cw-v2-page { width: 100%; padding-right: 0; padding-left: 0; }
+  .cw-v2-card { margin-bottom: 14px; }
+  .cw-v2-team-card { min-height: 132px; }
+  .cw-v2-care { gap: 14px; }
+}
+
+@media (max-width: 520px) {
+  .cw-v2-arrival { padding: 15px; }
+  .cw-v2-arrival p { font-size: .94rem; }
+  .cw-v2-pills, .cw-v2-mood-row { gap: 7px; }
+  .cw-v2-pills button, .cw-v2-mood-row button { min-height: 42px; padding: 9px 12px; }
+  .cw-v2-mood { padding: 19px 14px 16px; }
+  .cw-v2-mood h1 { font-size: 1.05rem; }
+  .cw-v2-welcome { padding-bottom: 14px; }
+  .cw-v2-welcome h2 { font-size: 1.12rem; }
+  .cw-v2-card { border-radius: 14px; padding: 15px; }
+  .cw-v2-section-head { align-items: flex-start; flex-wrap: wrap; }
+  .cw-v2-section-head h3 { max-width: 19ch; }
+  .cw-v2-team-grid { gap: 8px; }
+  .cw-v2-team-card { min-height: 126px; padding: 10px 6px 11px; }
+  .cw-v2-team-card strong { font-size: .84rem; }
+  .cw-v2-team-card em { font-size: .63rem; }
+  .cw-v2-care-controls { flex-direction: column-reverse; align-items: stretch; }
+  .cw-v2-care-controls button { width: 100%; }
+  .cw-v2-quote { gap: 6px; }
+  .cw-v2-quote p { font-size: .78rem; }
+}
+
+@media (max-width: 360px) {
+  .cw-v2-team-grid { grid-template-columns: 1fr; }
+  .cw-v2-team-card { min-height: auto; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; text-align: left; column-gap: 9px; align-items: center; }
+  .cw-v2-team-card .cw-v2-label { grid-column: 2; grid-row: 1; }
+  .cw-v2-team-card .cw-v2-team-avatar { grid-column: 1; grid-row: 1 / span 2; }
+  .cw-v2-team-card strong { grid-column: 2; grid-row: 2; }
+  .cw-v2-team-card em { display: none; }
+}

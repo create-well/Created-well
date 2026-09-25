@@ -14,6 +14,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './notionWriter.js';
+import { canonicalCheckinHash, canonicalNoteHash, syncHistoryToWorkspace } from './workspaceSync.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 function supabase() {
@@ -106,6 +107,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (error) { res.status(500).json({ error: error.message }); return; }
       const map: Record<string, any[]> = {};
       for (const row of data ?? []) map[row.key] = parseList(row.value);
+      const [{ data: canonicalNotes }, { data: canonicalCheckins }] = await Promise.all([
+        sb.from('well_notes').select('id,content,landed,created_at,updated_at').order('created_at', { ascending: false }).limit(5000),
+        sb.from('care_loop_checkins').select('id,week_of,author,confirm_time,location_suggestion,agenda_items,mood,time_preference,notes,created_at,updated_at').order('created_at', { ascending: false }).limit(5000),
+      ]);
       res.json({
         tasks: map['cr8w_tasks'] ?? [],
         stations: map['cr8w_stations'] ?? [],
@@ -118,8 +123,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         workshopPrograms: map['cr8w_workshop_programs'] ?? [],
         workshopResources: map['cr8w_workshop_resources'] ?? [],
         coflowDates: map['cr8w_coflow_dates'] ?? [],
-        coflowCheckins: map['cr8w_coflow_checkins'] ?? [],
-        wellNotes: map['cr8w_well_notes'] ?? [],
+        coflowCheckins: (canonicalCheckins ?? []).map((checkin: any) => ({ ...checkin, weekOf: checkin.week_of, confirmTime: checkin.confirm_time, locationSuggestion: checkin.location_suggestion, agendaItems: checkin.agenda_items, timePreference: checkin.time_preference })),
+        wellNotes: canonicalNotes ?? [],
         calendarEvents: map['cr8w_calendar_events'] ?? [],
       });
       return;
@@ -140,6 +145,92 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'coflow-checkins': 'cr8w_coflow_checkins',
       'well-notes': 'cr8w_well_notes',
     };
+
+    // ── Canonical history (the KV rows remain only as a legacy cache) ──────────
+    if (resource === 'well-notes') {
+      const sb = supabase();
+      if (method === 'GET' && !id) {
+        const { data, error } = await sb.from('well_notes').select('id,content,landed,created_at,updated_at').order('created_at', { ascending: false }).limit(5000);
+        if (error) { res.status(500).json({ error: error.message }); return; }
+        res.json(data ?? []); return;
+      }
+      if (method === 'POST' && !id) {
+        const b = await body(req);
+        const item = { id: Date.now(), content: String(b.content || '').trim(), landed: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), source: 'dashboard' };
+        if (!item.content) { res.status(400).json({ error: 'content required' }); return; }
+        const { data, error } = await sb.from('well_notes').insert({ ...item, source_hash: canonicalNoteHash(item) }).select('id,content,landed,created_at,updated_at').single();
+        if (error) { res.status(500).json({ error: error.message }); return; }
+        res.status(201).json(data); return;
+      }
+      if (method === 'PUT' && id) {
+        const { data: existing, error: readError } = await sb.from('well_notes').select('id,content,landed,created_at').eq('id', Number(id)).maybeSingle();
+        if (readError) { res.status(500).json({ error: readError.message }); return; }
+        if (!existing) { res.status(404).json({ error: 'Not found' }); return; }
+        const b = await body(req);
+        const next = { ...existing, content: b.content === undefined ? existing.content : String(b.content), landed: b.landed === undefined ? existing.landed : Number(b.landed) };
+        const { data, error } = await sb.from('well_notes').update({ content: next.content, landed: next.landed, source_hash: canonicalNoteHash(next) }).eq('id', Number(id)).select('id,content,landed,created_at,updated_at').single();
+        if (error) { res.status(500).json({ error: error.message }); return; }
+        res.json(data); return;
+      }
+    }
+
+    if (resource === 'coflow-checkins') {
+      const sb = supabase();
+      if (method === 'GET' && !id) {
+        const { data, error } = await sb.from('care_loop_checkins').select('id,week_of,author,confirm_time,location_suggestion,agenda_items,mood,time_preference,notes,created_at,updated_at').order('created_at', { ascending: false }).limit(5000);
+        if (error) { res.status(500).json({ error: error.message }); return; }
+        res.json((data ?? []).map((checkin: any) => ({ ...checkin, weekOf: checkin.week_of, confirmTime: checkin.confirm_time, locationSuggestion: checkin.location_suggestion, agendaItems: checkin.agenda_items, timePreference: checkin.time_preference }))); return;
+      }
+      if (method === 'POST' && !id) {
+        const b = await body(req);
+        const item = { id: Date.now(), week_of: b.weekOf || null, author: String(b.author || 'unknown'), confirm_time: Boolean(b.confirmTime), location_suggestion: String(b.locationSuggestion || ''), agenda_items: Array.isArray(b.agendaItems) ? b.agendaItems : [], mood: b.mood || null, time_preference: b.timePreference || null, notes: b.notes || null, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), source: 'dashboard' };
+        const { data, error } = await sb.from('care_loop_checkins').insert({ ...item, source_hash: canonicalCheckinHash({ ...item, week_of: item.week_of }) }).select('id,week_of,author,confirm_time,location_suggestion,agenda_items,mood,time_preference,notes,created_at,updated_at').single();
+        if (error) { res.status(500).json({ error: error.message }); return; }
+        res.status(201).json({ ...data, weekOf: data.week_of, confirmTime: data.confirm_time, locationSuggestion: data.location_suggestion, agendaItems: data.agenda_items, timePreference: data.time_preference }); return;
+      }
+      if (method === 'DELETE' && id) {
+        const { error } = await sb.from('care_loop_checkins').delete().eq('id', Number(id));
+        if (error) { res.status(500).json({ error: error.message }); return; }
+        res.json({ ok: true }); return;
+      }
+    }
+
+    // ── Workspace sync + historical reports ───────────────────────────────────
+    if (resource === 'workspace-sync' && (method === 'GET' || method === 'POST')) {
+      const secret = process.env.CRON_SECRET;
+      if (secret && req.headers.authorization !== `Bearer ${secret}`) { res.status(401).json({ error: 'Unauthorized' }); return; }
+      const result = await syncHistoryToWorkspace();
+      res.status(result.status === 'failed' ? 500 : result.status === 'conflict' ? 409 : 200).json(result); return;
+    }
+
+    if (resource === 'reports' && (id === 'history' || id === 'history.csv')) {
+      const sb = supabase();
+      const from = typeof req.query.from === 'string' ? req.query.from : null;
+      const to = typeof req.query.to === 'string' ? req.query.to : null;
+      let noteQuery = sb.from('well_notes').select('id,content,landed,created_at,updated_at').order('created_at', { ascending: false }).limit(5000);
+      let checkinQuery = sb.from('care_loop_checkins').select('id,week_of,author,confirm_time,location_suggestion,agenda_items,mood,time_preference,notes,created_at,updated_at').order('created_at', { ascending: false }).limit(5000);
+      if (from) { noteQuery = noteQuery.gte('created_at', from); checkinQuery = checkinQuery.gte('created_at', from); }
+      if (to) { noteQuery = noteQuery.lte('created_at', to); checkinQuery = checkinQuery.lte('created_at', to); }
+      const [{ data: notes, error: noteError }, { data: checkins, error: checkinError }] = await Promise.all([noteQuery, checkinQuery]);
+      if (noteError || checkinError) { res.status(500).json({ error: noteError?.message || checkinError?.message }); return; }
+      const rows = { generated_at: new Date().toISOString(), from, to, notes: notes ?? [], checkins: checkins ?? [], summary: { note_count: notes?.length ?? 0, checkin_count: checkins?.length ?? 0, landed_count: (notes ?? []).reduce((sum: number, note: any) => sum + Number(note.landed || 0), 0) } };
+      if (id === 'history.csv') {
+        const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+        const lines = ['type,id,created_at,author_or_status,content_or_notes,landed_or_confirmed,mood'];
+        for (const note of rows.notes as any[]) lines.push(['well_note', note.id, note.created_at, '', note.content, note.landed, ''].map(csvCell).join(','));
+        for (const checkin of rows.checkins as any[]) lines.push(['care_loop_checkin', checkin.id, checkin.created_at, checkin.author, checkin.notes || '', checkin.confirm_time, checkin.mood || ''].map(csvCell).join(','));
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="created-well-history.csv"');
+        res.send(lines.join('\n')); return;
+      }
+      res.json(rows); return;
+    }
+
+    if (resource === 'reports' && id === 'conflicts' && method === 'GET') {
+      const { data, error } = await supabase().from('workspace_sync_conflicts').select('id,entity_type,entity_id,spreadsheet_id,sheet_name,row_number,local_hash,remote_hash,remote_values,status,resolution,created_at,resolved_at').eq('status', 'open').order('created_at', { ascending: false }).limit(500);
+      if (error) { res.status(500).json({ error: error.message }); return; }
+      res.json(data ?? []); return;
+    }
 
     // ── Forum replies (nested: /forum/:id/replies[/:replyId]) ─────────────────
     if (resource === 'forum' && sub === 'replies') {

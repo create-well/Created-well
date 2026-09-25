@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { CalendarConnectCard } from '../components/CalendarConnectCard';
+import { getHistoryReport, getHistoryCsvUrl, getWorkspaceConflicts, type HistoryReport, type WorkspaceConflict } from '../components/api';
 
 // Hub CMS database URLs — these are the four DBs the dashboard reads/writes.
 // Distinct from the operational five (PEOPLE/FLOWS/MOVES/MONEY/CONTENT) which
@@ -264,6 +265,21 @@ function relativeTime(date: Date): string {
 
 export function SystemPage() {
   const { data, actions } = useDashboard();
+  const [historyReport, setHistoryReport] = useState<HistoryReport | null>(null);
+  const [workspaceConflicts, setWorkspaceConflicts] = useState<WorkspaceConflict[]>([]);
+  const [historyError, setHistoryError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([getHistoryReport(), getWorkspaceConflicts()]).then(([report, conflicts]) => {
+      if (!active) return;
+      setHistoryReport(report);
+      setWorkspaceConflicts(conflicts);
+    }).catch(error => {
+      if (active) setHistoryError(error instanceof Error ? error.message : 'History report unavailable');
+    });
+    return () => { active = false; };
+  }, []);
 
   const syncColor = data.syncStatus === 'fresh' ? 'ok' :
     data.syncStatus === 'stale' ? 'warn' :
@@ -355,6 +371,40 @@ export function SystemPage() {
             </a>
           </div>
         )}
+
+        {/* Historical reporting + Workspace mirror */}
+        <SectionHeader title="History + Workspace mirror" />
+        <div style={{
+          background: 'var(--cr8w-card-bg, #F4F1ED)',
+          border: '1px solid var(--border-soft, rgba(196,164,132,0.15))',
+          borderRadius: 12, padding: '12px 16px',
+        }}>
+          <HealthRow
+            label="Canonical history"
+            value={historyReport ? `${historyReport.summary.note_count} notes · ${historyReport.summary.checkin_count} check-ins` : historyError ? 'Unavailable' : 'Loading…'}
+            status={historyError ? 'error' : historyReport ? 'ok' : 'neutral'}
+          />
+          <HealthRow
+            label="Landed currents"
+            value={historyReport ? String(historyReport.summary.landed_count) : '—'}
+            status="neutral"
+          />
+          <HealthRow
+            label="Workspace conflicts"
+            value={workspaceConflicts.length ? `${workspaceConflicts.length} need resolution` : 'None open'}
+            status={workspaceConflicts.length ? 'warn' : 'ok'}
+          />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9, padding: '12px 0 3px' }}>
+            <a href={getHistoryCsvUrl()} download style={{ padding: '8px 12px', borderRadius: 999, background: 'var(--cr8w-primary, #7BA89D)', color: '#fff', fontFamily: 'var(--font-label)', fontSize: '0.68rem', fontWeight: 700, textDecoration: 'none' }}>
+              export CSV
+            </a>
+            <a href={getHistoryCsvUrl()} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', borderRadius: 999, border: '1px solid var(--border-soft)', color: 'var(--text-muted)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', fontWeight: 700, textDecoration: 'none' }}>
+              view raw export ↗
+            </a>
+          </div>
+          {historyError && <p style={{ margin: '8px 0 0', color: '#A9553D', fontFamily: 'var(--font-body)', fontSize: '0.72rem', lineHeight: 1.4 }}>{historyError}</p>}
+          {workspaceConflicts.length > 0 && <p style={{ margin: '8px 0 0', color: '#8A6A2F', fontFamily: 'var(--font-body)', fontSize: '0.72rem', lineHeight: 1.4 }}>The mirror is paused until the open Sheet edit{workspaceConflicts.length === 1 ? '' : 's'} is resolved. No canonical facts were overwritten.</p>}
+        </div>
 
         {/* Data inventory */}
         <SectionHeader title="Data inventory" />

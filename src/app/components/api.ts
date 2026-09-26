@@ -192,11 +192,24 @@ export const getHistoryReport = (from?: string, to?: string) => {
   return req<HistoryReport>('GET', `/reports/history${params.toString() ? `?${params}` : ''}`);
 };
 export const getWorkspaceConflicts = () => req<WorkspaceConflict[]>('GET', '/reports/conflicts');
-export const getHistoryCsvUrl = (from?: string, to?: string) => {
+// Authenticated CSV download: the export endpoint requires the Authorization
+// header, which a plain <a href> navigation never sends, so fetch it and save
+// the blob instead.
+export const downloadHistoryCsv = async (from?: string, to?: string) => {
   const params = new URLSearchParams();
   if (from) params.set('from', from);
   if (to) params.set('to', to);
-  return `${BASE}/reports/history.csv${params.toString() ? `?${params}` : ''}`;
+  const res = await fetch(`${BASE}/reports/history.csv${params.toString() ? `?${params}` : ''}`, { headers });
+  if (!res.ok) throw new Error(`GET /reports/history.csv → ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'created-well-history.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 };
 
 // ── /api/dashboard — Notion-backed unified payload ───────────────────────────

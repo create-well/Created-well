@@ -24,6 +24,37 @@ function supabase() {
   return createClient(url, key);
 }
 
+// ── Endpoint auth ─────────────────────────────────────────────────────────────
+// The browser dashboard already sends `Authorization: Bearer <publishable key>`
+// on every request (see src/app/components/api.ts). CRON_SECRET is the
+// server-to-server secret (Vercel cron, scripts) and never enters the bundle.
+function bearerToken(req: VercelRequest): string | null {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) return null;
+  return header.slice(7).trim() || null;
+}
+
+// Server-to-server auth for the workspace sync. Fails closed: when CRON_SECRET
+// is not configured the endpoint refuses instead of running open.
+function cronAuth(req: VercelRequest, res: VercelResponse): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) { res.status(503).json({ error: 'Sync auth is not configured' }); return false; }
+  if (bearerToken(req) !== secret) { res.status(401).json({ error: 'Unauthorized' }); return false; }
+  return true;
+}
+
+// Dashboard + script auth for the history/report endpoints. Accepts the
+// server-to-server secret or the Supabase publishable key the dashboard
+// already sends. Fails closed when neither is configured server-side.
+function dashboardAuth(req: VercelRequest, res: VercelResponse): boolean {
+  const token = bearerToken(req);
+  if (token && process.env.CRON_SECRET && token === process.env.CRON_SECRET) return true;
+  const publishable = process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!publishable) { res.status(503).json({ error: 'Report auth is not configured' }); return false; }
+  if (token !== publishable) { res.status(401).json({ error: 'Unauthorized' }); return false; }
+  return true;
+}
+
 const TABLE = 'kv_store_dabe1c74';
 
 // ── KV helpers ────────────────────────────────────────────────────────────────
@@ -196,6 +227,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       if (method === 'POST' && !id) {
         const b = await body(req);
+        if (process.env.GOOGLE_WORKSPACE_SPREADSHEET_ID) {
+          // Write through the Sheet (the sync's source of truth) so the next
+          // sync never treats this dashboard check-in as stale and deletes it.
+          const created = await appendCheckinToWorkspace(b);
+          await syncWorkspaceToDatabase();
+          res.status(201).json({ ...created, weekOf: created.week_of, confirmTime: created.confirm_time, locationSuggestion: created.location_suggestion, agendaItems: created.agenda_items, timePreference: created.time_preference }); return;
+        }
         const item = { id: Date.now(), week_of: b.weekOf || null, author: String(b.author || 'unknown'), confirm_time: Boolean(b.confirmTime), location_suggestion: String(b.locationSuggestion || ''), agenda_items: Array.isArray(b.agendaItems) ? b.agendaItems : [], mood: b.mood || null, time_preference: b.timePreference || null, notes: b.notes || null, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), source: 'dashboard' };
         const { data, error } = await sb.from('care_loop_checkins').insert({ ...item, source_hash: canonicalCheckinHash({ ...item, week_of: item.week_of }) }).select('id,week_of,author,confirm_time,location_suggestion,agenda_items,mood,time_preference,notes,created_at,updated_at').single();
         if (error) { res.status(500).json({ error: error.message }); return; }
@@ -210,13 +248,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ── Workspace sync + historical reports ───────────────────────────────────
     if (resource === 'workspace-sync' && (method === 'GET' || method === 'POST')) {
-      const secret = process.env.CRON_SECRET;
-      if (secret && req.headers.authorization !== `Bearer ${secret}`) { res.status(401).json({ error: 'Unauthorized' }); return; }
+      if (!cronAuth(req, res)) return;
       const result = await syncWorkspaceToDatabase();
       res.status(result.status === 'failed' ? 500 : result.status === 'conflict' ? 409 : 200).json(result); return;
     }
 
     if (resource === 'reports' && (id === 'history' || id === 'history.csv')) {
+      if (!dashboardAuth(req, res)) return;
       const sb = supabase();
       if (process.env.GOOGLE_WORKSPACE_SPREADSHEET_ID) await syncWorkspaceToDatabase();
       const from = typeof req.query.from === 'string' ? req.query.from : null;
@@ -229,7 +267,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (noteError || checkinError) { res.status(500).json({ error: noteError?.message || checkinError?.message }); return; }
       const rows = { generated_at: new Date().toISOString(), from, to, notes: notes ?? [], checkins: checkins ?? [], summary: { note_count: notes?.length ?? 0, checkin_count: checkins?.length ?? 0, landed_count: (notes ?? []).reduce((sum: number, note: any) => sum + Number(note.landed || 0), 0) } };
       if (id === 'history.csv') {
-        const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+        // Neutralize spreadsheet formula injection: a cell starting with
+        // =, +, -, @, tab or CR would execute as a formula in Excel/Sheets.
+        const csvCell = (value: unknown) => {
+          const text = String(value ?? '').replace(/"/g, '""');
+          const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+          return `"${safe}"`;
+        };
         const lines = ['type,id,created_at,author_or_status,content_or_notes,landed_or_confirmed,mood'];
         for (const note of rows.notes as any[]) lines.push(['well_note', note.id, note.created_at, '', note.content, note.landed, ''].map(csvCell).join(','));
         for (const checkin of rows.checkins as any[]) lines.push(['care_loop_checkin', checkin.id, checkin.created_at, checkin.author, checkin.notes || '', checkin.confirm_time, checkin.mood || ''].map(csvCell).join(','));
@@ -241,6 +285,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (resource === 'reports' && id === 'conflicts' && method === 'GET') {
+      if (!dashboardAuth(req, res)) return;
       const { data, error } = await supabase().from('workspace_sync_conflicts').select('id,entity_type,entity_id,spreadsheet_id,sheet_name,row_number,local_hash,remote_hash,remote_values,status,resolution,created_at,resolved_at').eq('status', 'open').order('created_at', { ascending: false }).limit(500);
       if (error) { res.status(500).json({ error: error.message }); return; }
       res.json(data ?? []); return;

@@ -222,13 +222,15 @@ export async function syncWorkspaceToDatabase(): Promise<SyncResult> {
     if (notesError) throw new Error(notesError.message);
     if (checkinsError) throw new Error(checkinsError.message);
     const [{ data: cachedNotes }, { data: cachedCheckins }] = await Promise.all([
-      sb.from('well_notes').select('id').limit(5000),
-      sb.from('care_loop_checkins').select('id').limit(5000),
+      sb.from('well_notes').select('id,source').limit(5000),
+      sb.from('care_loop_checkins').select('id,source').limit(5000),
     ]);
     const noteIds = new Set(notes.map(note => note.id));
     const checkinIds = new Set(checkins.map(checkin => checkin.id));
-    const staleNoteIds = (cachedNotes || []).map(row => Number(row.id)).filter(id => !noteIds.has(id));
-    const staleCheckinIds = (cachedCheckins || []).map(row => Number(row.id)).filter(id => !checkinIds.has(id));
+    // Only Sheet-sourced rows are ever pruned: dashboard-originated rows are
+    // never deleted by the sync, even if they have not reached the Sheet yet.
+    const staleNoteIds = (cachedNotes || []).filter(row => row.source === 'google_sheets').map(row => Number(row.id)).filter(id => !noteIds.has(id));
+    const staleCheckinIds = (cachedCheckins || []).filter(row => row.source === 'google_sheets').map(row => Number(row.id)).filter(id => !checkinIds.has(id));
     if (staleNoteIds.length) await sb.from('well_notes').delete().in('id', staleNoteIds);
     if (staleCheckinIds.length) await sb.from('care_loop_checkins').delete().in('id', staleCheckinIds);
     await sb.from('workspace_sync_runs').update({ status: 'completed', notes_inserted: notes.length, checkins_inserted: checkins.length, completed_at: new Date().toISOString() }).eq('id', run.data.id);

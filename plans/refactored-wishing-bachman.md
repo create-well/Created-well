@@ -93,7 +93,7 @@ These must be set in Vercel Project Settings → Environment Variables (all envi
 | `NOTION_SECRET` | (integration token) |
 | `SUPABASE_URL` | `https://irtqcygriedvdijppntz.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | (service role key) |
-| `FIGMA_REGISTRY_TOKEN` | `figi_EzhrPi1OmRGvcgU35iPRYwDs3ihS2N-CWAoZoq57` |
+| `FIGMA_REGISTRY_TOKEN` | Set securely in Vercel; never commit the value |
 
 ---
 

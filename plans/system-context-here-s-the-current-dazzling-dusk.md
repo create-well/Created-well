@@ -403,7 +403,7 @@ VITE_DEV_BYPASS=true
 # SUPABASE_SERVICE_ROLE_KEY=<service role key>
 
 # Figma kit registry (Vercel only — rotates with each new sandbox session)
-# FIGMA_REGISTRY_TOKEN=figi_EzhrPi1OmRGvcgU35iPRYwDs3ihS2N-CWAoZoq57
+# FIGMA_REGISTRY_TOKEN=<set securely in Vercel; never commit the value>
 ```
 
 #### `guidelines/handoff.md`

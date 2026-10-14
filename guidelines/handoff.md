@@ -48,10 +48,7 @@ The Figma registry token auto-rotates in the sandbox. Vercel needs the current v
 
 1. Open [vercel.com/dashboard](https://vercel.com) → the `Created-well` project → **Settings** → **Environment Variables**
 2. Find `FIGMA_REGISTRY_TOKEN` (or create it if missing)
-3. Set the value to the current sandbox token — **copy it from `.npmrc`**:
-   ```
-   figi_EzhrPi1OmRGvcgU35iPRYwDs3ihS2N-CWAoZoq57
-   ```
+3. Set the value to the current sandbox token through the secure Figma/Vercel workflow. **Never copy a token into this guide, chat, or source control.**
 4. Check **Production**, **Preview**, and **Development** environments
 5. Save → trigger a new deployment (or redeploy the latest)
 
@@ -109,7 +106,7 @@ SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/seed-mb-admin.mjs
 
 Service role key location: [Supabase dashboard](https://supabase.com/dashboard/project/irtqcygriedvdijppntz/settings/api) → API → service_role (secret).
 
-**Note:** `seed-auth-user.mjs` and `seed-mb-admin.mjs` currently reference Supabase project `axntibrdivccycxdwlzk`. Verify that this matches the correct project (production uses `irtqcygriedvdijppntz`). Update `SUPABASE_URL` in those files if needed.
+**Current project:** `seed-auth-user.mjs` and `seed-mb-admin.mjs` target production project `irtqcygriedvdijppntz`. Both scripts require `CR8W_PASSWORD` at runtime and do not contain fallback passwords. Rotate any previously used seed-account passwords in Supabase before reusing these scripts.
 
 ---
 
@@ -153,8 +150,7 @@ import { Button } from '@cr8w/design-system';
 
 ## 7. Figma registry — token rotation
 
-The sandbox `.npmrc` token rotates automatically. When you see a new `figi_...` or `figp_...` token in `.npmrc`:
+The sandbox registry credential rotates automatically. When a new token is issued:
 
-1. Copy the new token
-2. Update `FIGMA_REGISTRY_TOKEN` in Vercel (see §2)
+1. Update `FIGMA_REGISTRY_TOKEN` in Vercel through the secure provider workflow (see §2)
 3. GitHub `.npmrc` already uses `${FIGMA_REGISTRY_TOKEN}` — no GitHub change needed

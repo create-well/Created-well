@@ -14,6 +14,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './notionWriter.js';
+import { getNotionDb } from '../src/config/notion.js';
+import { KV_TABLE } from '../src/config/sync.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 function supabase() {
@@ -23,7 +25,7 @@ function supabase() {
   return createClient(url, key);
 }
 
-const TABLE = 'kv_store_dabe1c74';
+const TABLE = KV_TABLE;
 
 // ── KV helpers ────────────────────────────────────────────────────────────────
 async function kvGet(key: string): Promise<any> {
@@ -324,7 +326,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     async function syncToNotion(action: 'create' | 'update' | 'archive', item?: any): Promise<string | undefined> {
       const cfg = NOTION_RESOURCES[resource];
       if (!cfg) return undefined;
-      const dbId = process.env[cfg.dbIdEnvVar];
+      const dbId = getNotionDb(cfg.dbKey);
       if (!dbId || !process.env.NOTION_SECRET) return undefined;
       try {
         if (action === 'create' && item) {

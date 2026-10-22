@@ -13,6 +13,7 @@
  */
 
 import type { Task, Station, ForumPost, CoFlowDate } from '../src/app/components/api';
+import type { NotionDbKey } from '../src/config/notion.js';
 
 const NOTION_API     = 'https://api.notion.com/v1';
 const NOTION_VERSION = '2022-06-28';
@@ -148,25 +149,25 @@ export async function notionArchive(pageId: string): Promise<void> {
 type PropsBuilder = (item: Record<string, unknown>) => Record<string, unknown>;
 
 interface NotionResourceConfig {
-  dbIdEnvVar: string;
+  dbKey: NotionDbKey;
   toProperties: PropsBuilder;
 }
 
 export const NOTION_RESOURCES: Record<string, NotionResourceConfig> = {
   tasks: {
-    dbIdEnvVar:   'NOTION_DB_MOVES',
+    dbKey:        'MOVES',
     toProperties: (item) => taskToProperties(item as OmitMeta<Task>),
   },
   stations: {
-    dbIdEnvVar:   'NOTION_DB_PEOPLE',
+    dbKey:        'PEOPLE',
     toProperties: (item) => stationToProperties(item as OmitMeta<Station>),
   },
   forum: {
-    dbIdEnvVar:   'NOTION_DB_CONTENT',
+    dbKey:        'CONTENT',
     toProperties: (item) => forumPostToProperties(item as OmitMeta<ForumPost>),
   },
   'coflow-dates': {
-    dbIdEnvVar:   'NOTION_DB_FLOWS',
+    dbKey:        'FLOWS',
     toProperties: (item) => coFlowDateToProperties(item as OmitMeta<CoFlowDate>),
   },
 };

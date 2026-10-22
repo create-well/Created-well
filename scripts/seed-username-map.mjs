@@ -6,7 +6,7 @@
  * and is never included in any client bundle.
  *
  * Usage:
- *   SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/seed-username-map.mjs
+ *   SUPABASE_URL=<project-url> SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/seed-username-map.mjs
  *
  * The script is idempotent: existing mappings for the same username are
  * overwritten; mappings for other usernames are preserved.
@@ -16,13 +16,13 @@
  *   → "service_role" (secret) — keep it server-side only
  */
 
-const SUPABASE_URL      = 'https://irtqcygriedvdijppntz.supabase.co';
+const SUPABASE_URL      = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const KV_TABLE          = 'kv_store_8dcd9693';
+const KV_TABLE          = 'kv_store_dabe1c74';
 const KV_KEY            = 'cr8w_username_map';
 
-if (!SERVICE_ROLE_KEY) {
-  console.error('Error: SUPABASE_SERVICE_ROLE_KEY env var is required.');
+if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+  console.error('Error: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars are required.');
   process.exit(1);
 }
 

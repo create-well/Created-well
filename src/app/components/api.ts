@@ -162,6 +162,56 @@ export const setInviteCounts = (counts: Omit<InviteCounts, 'updated_at'>) => req
 export const getCalendarEvents = () => req<CalendarEventKV[]>('GET', '/calendar-events');
 export const setCalendarEvents = (events: CalendarEventKV[]) => req<{ ok: boolean; count: number }>('POST', '/calendar-events', events);
 
+// Historical Well reporting and Workspace conflict visibility
+export interface HistoryReport {
+  generated_at: string;
+  from: string | null;
+  to: string | null;
+  notes: WellNote[];
+  checkins: CoFlowCheckin[];
+  summary: { note_count: number; checkin_count: number; landed_count: number };
+}
+export interface WorkspaceConflict {
+  id: string;
+  entity_type: 'well_note' | 'care_loop_checkin';
+  entity_id: number;
+  spreadsheet_id: string;
+  sheet_name: string;
+  row_number: number;
+  local_hash: string;
+  remote_hash: string;
+  remote_values: unknown[];
+  status: 'open' | 'resolved' | 'ignored';
+  resolution?: string;
+  created_at: string;
+}
+export const getHistoryReport = (from?: string, to?: string) => {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  return req<HistoryReport>('GET', `/reports/history${params.toString() ? `?${params}` : ''}`);
+};
+export const getWorkspaceConflicts = () => req<WorkspaceConflict[]>('GET', '/reports/conflicts');
+// Authenticated CSV download: the export endpoint requires the Authorization
+// header, which a plain <a href> navigation never sends, so fetch it and save
+// the blob instead.
+export const downloadHistoryCsv = async (from?: string, to?: string) => {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  const res = await fetch(`${BASE}/reports/history.csv${params.toString() ? `?${params}` : ''}`, { headers });
+  if (!res.ok) throw new Error(`GET /reports/history.csv → ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'created-well-history.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
+
 // ── /api/dashboard — Notion-backed unified payload ───────────────────────────
 // Derives the dashboard URL from the same hostname logic as BASE so that
 // Vercel / production / localhost / Figma-preview all resolve correctly.

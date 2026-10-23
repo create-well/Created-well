@@ -398,7 +398,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
         })();
       const res = await fetch(`${apiBase}/calendar-ical-sync`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer sb_publishable_9iKcrLqFPwPnKmZ4JC3RIg_C15YWSbk` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${api.sessionAccessToken() ?? ''}` },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Sync failed');

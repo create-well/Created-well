@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/reconcile",
+      "schedule": "*/15 * * * *"
+    }
+  ],
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [

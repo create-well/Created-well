@@ -5,7 +5,9 @@
  *   • Notion databases (MOVES → tasks, PEOPLE → stations, FLOWS → coflowDates, CONTENT → forum)
  *   • Supabase KV store (messages, braindumps, workshops, and all other non-Notion collections)
  *
- * Caching: CDN s-maxage=60 + in-process 55s cache so Notion is never hit more than ~once/min.
+ * Caching: none shared. The payload is per-user and session-gated, so the
+ * response is private/no-store and there is no in-process payload cache.
+ * Auth: a valid Supabase user session is required (see api/_auth.ts).
  * Secrets: NOTION_SECRET and all DB IDs live here only — never in the client bundle.
  *
  * Required env vars (set in Vercel dashboard):
@@ -21,6 +23,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { applyCors, requireSession } from './_auth.js';
 import {
   normalizeMove,
   normalizePerson,
@@ -100,33 +103,16 @@ async function queryNotionDatabase(databaseId: string, secret: string): Promise<
   return pages;
 }
 
-// ── In-process cache (warm-start optimisation; CDN cache is the primary gate) ─
-
-interface CacheEntry {
-  payload: SyncData;
-  ts: number;
-}
-
-let cache: CacheEntry | null = null;
-const PROCESS_CACHE_TTL = 55_000; // slightly under CDN 60s
-
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  applyCors(req, res);
 
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  // Serve from in-process cache if still fresh
-  if (cache && Date.now() - cache.ts < PROCESS_CACHE_TTL) {
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
-    res.setHeader('X-Cache', 'HIT');
-    res.json(cache.payload);
-    return;
-  }
+  // The payload is internal data; a valid user session is required.
+  if (!(await requireSession(req, res))) return;
 
   const secret     = process.env.NOTION_SECRET;
   const dbMoves    = process.env.NOTION_DB_MOVES;
@@ -190,16 +176,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       calendarEvents:    calendarEvents    as SyncData['calendarEvents'],
     };
 
-    cache = { payload, ts: Date.now() };
-
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
-    res.setHeader('X-Cache', 'MISS');
+    res.setHeader('Cache-Control', 'private, no-store');
     res.json(payload);
   } catch (err) {
     console.error('[/api/dashboard] Error building payload:', err);
     res.status(503).json({
       error: 'Failed to build dashboard payload',
-      detail: err instanceof Error ? err.message : String(err),
     });
   }
 }

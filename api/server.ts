@@ -14,6 +14,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './notionWriter.js';
+import { applyCors, requireSession, requireSessionOrCron } from './_auth.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 function supabase() {
@@ -51,13 +52,6 @@ async function setList(key: string, list: any[]): Promise<void> {
   await kvSet(key, JSON.stringify(list));
 }
 
-// ── CORS headers ──────────────────────────────────────────────────────────────
-function cors(res: VercelResponse): void {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-}
-
 // ── Body parser ───────────────────────────────────────────────────────────────
 function body(req: VercelRequest): Promise<any> {
   return new Promise((resolve) => {
@@ -72,7 +66,7 @@ function body(req: VercelRequest): Promise<any> {
 
 // ── Route dispatcher ─────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  cors(res);
+  applyCors(req, res);
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
   // Resolve path: supports both /api/server/sync and /api/server?path=sync
@@ -85,6 +79,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const segments = rawPath.split('/').filter(Boolean);
   const [resource, id, sub, subId] = segments;
   const method = req.method ?? 'GET';
+
+  // ── Auth gate (Phase 1 security candidate, see api/_auth.ts) ──────────────
+  // Open by design (pre-auth flows): health, gcal-token-exchange,
+  // username-lookup, register-username. Session-or-cron: invite-counts POST
+  // (Apps Script pushes counts) and calendar-ical-sync (scheduled sync).
+  // Everything else — /sync, generic CRUD, settings, calendar-events,
+  // parking-lot, invite-counts GET — requires a valid user session.
+  const isOpenRoute =
+    resource === 'health' ||
+    (resource === 'gcal-token-exchange' && method === 'POST') ||
+    (resource === 'username-lookup' && method === 'POST') ||
+    (resource === 'register-username' && method === 'POST');
+  const isCronOrSessionRoute =
+    (resource === 'invite-counts' && method === 'POST') ||
+    resource === 'calendar-ical-sync';
+
+  if (!isOpenRoute) {
+    const allowed = isCronOrSessionRoute
+      ? await requireSessionOrCron(req, res)
+      : await requireSession(req, res);
+    if (!allowed) return;
+  }
 
   try {
     // ── Health ────────────────────────────────────────────────────────────────
@@ -103,7 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ];
       const sb = supabase();
       const { data, error } = await sb.from(TABLE).select('key,value').in('key', SYNC_KEYS);
-      if (error) { res.status(500).json({ error: error.message }); return; }
+      if (error) { res.status(500).json({ error: 'Sync failed' }); return; }
       const map: Record<string, any[]> = {};
       for (const row of data ?? []) map[row.key] = parseList(row.value);
       res.json({
@@ -277,7 +293,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.json({ ok: true, count: events.length, synced_at: new Date().toISOString() });
         return;
       } catch (err: any) {
-        res.status(500).json({ error: `iCal sync failed: ${err.message}` });
+        console.error('iCal sync failed:', err);
+        res.status(500).json({ error: 'iCal sync failed' });
         return;
       }
     }
@@ -422,6 +439,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(404).json({ error: `Unknown route: ${method} /${rawPath}` });
   } catch (e: any) {
     console.error('API error:', e);
-    res.status(500).json({ error: e?.message ?? String(e) });
+    res.status(500).json({ error: 'Internal error' });
   }
 }

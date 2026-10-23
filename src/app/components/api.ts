@@ -30,8 +30,36 @@ const BASE = resolveApiBase();
 // /api/dashboard only exists as a Vercel serverless function; not present on the Edge Function.
 export const isDashboardAvailable = BASE.endsWith('/server');
 
-// Auth header: required by Supabase edge function; Vercel routes ignore it.
-const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` };
+// Session access token: AuthGate persists the Supabase session in
+// localStorage under this key. API calls send the user's access token so the
+// Vercel routes can validate the session server-side (api/_auth.ts); the
+// publishable key remains only as the pre-auth fallback (username lookup,
+// registration, and the degraded Edge Function path).
+const SESSION_STORAGE_KEY = 'cr8w_supabase_auth';
+
+export function sessionAccessToken(): string | null {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const session = parsed?.currentSession ?? parsed;
+    const token = session?.access_token;
+    if (!token || typeof token !== 'string') return null;
+    const expiresAt = session?.expires_at;
+    if (typeof expiresAt === 'number' && expiresAt * 1000 <= Date.now()) return null;
+    return token;
+  } catch {
+    return null;
+  }
+}
+
+function authHeaders(): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${sessionAccessToken() ?? API_KEY}`,
+  };
+}
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   // One retry for GETs on network-level failures only; mutations fail fast.
@@ -46,7 +74,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     try {
       const res = await fetch(`${BASE}${path}`, {
         method,
-        headers,
+        headers: authHeaders(),
         body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
@@ -178,7 +206,7 @@ export async function fetchDashboard(): Promise<SyncData> {
   const timeoutId = setTimeout(() => controller.abort(), 10_000);
   try {
     const res = await fetch(DASHBOARD_URL, {
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
+      headers: authHeaders(),
       signal: controller.signal,
     });
     if (!res.ok) {

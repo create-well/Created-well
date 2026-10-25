@@ -1,0 +1,1 @@
+{"compilerOptions":{"allowImportingTsExtensions":true,"jsx":"react-jsx","lib":["ES2022","DOM","DOM.Iterable"],"module":"ESNext","moduleResolution":"bundler","noEmit":true,"paths":{"/utils/*":["./utils/*"]},"skipLibCheck":true,"strict":true,"target":"ES2022","types":["node"]},"include":["src","api"]}

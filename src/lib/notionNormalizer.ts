@@ -396,7 +396,6 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
       getUrl(pick(p, 'Public URL', 'Public Url', 'Link')) ||
       'TBD',
     host:         hostRaw.toLowerCase() || undefined,
-    flowType,
     theme:        themeRaw || undefined,
     flowType:     typeRaw || undefined,
     rsvp:         {},

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type ViewState = 'loading' | 'empty' | 'stale' | 'failed' | 'restricted';
+export type ViewState = 'loading' | 'fresh' | 'empty' | 'stale' | 'failed' | 'restricted';
 
 interface ViewShellProps {
   state: ViewState;

@@ -16,12 +16,12 @@ interface PersonViewProps {
   wellNotes: NoteItem[];
   stations: Station[];
   onAddTask: () => void;
-  onUpdateTaskStatus: (id: number, status: string) => void;
+  onUpdateTaskStatus: (id: number, status: ActionItem['status']) => void;
   onAddMomentum: (content: string, person: string) => void;
   onAddNote: (content: string, author: string) => void;
 }
 
-const STATUS_ORDER = ['todo', 'in_progress', 'done', 'blocked'];
+const STATUS_ORDER: ActionItem['status'][] = ['todo', 'in_progress', 'done', 'blocked'];
 
 // Due-soon / overdue helper
 function getDueClass(due_date?: string, status?: string): string {

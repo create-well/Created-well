@@ -29,7 +29,7 @@ interface GeyserViewProps {
   forumReplies?: ApiForumReply[];
   defaultTab?: GeyserTab;
   onAddTask: () => void;
-  onUpdateTaskStatus: (id: number, status: string) => void;
+  onUpdateTaskStatus: (id: number, status: Task['status']) => void;
   onUpdateTask: (id: number, updates: Partial<Task>) => void;
   onDeleteTask: (id: number) => void;
   onDismissAnnouncement: (id: number) => void;
@@ -790,7 +790,7 @@ export function GeyserView({
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                     <select
                       value={task.status}
-                      onChange={e => onUpdateTaskStatus(task.id, e.target.value)}
+                      onChange={e => onUpdateTaskStatus(task.id, e.target.value as Task['status'])}
                       style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
                     >
                       <option value="todo">To Do</option>

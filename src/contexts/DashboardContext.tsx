@@ -472,11 +472,11 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         const prev = coFlowDates.find(d => d.id === id);
         setCoFlowDates(p => p.map(d => d.id === id ? { ...d, ...updates } : d));
         await api.updateCoFlowDate(id, updates);
-        if (prev && (updates.date || updates.startTime || updates.endTime || updates.location || updates.host || updates.theme) && updates.status !== 'archived') {
+        if (prev && (updates.date || updates.startTime || updates.endTime || updates.location || updates.host || updates.theme) && (updates.status as string) !== 'archived') {
           const dateLabel = new Date((updates.date || prev.date) + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
           sendSystemMessage(`[UPDATE] ✏️ behind h0es doors updated → ${dateLabel} · ${updates.location || prev.location || 'TBD'}`);
         }
-        if (updates.status === 'archived' && prev) {
+        if ((updates.status as string) === 'archived' && prev) {
           const dateLabel = new Date(prev.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           sendSystemMessage(`[UPDATE] 📚 behind h0es doors (${dateLabel}) has been archived.`);
         }

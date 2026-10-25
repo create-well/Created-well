@@ -109,6 +109,33 @@ function InlineEdit({ value, onSave, className, style, multiline }: {
   );
 }
 
+// Blocked By input with a controlled per-task draft.
+// The draft synchronizes with task.source when the input is not being
+// edited, so a refresh cannot leave stale text that later overwrites
+// refreshed data on blur. While editing, external updates are not
+// forced into the draft. On blur, only a changed value is saved, and
+// an empty string is saved as-is, so clearing Blocked By still works.
+function BlockedByInput({ value, onSave }: {
+  value: string; onSave: (v: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => { if (!editing) setDraft(value); }, [value, editing]);
+  return (
+    <input
+      type="text"
+      aria-label="Blocked By"
+      placeholder="Blocked By"
+      value={draft}
+      onFocus={() => setEditing(true)}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={() => { setEditing(false); if (draft !== value) onSave(draft); }}
+      onKeyDown={e => { if (e.key === 'Escape') { setDraft(value); setEditing(false); } }}
+      style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)' }}
+    />
+  );
+}
+
 export function GeyserView({
   onNavigate, actionItems, stations, announcements, wellNotes,
   forum, forumReplies, defaultTab, onAddTask, onUpdateTaskStatus, onUpdateTask, onDeleteTask,
@@ -796,13 +823,9 @@ export function GeyserView({
                         style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)' }}
                       />
                       <label style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Blocked By</label>
-                      <input
-                        type="text"
-                        aria-label="Blocked By"
-                        placeholder="Blocked By"
-                        defaultValue={task.source || ''}
-                        onBlur={e => { if (e.target.value !== (task.source || '')) onUpdateTask(task.id, { source: e.target.value }); }}
-                        style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)' }}
+                      <BlockedByInput
+                        value={task.source || ''}
+                        onSave={v => onUpdateTask(task.id, { source: v })}
                       />
                     </div>
                   </div>

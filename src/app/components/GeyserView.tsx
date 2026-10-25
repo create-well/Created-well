@@ -786,6 +786,25 @@ export function GeyserView({
                       {task.due_date && <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: dueClass === 'overdue' ? '#D45050' : 'var(--text-muted)' }}>Due {formatDate(task.due_date)}</span>}
                       {task.category && <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.6rem', color: 'var(--text-muted)', background: 'var(--sandstone)', padding: '1px 6px', borderRadius: 4 }}>{task.category}</span>}
                     </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <label style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Due</label>
+                      <input
+                        type="date"
+                        aria-label="Due date"
+                        value={task.due_date ? task.due_date.slice(0, 10) : ''}
+                        onChange={e => onUpdateTask(task.id, { due_date: e.target.value })}
+                        style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)' }}
+                      />
+                      <label style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Blocked By</label>
+                      <input
+                        type="text"
+                        aria-label="Blocked By"
+                        placeholder="Blocked By"
+                        defaultValue={task.source || ''}
+                        onBlur={e => { if (e.target.value !== (task.source || '')) onUpdateTask(task.id, { source: e.target.value }); }}
+                        style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)' }}
+                      />
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                     <select
@@ -797,6 +816,7 @@ export function GeyserView({
                       <option value="in_progress">In Progress</option>
                       <option value="done">Done</option>
                       <option value="blocked">Blocked</option>
+                      <option value="dropped">Dropped</option>
                     </select>
                     <button onClick={() => onDeleteTask(task.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.7rem', color: 'var(--text-muted)', padding: 4 }}>🗑</button>
                   </div>

@@ -24,6 +24,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { applyCors, requireSession } from './_auth.js';
+import { hasDashboardConfiguration } from './_dashboard-config.js';
 import {
   normalizeMove,
   normalizePerson,
@@ -114,6 +115,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // The payload is internal data; a valid user session is required.
   if (!(await requireSession(req, res))) return;
 
+  // An unconfigured source is unknown, never a successfully empty source.
+  if (!hasDashboardConfiguration(process.env)) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(503).json({ error: 'Dashboard sources are not configured' });
+    return;
+  }
+
   const secret     = process.env.NOTION_SECRET;
   const dbMoves    = process.env.NOTION_DB_MOVES;
   const dbPeople   = process.env.NOTION_DB_PEOPLE;
@@ -137,7 +145,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // Fan-out: all Notion DB queries + all KV reads in parallel.
-    // Missing env vars resolve to empty arrays — never a hard failure.
+    // Configuration was checked above; configured empty sources remain valid.
     const [notionResults, kvResults] = await Promise.all([
       Promise.all([
         secret && dbMoves   ? queryNotionDatabase(dbMoves, secret)   : Promise.resolve([]),

@@ -31,6 +31,7 @@ export interface DashboardPayload {
   coFlowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
   syncStatus: SyncStatus;
+  /** Legacy name: last successful payload load, not source observation time. */
   lastSynced: Date | null;
   permissions: DashboardPermissions;
 }

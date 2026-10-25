@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "test:dashboard-status": "node --experimental-strip-types --test tests/dashboard-status.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.49.8",

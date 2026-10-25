@@ -1596,7 +1596,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                 let coFlowMatch: CoFlowDate | undefined;
                 if (e.type === 'bhd') {
                   coFlowMatch = coFlowDates.find(cf =>
-                    cf.date === e.date && ((cf.status as string) === 'upcoming' || (cf.status as string) === 'active')
+                    cf.date === e.date && (cf.status === 'scheduled' || cf.status === 'happened')
                   );
                 }
                 const checkins = coFlowMatch
@@ -1652,7 +1652,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
             // Also add any coFlowDates that don't overlap with calendar BHD events
             const calBhdDates = new Set(calEvents.filter(e => e.type === 'bhd').map(e => e.dateStr));
             const extraCoFlow: UpcomingEvent[] = coFlowDates
-              .filter(cf => !calBhdDates.has(cf.date) && ((cf.status as string) === 'upcoming' || (cf.status as string) === 'active'))
+              .filter(cf => !calBhdDates.has(cf.date) && (cf.status === 'scheduled' || cf.status === 'happened'))
               .filter(cf => new Date(cf.date + 'T00:00:00') >= todayDate)
               .map((cf, i) => {
                 const checkins = coFlowCheckins.filter(c => c.weekOf === cf.date);

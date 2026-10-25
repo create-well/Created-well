@@ -348,9 +348,10 @@ export interface CoFlowDate {
   location: string;
   host?: string;
   /** Structured Type from FLOWS hub DB select (Podyap/Workshop/Book Club/…). Prefer over `theme` for filtering.
-      Typed as the raw select text: the normalizer writes the unmapped value, which can fall outside the
-      FlowType union (the validated FlowType is derivable via FLOW_TYPES in notionNormalizer). */
-  flowType?: string;
+      The normalizer writes the validated FlowType (the FLOW_TYPES lookup in notionNormalizer): a select
+      value inside the union lands in canonical casing; a value outside it writes undefined, and the raw
+      label survives on `theme`. */
+  flowType?: FlowType;
   /** Free-text topic label; fallback when flowType is absent. */
   theme?: string;
   rsvp: Record<string, string>;

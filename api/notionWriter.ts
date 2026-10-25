@@ -58,14 +58,17 @@ export function taskToProperties(t: OmitMeta<Task>): Record<string, unknown> {
     in_progress: 'Now',
     done:        'Done',
     blocked:     'Now',
+    dropped:     'Dropped',
   };
   const props: Record<string, unknown> = {
     Name:   nTitle(t.title || 'Untitled'),
     Status: nSelect(STATUS[t.status] ?? 'Next'),
   };
-  if (t.due_date) props['Due']        = nDate(t.due_date);
-  if (t.category) props['Type']       = nSelect(t.category);
-  if (t.source)   props['Blocked By'] = nRichText(t.source);
+  // Explicit clear: a present key with an empty value clears the field,
+  // instead of being omitted. An absent key leaves the field untouched.
+  if ('due_date' in t) props['Due'] = t.due_date ? nDate(t.due_date) : { date: null };
+  if ('category' in t) props['Type'] = t.category ? nSelect(t.category) : { select: null };
+  if ('source' in t) props['Blocked By'] = t.source ? nRichText(t.source) : { rich_text: [] };
   return props;
 }
 

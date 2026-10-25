@@ -6,8 +6,8 @@
  *   • All 14 resource types are persisted in Supabase KV (primary, fast, always-on).
  *   • The 4 Notion-backed types (tasks, stations, forum, coflow-dates) are also
  *     written to Notion when NOTION_SECRET and the matching NOTION_DB_* env vars
- *     are present.  Notion writes are best-effort: a Notion failure logs the error
- *     but does not block the KV write or the HTTP response.
+ *     are present.  Notion writes are truthful: a Notion failure returns 502
+ *     and KV is unchanged, instead of returning success with KV changed.
  *   • notionPageId is stored on every KV item that was successfully written to
  *     Notion so subsequent PUT/DELETE can target the correct Notion page.
  */
@@ -337,26 +337,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ── Notion dual-write helper ───────────────────────────────────────────────
-    // Fires-and-forgets a Notion sync; never throws so KV writes always succeed.
-    async function syncToNotion(action: 'create' | 'update' | 'archive', item?: any): Promise<string | undefined> {
+    // Truthful Notion sync; see syncToNotion below.
+    // ── Notion dual-write helper ───────────────────────────────────────────────
+    // Truthful, not best-effort: a Notion failure is returned to the caller,
+    // so the caller can leave KV unchanged. A KV item without a notionPageId
+    // is KV-only and is reported as not_linked, never as a Notion success.
+    async function syncToNotion(action: 'create' | 'update' | 'archive', item?: any): Promise<{ ok: boolean; notionPageId?: string; error?: string; skipped?: string }> {
       const cfg = NOTION_RESOURCES[resource];
-      if (!cfg) return undefined;
+      if (!cfg) return { ok: true, skipped: 'not_notion_backed' };
       const dbId = process.env[cfg.dbIdEnvVar];
-      if (!dbId || !process.env.NOTION_SECRET) return undefined;
+      if (!dbId || !process.env.NOTION_SECRET) return { ok: false, error: 'notion_not_configured' };
       try {
         if (action === 'create' && item) {
-          return await notionCreate(dbId, cfg.toProperties(item));
+          const notionPageId = await notionCreate(dbId, cfg.toProperties(item));
+          return { ok: true, notionPageId };
         }
         if (action === 'update' && item?.notionPageId) {
           await notionUpdate(item.notionPageId, cfg.toProperties(item));
+          return { ok: true };
         }
         if (action === 'archive' && item?.notionPageId) {
           await notionArchive(item.notionPageId);
+          return { ok: true };
         }
-      } catch (err) {
+        return { ok: false, skipped: 'no_notion_page_id' };
+      } catch (err: any) {
         console.error(`[notionWriter] ${action} failed for ${resource}:`, err);
+        return { ok: false, error: err?.message || String(err) };
       }
-      return undefined;
     }
 
     // ── Generic list CRUD (GET all / POST new / PUT :id / DELETE :id) ─────────
@@ -369,9 +377,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const b = await body(req);
         const list = await getList(kvKey);
         const item: Record<string, any> = { ...b, id: Date.now(), created_at: new Date().toISOString() };
-        // Notion dual-write for the 4 CMS-backed types
-        const notionPageId = await syncToNotion('create', item);
-        if (notionPageId) item.notionPageId = notionPageId;
+        // Notion dual-write for the 4 CMS-backed types.
+        // Truthful outcome: a Notion failure returns 502 and KV is unchanged.
+        const sync = await syncToNotion('create', item);
+        if (!sync.ok && sync.error) { res.status(502).json({ error: 'Notion write failed, KV unchanged', notion_error: sync.error }); return; }
+        if (sync.notionPageId) item.notionPageId = sync.notionPageId;
         // Forum and messages prepend; others append
         if (resource === 'forum' || resource === 'braindumps' || resource === 'announcements') list.unshift(item);
         else if (resource === 'messages') { list.push(item); if (list.length > 500) list.splice(0, list.length - 500); }
@@ -385,16 +395,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const idx = list.findIndex((x: any) => String(x.id) === String(id));
         if (idx === -1) { res.status(404).json({ error: 'Not found' }); return; }
         list[idx] = { ...list[idx], ...b, id: list[idx].id, updated_at: new Date().toISOString() };
-        // Notion dual-write: update if item has a notionPageId
-        await syncToNotion('update', list[idx]);
+        // Notion dual-write: update if item has a notionPageId.
+        // Truthful outcome: a Notion failure returns 502 and KV is unchanged.
+        const sync = await syncToNotion('update', list[idx]);
+        if (!sync.ok && sync.error) { res.status(502).json({ error: 'Notion update failed, KV unchanged', notion_error: sync.error }); return; }
         await setList(kvKey, list);
-        res.json(list[idx]); return;
+        res.json({ ...list[idx], notion_sync: sync.ok ? 'ok' : 'not_linked' }); return;
       }
       if (method === 'DELETE' && id) {
         const list = await getList(kvKey);
         const target = list.find((x: any) => String(x.id) === String(id));
-        // Notion dual-write: archive if item has a notionPageId
-        if (target) await syncToNotion('archive', target);
+        // Notion dual-write: archive if item has a notionPageId.
+        // Truthful outcome: a Notion failure returns 502 and KV is unchanged.
+        if (target) {
+          const sync = await syncToNotion('archive', target);
+          if (!sync.ok && sync.error) { res.status(502).json({ error: 'Notion archive failed, KV unchanged', notion_error: sync.error }); return; }
+        }
         await setList(kvKey, list.filter((x: any) => String(x.id) !== String(id)));
         res.json({ ok: true }); return;
       }

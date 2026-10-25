@@ -122,13 +122,13 @@ export function stableId(notionId: string): number {
 //   Now → actively being worked on → in_progress
 //   Next → queued, ready to pick up → todo
 //   Done → completed → done
-//   Dropped → cancelled/deprioritised → done (no separate client state)
+//   Dropped → its own client state, not done
 const TASK_STATUS_MAP: Record<string, Task['status']> = {
   // Create Well MOVES canonical values
   'now':          'in_progress',
   'next':         'todo',
   'done':         'done',
-  'dropped':      'done',
+  'dropped':      'dropped',
   // Legacy / generic fallbacks
   'todo':         'todo',
   'not started':  'todo',

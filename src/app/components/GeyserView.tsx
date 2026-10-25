@@ -796,10 +796,13 @@ export function GeyserView({
                         style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)' }}
                       />
                       <label style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Blocked By</label>
-                      <InlineEdit
-                        value={task.source || ''}
-                        onSave={v => onUpdateTask(task.id, { source: v })}
-                        style={{ fontFamily: 'var(--font-label)', fontSize: '0.68rem', color: 'var(--text-secondary)' }}
+                      <input
+                        type="text"
+                        aria-label="Blocked By"
+                        placeholder="Blocked By"
+                        defaultValue={task.source || ''}
+                        onBlur={e => { if (e.target.value !== (task.source || '')) onUpdateTask(task.id, { source: e.target.value }); }}
+                        style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)' }}
                       />
                     </div>
                   </div>

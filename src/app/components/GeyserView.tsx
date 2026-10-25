@@ -109,6 +109,46 @@ function InlineEdit({ value, onSave, className, style, multiline }: {
   );
 }
 
+// Blocked By input with a controlled per-task draft.
+// The draft synchronizes with task.source when the input is not being
+// edited, so a refresh cannot leave stale text that later overwrites
+// refreshed data on blur. While editing, external updates are not
+// forced into the draft. On blur, only a genuine local change is saved:
+// the draft is compared with the focus-time baseline, not with the
+// latest value, so an untouched field adopts the refreshed value
+// instead of saving its old draft over it.
+// Copilot review 5645962245, Oct 25 2026 04:43 PM PDT, and Vercel bot
+// review 5645949232, Oct 25 2026 04:41 PM PDT, same Escape bug:
+// discussion r4372965864, Escape left the input focused with editing
+// false, so typing again without a new focus let a refresh replace the
+// draft; discussion r4372965885, an untouched focused field saved its
+// old draft over a refreshed value on blur.
+// Escape fix: reset draft and baseline to the latest value, and keep
+// editing active until the actual blur event, so a later refresh while
+// still focused does not replace the resumed draft. Cancellation alone
+// saves nothing, because draft equals baseline on blur.
+function BlockedByInput({ value, onSave }: {
+  value: string; onSave: (v: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  const [editing, setEditing] = useState(false);
+  const [baseline, setBaseline] = useState(value);
+  useEffect(() => { if (!editing) { setDraft(value); setBaseline(value); } }, [value, editing]);
+  return (
+    <input
+      type="text"
+      aria-label="Blocked By"
+      placeholder="Blocked By"
+      value={draft}
+      onFocus={() => { setEditing(true); setBaseline(value); setDraft(value); }}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={() => { setEditing(false); if (draft !== baseline) onSave(draft); }}
+      onKeyDown={e => { if (e.key === 'Escape') { setDraft(value); setBaseline(value); } }}
+      style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)' }}
+    />
+  );
+}
+
 export function GeyserView({
   onNavigate, actionItems, stations, announcements, wellNotes,
   forum, forumReplies, defaultTab, onAddTask, onUpdateTaskStatus, onUpdateTask, onDeleteTask,
@@ -796,13 +836,9 @@ export function GeyserView({
                         style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)' }}
                       />
                       <label style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Blocked By</label>
-                      <input
-                        type="text"
-                        aria-label="Blocked By"
-                        placeholder="Blocked By"
-                        defaultValue={task.source || ''}
-                        onBlur={e => { if (e.target.value !== (task.source || '')) onUpdateTask(task.id, { source: e.target.value }); }}
-                        style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)' }}
+                      <BlockedByInput
+                        value={task.source || ''}
+                        onSave={v => onUpdateTask(task.id, { source: v })}
                       />
                     </div>
                   </div>

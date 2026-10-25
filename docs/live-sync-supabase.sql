@@ -150,13 +150,18 @@ alter table public.sync_setup enable row level security;
 --   sync_snapshots:      list rows, upsert rows, delete one row.
 --   sync_setup:          upsert the one-time stash (the operator clears
 --                        it from the dashboard as owner, not via the API).
+--                        SELECT is granted because the upsert's
+--                        ON CONFLICT arbiter must read the conflicting
+--                        row; without it the stash write fails with a
+--                        permission error (activation punch list,
+--                        Copilot finding on PR #30, 2026-10-24).
 revoke all privileges on table public.sync_delivery_state from public, anon, authenticated, service_role;
 revoke all privileges on table public.sync_snapshots from public, anon, authenticated, service_role;
 revoke all privileges on table public.sync_setup from public, anon, authenticated, service_role;
 
 grant select, insert, update on table public.sync_delivery_state to service_role;
 grant select, insert, update, delete on table public.sync_snapshots to service_role;
-grant insert, update on table public.sync_setup to service_role;
+grant select, insert, update on table public.sync_setup to service_role;
 
 commit;
 

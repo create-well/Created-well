@@ -160,6 +160,7 @@ export function GeyserView({
 }: GeyserViewProps) {
   const [activeTab, setActiveTab] = useState<GeyserTab>(defaultTab || 'overview');
   const [taskFilter, setTaskFilter] = useState<string>('all');
+  const [detailTaskId, setDetailTaskId] = useState<number | null>(null);
   const [forumAuthor, setForumAuthor] = useState<string>('sunshine');
   const [forumDraft, setForumDraft] = useState('');
   const [forumTag, setForumTag] = useState<string>('update');
@@ -811,7 +812,8 @@ export function GeyserView({
               const role = TASK_ROLES[task.person];
               const dueClass = getDueClass(task.due_date, task.status);
               return (
-                <div key={task.id} className={`card ${dueClass}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
+                <React.Fragment key={task.id}>
+                <div className={`card ${dueClass}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
                   <div className="geyser-task-person-dot" style={{ background: role?.color || '#A89888' }} title={role ? `${role.name} — ${role.sub}` : task.person}>
                     {role?.emoji || '?'}
                   </div>
@@ -855,8 +857,56 @@ export function GeyserView({
                       <option value="dropped">Dropped</option>
                     </select>
                     <button onClick={() => onDeleteTask(task.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.7rem', color: 'var(--text-muted)', padding: 4 }}>🗑</button>
+                    <button onClick={() => setDetailTaskId(detailTaskId === task.id ? null : task.id)} aria-label="Open task detail" style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Detail</button>
                   </div>
                 </div>
+                {detailTaskId === task.id && (
+                  <div className="card" aria-label={`Task detail for ${task.title}`} style={{ padding: '12px 16px', marginTop: -4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 700 }}>Task detail</span>
+                      <button onClick={() => setDetailTaskId(null)} aria-label="Close task detail" style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Close</button>
+                    </div>
+                    <div style={{ marginTop: 8 }}>
+                      <InlineEdit
+                        value={task.title}
+                        onSave={v => onUpdateTask(task.id, { title: v })}
+                        style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <label style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Status</label>
+                      <select
+                        value={task.status}
+                        onChange={e => onUpdateTaskStatus(task.id, e.target.value as Task['status'])}
+                        style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                      >
+                        <option value="todo">To Do</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="done">Done</option>
+                        <option value="blocked">Blocked</option>
+                        <option value="dropped">Dropped</option>
+                      </select>
+                      <label style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Due</label>
+                      <input
+                        type="date"
+                        aria-label="Due date"
+                        value={task.due_date ? task.due_date.slice(0, 10) : ''}
+                        onChange={e => onUpdateTask(task.id, { due_date: e.target.value })}
+                        style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)' }}
+                      />
+                      <button onClick={() => onUpdateTask(task.id, { due_date: '' })} aria-label="Clear due date" style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Clear due date</button>
+                      <label style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Blocked By</label>
+                      <BlockedByInput
+                        value={task.source || ''}
+                        onSave={v => onUpdateTask(task.id, { source: v })}
+                      />
+                    </div>
+                    <div style={{ marginTop: 8, fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                      Priority: {task.priority} · Category: {task.category || 'none'} · Closing this detail does not discard a saved value, because detail saves already happened on blur or change.
+                    </div>
+                  </div>
+                )}
+                </React.Fragment>
               );
             })}
           </div>

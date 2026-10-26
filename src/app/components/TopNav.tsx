@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router';
+import React, { useState, useRef, useEffect, useId } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router';
+import { createPopper } from '@popperjs/core';
 import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 import { PERSONS } from './data';
 import { VisibilityDial } from './VisibilityDial';
@@ -16,6 +17,13 @@ const NAV_ITEMS: { path: string; label: string; emoji: string; end?: boolean }[]
   { path: '/system',     label: 'System',    emoji: '🔧' },
 ];
 
+const FLOW_DESTINATIONS = [
+  { path: '/podyaps', label: 'Podyaps' },
+  { path: '/workshops', label: 'Workshops' },
+] as const;
+const FLOW_PATHS = ['/flows', '/podyaps', '/workshops'] as const;
+const MOBILE_DRAWER_FOCUSABLE_SELECTOR = 'a[href], button, input, select, textarea, [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
+
 const CO_FOUNDERS = Object.entries(PERSONS) as [string, typeof PERSONS[keyof typeof PERSONS]][];
 
 interface TopNavProps {
@@ -24,11 +32,27 @@ interface TopNavProps {
 
 export function TopNav({ onSignOut }: TopNavProps) {
   const { data, ui } = useDashboard();
+  const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopFlowsOpen, setDesktopFlowsOpen] = useState(false);
+  const [mobileFlowsOpen, setMobileFlowsOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [showWellSettings, setShowWellSettings] = useState(false);
   const [expandedProfile, setExpandedProfile] = useState<string | null>(null);
+  const flowIdBase = useId().replace(/[^A-Za-z0-9_-]/g, '');
+  const desktopFlowPanelId = `${flowIdBase}-desktop-flow-panel`;
+  const mobileFlowPanelId = `${flowIdBase}-mobile-flow-panel`;
+  const mobileMenuId = `${flowIdBase}-mobile-navigation`;
+  const desktopFlowGroupRef = useRef<HTMLDivElement>(null);
+  const desktopFlowsLinkRef = useRef<HTMLAnchorElement>(null);
+  const desktopFlowTriggerRef = useRef<HTMLButtonElement>(null);
+  const desktopFlowPanelRef = useRef<HTMLDivElement>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const mobileFirstNavLinkRef = useRef<HTMLAnchorElement>(null);
+  const mobileOpenRef = useRef(false);
+  const previousPathRef = useRef(location.pathname);
   const profileRef = useRef<HTMLDivElement>(null);
   const [visibilityDial, setVisibilityDial] = useState<number>(() => {
     const stored = localStorage.getItem('visibilityDial');
@@ -36,6 +60,8 @@ export function TopNav({ onSignOut }: TopNavProps) {
   });
 
   const { syncStatus } = data;
+  const isFlowRoute = FLOW_PATHS.some(path => path === location.pathname);
+  const isFlowChildRoute = FLOW_DESTINATIONS.some(({ path }) => path === location.pathname);
   const syncDot = syncStatus === 'fresh'
     ? { color: '#30D158', title: 'Synced' }
     : syncStatus === 'failed'
@@ -43,6 +69,61 @@ export function TopNav({ onSignOut }: TopNavProps) {
     : syncStatus === 'stale'
     ? { color: '#FF9F0A', title: 'Stale' }
     : { color: '#FFD60A', title: 'Syncing…' };
+
+  function closeMobileDrawer() {
+    const wasOpen = mobileOpenRef.current;
+    mobileOpenRef.current = false;
+    setMobileOpen(false);
+    if (wasOpen) {
+      window.requestAnimationFrame(() => mobileMenuButtonRef.current?.focus());
+    }
+  }
+
+  function toggleMobileDrawer() {
+    if (mobileOpenRef.current) {
+      closeMobileDrawer();
+      return;
+    }
+    setDesktopFlowsOpen(false);
+    setMobileFlowsOpen(isFlowChildRoute);
+    mobileOpenRef.current = true;
+    setMobileOpen(true);
+  }
+
+  function handleMobileDrawerKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeMobileDrawer();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+
+    const drawer = mobileMenuRef.current;
+    if (!drawer) return;
+    const focusable = Array.from(
+      drawer.querySelectorAll<HTMLElement>(MOBILE_DRAWER_FOCUSABLE_SELECTOR),
+    ).filter(element =>
+      element.getClientRects().length > 0
+      && !element.matches(':disabled')
+      && window.getComputedStyle(element).visibility !== 'hidden',
+    );
+    if (focusable.length === 0) {
+      event.preventDefault();
+      drawer.focus();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || !drawer.contains(active))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (active === last || !drawer.contains(active))) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   // Close profile card on outside click
   useEffect(() => {
@@ -56,10 +137,89 @@ export function TopNav({ onSignOut }: TopNavProps) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [expandedProfile]);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const frame = window.requestAnimationFrame(() => mobileFirstNavLinkRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    if (previousPathRef.current === location.pathname) return;
+    previousPathRef.current = location.pathname;
+    setDesktopFlowsOpen(false);
+    setMobileFlowsOpen(false);
+    if (mobileOpenRef.current) closeMobileDrawer();
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const desktopMedia = window.matchMedia('(min-width: 769px)');
+    function closeHiddenNavigation(event: MediaQueryListEvent) {
+      if (event.matches) {
+        const drawerWasOpen = mobileOpenRef.current;
+        const focusWasInMobileNav = mobileMenuButtonRef.current === document.activeElement
+          || Boolean(mobileMenuRef.current?.contains(document.activeElement));
+        if (drawerWasOpen) {
+          mobileOpenRef.current = false;
+          setMobileOpen(false);
+        }
+        if (drawerWasOpen || focusWasInMobileNav) {
+          window.requestAnimationFrame(() => desktopFlowsLinkRef.current?.focus());
+        }
+        setMobileFlowsOpen(false);
+      } else {
+        const focusWasInDesktopNav = Boolean(document.querySelector('.nav-links')?.contains(document.activeElement));
+        setDesktopFlowsOpen(false);
+        if (focusWasInDesktopNav) {
+          window.requestAnimationFrame(() => mobileMenuButtonRef.current?.focus());
+        }
+      }
+    }
+    desktopMedia.addEventListener('change', closeHiddenNavigation);
+    return () => desktopMedia.removeEventListener('change', closeHiddenNavigation);
+  }, [desktopFlowsOpen]);
+
+  useEffect(() => {
+    if (!desktopFlowsOpen) return;
+    const trigger = desktopFlowTriggerRef.current;
+    const panel = desktopFlowPanelRef.current;
+    if (!trigger || !panel) return;
+
+    const popper = createPopper(trigger, panel, {
+      placement: 'bottom-start',
+      modifiers: [
+        { name: 'offset', options: { offset: [0, 8] } },
+        { name: 'flip', options: { fallbackPlacements: ['bottom-end', 'top-start', 'top-end'] } },
+        { name: 'preventOverflow', options: { padding: 8, altAxis: true } },
+      ],
+    });
+    return () => popper.destroy();
+  }, [desktopFlowsOpen]);
+
+  useEffect(() => {
+    if (!desktopFlowsOpen) return;
+    function closeOnOutsidePointer(event: PointerEvent) {
+      if (!desktopFlowGroupRef.current?.contains(event.target as Node)) {
+        setDesktopFlowsOpen(false);
+      }
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setDesktopFlowsOpen(false);
+      desktopFlowTriggerRef.current?.focus();
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [desktopFlowsOpen]);
+
   function openPerson(key: string) {
     ui.setActivePerson(key);
     setExpandedProfile(null);
-    setMobileOpen(false);
+    closeMobileDrawer();
   }
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -97,7 +257,59 @@ export function TopNav({ onSignOut }: TopNavProps) {
 
         {/* Desktop Nav Links */}
         <div className="nav-links">
-          {NAV_ITEMS.map(item => (
+          {NAV_ITEMS.slice(0, 3).map(item => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.end}
+              className={navLinkClass}
+            >
+              {item.path === '/moves' && <span className="geyser-pulse-dot" />}
+              {item.emoji} {item.label}
+            </NavLink>
+          ))}
+          <div className={`flow-nav-group${isFlowRoute ? ' is-active' : ''}`} ref={desktopFlowGroupRef}>
+            <NavLink
+              ref={desktopFlowsLinkRef}
+              to="/flows"
+              end
+              className={({ isActive }) => `nav-link flow-nav-link${isActive ? ' active' : ''}`}
+            >
+              Flows
+            </NavLink>
+            <button
+              ref={desktopFlowTriggerRef}
+              type="button"
+              className={`flow-nav-disclosure${desktopFlowsOpen ? ' open' : ''}`}
+              aria-label={desktopFlowsOpen ? 'Hide Flow destinations' : 'Show Flow destinations'}
+              aria-expanded={desktopFlowsOpen}
+              aria-controls={desktopFlowPanelId}
+              onClick={() => setDesktopFlowsOpen(open => !open)}
+            >
+              <span aria-hidden="true">⌄</span>
+            </button>
+            <div
+              id={desktopFlowPanelId}
+              ref={desktopFlowPanelRef}
+              className="flow-nav-popover"
+              role="region"
+              aria-label="Flow destinations"
+              hidden={!desktopFlowsOpen}
+            >
+              {FLOW_DESTINATIONS.map(destination => (
+                <NavLink
+                  key={destination.path}
+                  to={destination.path}
+                  end
+                  className={({ isActive }) => `flow-nav-popover-link${isActive ? ' active' : ''}`}
+                  onClick={() => setDesktopFlowsOpen(false)}
+                >
+                  {destination.label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+          {NAV_ITEMS.slice(3).map(item => (
             <NavLink
               key={item.path}
               to={item.path}
@@ -241,15 +453,37 @@ export function TopNav({ onSignOut }: TopNavProps) {
           </button>
         )}
 
-        <button className="hamburger" onClick={() => setMobileOpen(!mobileOpen)}>
+        <button
+          ref={mobileMenuButtonRef}
+          type="button"
+          className="hamburger"
+          aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-expanded={mobileOpen}
+          aria-controls={mobileMenuId}
+          onClick={toggleMobileDrawer}
+        >
           <span></span><span></span><span></span>
         </button>
       </nav>
 
       {/* Mobile Menu */}
-      <div className={`mobile-menu-overlay ${mobileOpen ? 'open' : ''}`} onClick={() => setMobileOpen(false)}>
-        <div className="mobile-menu" onClick={e => e.stopPropagation()}>
-          <div className="mobile-menu-header" onClick={() => { navigate('/'); setMobileOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div
+        className={`mobile-menu-overlay ${mobileOpen ? 'open' : ''}`}
+        aria-hidden={!mobileOpen}
+        onClick={closeMobileDrawer}
+      >
+        <div
+          id={mobileMenuId}
+          ref={mobileMenuRef}
+          className="mobile-menu"
+          role="dialog"
+          aria-modal={mobileOpen ? 'true' : undefined}
+          aria-label="Primary navigation"
+          tabIndex={-1}
+          onKeyDown={handleMobileDrawerKeyDown}
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="mobile-menu-header" onClick={() => { navigate('/'); closeMobileDrawer(); }} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <img
               src={cwLogoImg}
               alt="Create Well"
@@ -279,7 +513,57 @@ export function TopNav({ onSignOut }: TopNavProps) {
             </div>
           </div>
 
-          {NAV_ITEMS.map(item => (
+          {NAV_ITEMS.slice(0, 3).map(item => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.end}
+              ref={item.path === '/' ? mobileFirstNavLinkRef : undefined}
+              className={({ isActive }) =>
+                `mobile-menu-link${item.path === '/moves' ? ' mobile-menu-link-geyser' : ''}${isActive ? ' active' : ''}`
+              }
+              onClick={closeMobileDrawer}
+            >
+              {item.path === '/moves' && <span className="geyser-pulse-dot" />}
+              {item.emoji} {item.label}
+            </NavLink>
+          ))}
+          <div className={`mobile-flow-group${isFlowRoute ? ' is-active' : ''}`}>
+            <div className="mobile-flow-row">
+              <NavLink
+                to="/flows"
+                end
+                className={({ isActive }) => `mobile-menu-link mobile-flow-link${isActive ? ' active' : ''}`}
+                onClick={closeMobileDrawer}
+              >
+                Flows
+              </NavLink>
+              <button
+                type="button"
+                className={`mobile-flow-disclosure${mobileFlowsOpen ? ' open' : ''}`}
+                aria-label={mobileFlowsOpen ? 'Hide Flow destinations' : 'Show Flow destinations'}
+                aria-expanded={mobileFlowsOpen}
+                aria-controls={mobileFlowPanelId}
+                onClick={() => setMobileFlowsOpen(open => !open)}
+              >
+                <span aria-hidden="true">⌄</span>
+              </button>
+            </div>
+            <div id={mobileFlowPanelId} className="mobile-flow-children" hidden={!mobileFlowsOpen}>
+              {FLOW_DESTINATIONS.map(destination => (
+                <NavLink
+                  key={destination.path}
+                  to={destination.path}
+                  end
+                  className={({ isActive }) => `mobile-menu-link mobile-flow-child-link${isActive ? ' active' : ''}`}
+                  onClick={closeMobileDrawer}
+                >
+                  {destination.label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+          {NAV_ITEMS.slice(3).map(item => (
             <NavLink
               key={item.path}
               to={item.path}
@@ -287,7 +571,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
               className={({ isActive }) =>
                 `mobile-menu-link${item.path === '/moves' ? ' mobile-menu-link-geyser' : ''}${isActive ? ' active' : ''}`
               }
-              onClick={() => setMobileOpen(false)}
+              onClick={closeMobileDrawer}
             >
               {item.path === '/moves' && <span className="geyser-pulse-dot" />}
               {item.emoji} {item.label}

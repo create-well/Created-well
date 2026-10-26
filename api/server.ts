@@ -380,7 +380,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Notion dual-write for the 4 CMS-backed types.
         // Truthful outcome: a Notion failure returns 502 and KV is unchanged.
         const sync = await syncToNotion('create', item);
-        if (!sync.ok && sync.error) { res.status(502).json({ error: 'Notion write failed, KV unchanged', notion_error: sync.error }); return; }
+        if (!sync.ok && sync.error) { res.status(502).json({ error: 'Notion write failed, KV unchanged', notion_error: 'notion_write_failed' }); return; }
         if (sync.notionPageId) item.notionPageId = sync.notionPageId;
         // Forum and messages prepend; others append
         if (resource === 'forum' || resource === 'braindumps' || resource === 'announcements') list.unshift(item);
@@ -398,18 +398,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Notion dual-write: update if item has a notionPageId.
         // Truthful outcome: a Notion failure returns 502 and KV is unchanged.
         const sync = await syncToNotion('update', list[idx]);
-        if (!sync.ok && sync.error) { res.status(502).json({ error: 'Notion update failed, KV unchanged', notion_error: sync.error }); return; }
+        if (!sync.ok && sync.error) { res.status(502).json({ error: 'Notion update failed, KV unchanged', notion_error: 'notion_write_failed' }); return; }
         await setList(kvKey, list);
         res.json({ ...list[idx], notion_sync: sync.ok ? 'ok' : 'not_linked' }); return;
       }
       if (method === 'DELETE' && id) {
         const list = await getList(kvKey);
         const target = list.find((x: any) => String(x.id) === String(id));
+        // The dashboard can include Notion-only Moves without a KV shadow.
+        // Without a trusted stored target, do not report a canonical deletion.
+        if (resource === 'tasks' && !target) {
+          res.status(409).json({ error: 'Move has no stored canonical target; nothing was deleted', code: 'move_target_not_found', notion_sync: 'not_linked' });
+          return;
+        }
         // Notion dual-write: archive if item has a notionPageId.
         // Truthful outcome: a Notion failure returns 502 and KV is unchanged.
         if (target) {
+          // MOVES is canonical in Notion. Never discard an unlinked KV copy
+          // or imply its canonical record was archived.
+          if (resource === 'tasks' && !target.notionPageId) {
+            res.status(409).json({ error: 'Move is not linked to Notion; nothing was deleted', code: 'notion_link_required', notion_sync: 'not_linked' });
+            return;
+          }
           const sync = await syncToNotion('archive', target);
-          if (!sync.ok && sync.error) { res.status(502).json({ error: 'Notion archive failed, KV unchanged', notion_error: sync.error }); return; }
+          if (!sync.ok && sync.error) { res.status(502).json({ error: 'Notion archive failed, KV unchanged', notion_error: 'notion_write_failed' }); return; }
         }
         await setList(kvKey, list.filter((x: any) => String(x.id) !== String(id)));
         res.json({ ok: true }); return;

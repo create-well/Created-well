@@ -255,8 +255,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     },
     async deleteTask(id: number) {
       try {
-        setTasks(prev => prev.filter(t => t.id !== id));
         await api.deleteTask(id);
+        setTasks(prev => prev.filter(t => t.id !== id));
       } catch (e) { console.error('Delete task error:', e); }
     },
 

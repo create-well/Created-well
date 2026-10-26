@@ -12,16 +12,14 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId } from '/utils/supabase/info';
 import { lookupUsername, registerUsername } from './api';
 import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 
 // ── Supabase browser client ───────────────────────────────────────────────────
 // SUPABASE_ANON_JWT: JWT anon key required by Supabase Auth (signIn, signUp, etc.)
-// publicAnonKey from info.tsx is the sb_publishable key used for Edge Function calls.
 const SUPABASE_URL = `https://${projectId}.supabase.co`;
 const SUPABASE_ANON_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlydHFjeWdyaWVkdmRpanBwbnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjMwOTEsImV4cCI6MjEwNDczOTA5MX0.tmItTHhTcsV7yLNUv7XiECJ4wY6_sA87PUIcD4hYU5Y";
-const BASE = `https://${projectId}.supabase.co/functions/v1/make-server-dabe1c74`;
 
 // Persist on window so HMR module re-evaluations reuse the same GoTrueClient
 // and avoid the "Multiple GoTrueClient instances" warning.
@@ -70,6 +68,22 @@ export function isAuthenticated(): boolean {
     const parsed = JSON.parse(raw);
     const expiresAt = parsed?.expires_at ?? parsed?.currentSession?.expires_at ?? 0;
     return expiresAt * 1000 > Date.now();
+  } catch { return false; }
+}
+
+// Client startup is not an authentication decision. Expired stored sessions
+// still need Supabase to validate them and attempt a refresh when possible.
+function hasStoredSessionForRefresh(): boolean {
+  try {
+    const raw = localStorage.getItem('cr8w_supabase_auth');
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    const session = parsed?.currentSession ?? parsed;
+    if (!session || typeof session !== 'object' || Array.isArray(session)) return false;
+    return (
+      (typeof session.expires_at === 'number' && Number.isFinite(session.expires_at)) ||
+      (typeof session.refresh_token === 'string' && session.refresh_token.trim().length > 0)
+    );
   } catch { return false; }
 }
 
@@ -146,6 +160,25 @@ export function AuthGate({ onAuthenticated }: Props) {
   useEffect(() => {
     let active = true;
 
+    // Lazy init: do NOT create the browser Supabase client on a signed-out
+    // root. Creating it on mount acquires the Navigator LockManager lock
+    // (lock:cr8w_supabase_auth) even when no session exists, and that
+    // acquisition can fail immediately in a single tab.
+    // Only create the client on mount when a session may already exist:
+    // a stored session in localStorage, including expired access data so
+    // Supabase can validate or refresh it, or a
+    // password-recovery arrival (URL hash carries a recovery token, which
+    // needs a client to handle). A plain signed-out root renders
+    // Sign In/Register with no client. Sign-in, register, reset, and
+    // set-new-password handlers create the client on user interaction,
+    // via client().
+    const hasStoredSession = hasStoredSessionForRefresh();
+    const isRecoveryArrival = typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
+    if (!hasStoredSession && !isRecoveryArrival) {
+      setCheckingSession(false);
+      return;
+    }
+
     // Listen for PASSWORD_RECOVERY: fires when user arrives via a reset-password email link.
     // SIGNED_OUT fires when GoTrueClient's internal token refresh fails (e.g. stale/revoked
     // refresh token) — handle it here so checkingSession resolves and the login form appears.
@@ -203,16 +236,15 @@ export function AuthGate({ onAuthenticated }: Props) {
     if (!email.trim() || !password) return;
     setBusy(true); setError(''); setNotice('');
 
-    // Resolve username → email via Edge Function before Supabase auth
+    // Resolve username → email via the app server (username-lookup route)
+    // before Supabase auth. lookupUsername throws on an unknown username.
     let resolvedEmail = email.trim().toLowerCase();
     if (!resolvedEmail.includes('@')) {
-      const res = await fetch(`${BASE}/resolve-username`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
-        body: JSON.stringify({ username: resolvedEmail }),
-      });
-      if (!res.ok) { setError('Sign in failed'); triggerShake(); setBusy(false); return; }
-      resolvedEmail = (await res.json()).email;
+      try {
+        resolvedEmail = await lookupUsername(resolvedEmail);
+      } catch {
+        setError('Sign in failed'); triggerShake(); setBusy(false); return;
+      }
     }
 
     const { data, error: err } = await client().auth.signInWithPassword({

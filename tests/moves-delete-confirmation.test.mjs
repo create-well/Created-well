@@ -28,12 +28,12 @@ after(()=>{hooks.deregister();globalThis.fetch=savedFetch;console.error=savedErr
   for(const k of keys){if(savedEnv[k]===undefined)delete process.env[k];else process.env[k]=savedEnv[k]}
 });
 const pageId='11111111-1111-4111-8111-111111111111';
-async function invoke({method='DELETE',linked=true,providerOK=false,configured=true,resource='tasks'}={}){
+async function invoke({method='DELETE',linked=true,providerOK=false,configured=true,resource='tasks',exists=true}={}){
   process.env.SUPABASE_URL='https://fixture.invalid';process.env.SUPABASE_SERVICE_ROLE_KEY='synthetic';
-  for(const k of ['NOTION_SECRET','NOTION_DB_MOVES']){if(configured)process.env[k]='synthetic';else delete process.env[k]}
+  for(const k of ['NOTION_SECRET','NOTION_DB_MOVES']){if(configured)process.env[k]='synthetic';else delete process.env[k];}
   const item={id:42,title:'Synthetic Move',status:'todo',...(linked?{notionPageId:pageId}:{})};
   const key=`cr8w_${resource}`;
-  const f=globalThis.__deleteFixture={store:{[key]:JSON.stringify([item])},writes:0,calls:0};
+  const f=globalThis.__deleteFixture={store:{[key]:JSON.stringify(exists?[item]:[])},writes:0,calls:0};
   globalThis.fetch=async url=>{assert.match(String(url),/^https:\/\/api\.notion\.com\/v1\/pages/);f.calls++;
     return {ok:providerOK,status:providerOK?200:400,json:async()=>({id:pageId}),text:async()=>'SYNTHETIC_PRIVATE_PROVIDER_DETAIL'};
   };
@@ -45,6 +45,14 @@ async function invoke({method='DELETE',linked=true,providerOK=false,configured=t
 for(const configured of [true,false])test(`unlinked MOVES deletion rejects without mutation (configured=${configured})`,async()=>{
   const r=await invoke({linked:false,configured});assert.equal(r.code,409);assert.equal(r.body.code,'notion_link_required');
   assert.equal(r.body.notion_sync,'not_linked');assert.equal(r.calls,0);assert.equal(r.writes,0);assert.deepEqual(r.list,[r.item]);
+});
+test('MOVES without a KV target reject rather than claiming canonical deletion',async()=>{
+  const r=await invoke({exists:false});assert.equal(r.code,409);assert.equal(r.body.code,'move_target_not_found');
+  assert.equal(r.calls,0);assert.equal(r.writes,0);assert.deepEqual(r.list,[]);
+});
+test('absent supporting KV-only target retains idempotent success',async()=>{
+  const r=await invoke({resource:'announcements',exists:false});assert.equal(r.code,200);
+  assert.equal(r.calls,0);assert.deepEqual(r.list,[]);
 });
 test('canonical archive rejection preserves KV',async()=>{const r=await invoke();assert.equal(r.code,502);assert.equal(r.calls,1);assert.equal(r.writes,0);assert.deepEqual(r.list,[r.item])});
 test('confirmed canonical archive removes KV copy after success',async()=>{const r=await invoke({providerOK:true});assert.equal(r.code,200);assert.equal(r.calls,1);assert.equal(r.writes,1);assert.deepEqual(r.list,[])});

@@ -405,6 +405,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (method === 'DELETE' && id) {
         const list = await getList(kvKey);
         const target = list.find((x: any) => String(x.id) === String(id));
+        // The dashboard can include Notion-only Moves without a KV shadow.
+        // Without a trusted stored target, do not report a canonical deletion.
+        if (resource === 'tasks' && !target) {
+          res.status(409).json({ error: 'Move has no stored canonical target; nothing was deleted', code: 'move_target_not_found', notion_sync: 'not_linked' });
+          return;
+        }
         // Notion dual-write: archive if item has a notionPageId.
         // Truthful outcome: a Notion failure returns 502 and KV is unchanged.
         if (target) {

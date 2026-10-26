@@ -102,6 +102,12 @@ function InlineEdit({ value, onSave, className, style, multiline }: {
       className={className}
       style={{ cursor: 'text', ...style }}
       onClick={() => { setDraft(value); setEditing(true); }}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDraft(value); setEditing(true); }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label="Edit"
       title="Click to edit"
     >
       {value}
@@ -857,7 +863,7 @@ export function GeyserView({
                       <option value="dropped">Dropped</option>
                     </select>
                     <button onClick={() => onDeleteTask(task.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.7rem', color: 'var(--text-muted)', padding: 4 }}>🗑</button>
-                    <button onClick={() => setDetailTaskId(detailTaskId === task.id ? null : task.id)} aria-label="Open task detail" style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Detail</button>
+                    <button onClick={() => setDetailTaskId(detailTaskId === task.id ? null : task.id)} aria-expanded={detailTaskId === task.id} aria-label={detailTaskId === task.id ? "Close task detail" : "Open task detail"} style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Detail</button>
                   </div>
                 </div>
                 {detailTaskId === task.id && (
@@ -874,8 +880,10 @@ export function GeyserView({
                       />
                     </div>
                     <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <label style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Status</label>
+                      <label htmlFor={`detail-status-${task.id}`} style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Status</label>
                       <select
+                        id={`detail-status-${task.id}`}
+                        aria-label="Status"
                         value={task.status}
                         onChange={e => onUpdateTaskStatus(task.id, e.target.value as Task['status'])}
                         style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}

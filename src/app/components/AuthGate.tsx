@@ -73,6 +73,22 @@ export function isAuthenticated(): boolean {
   } catch { return false; }
 }
 
+// Client startup is not an authentication decision. Expired stored sessions
+// still need Supabase to validate them and attempt a refresh when possible.
+function hasStoredSessionForRefresh(): boolean {
+  try {
+    const raw = localStorage.getItem('cr8w_supabase_auth');
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    const session = parsed?.currentSession ?? parsed;
+    if (!session || typeof session !== 'object' || Array.isArray(session)) return false;
+    return (
+      (typeof session.expires_at === 'number' && Number.isFinite(session.expires_at)) ||
+      (typeof session.refresh_token === 'string' && session.refresh_token.trim().length > 0)
+    );
+  } catch { return false; }
+}
+
 export function getStoredProfile(): string | null {
   try { return localStorage.getItem('cr8w_user_profile'); } catch { return null; }
 }
@@ -145,6 +161,25 @@ export function AuthGate({ onAuthenticated }: Props) {
 
   useEffect(() => {
     let active = true;
+
+    // Lazy init: do NOT create the browser Supabase client on a signed-out
+    // root. Creating it on mount acquires the Navigator LockManager lock
+    // (lock:cr8w_supabase_auth) even when no session exists, and that
+    // acquisition can fail immediately in a single tab.
+    // Only create the client on mount when a session may already exist:
+    // a stored session in localStorage, including expired access data so
+    // Supabase can validate or refresh it, or a
+    // password-recovery arrival (URL hash carries a recovery token, which
+    // needs a client to handle). A plain signed-out root renders
+    // Sign In/Register with no client. Sign-in, register, reset, and
+    // set-new-password handlers create the client on user interaction,
+    // via client().
+    const hasStoredSession = hasStoredSessionForRefresh();
+    const isRecoveryArrival = typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
+    if (!hasStoredSession && !isRecoveryArrival) {
+      setCheckingSession(false);
+      return;
+    }
 
     // Listen for PASSWORD_RECOVERY: fires when user arrives via a reset-password email link.
     // SIGNED_OUT fires when GoTrueClient's internal token refresh fails (e.g. stale/revoked

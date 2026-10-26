@@ -11,6 +11,7 @@ import { NotesFromTheWell } from './NotesFromTheWell';
 import { ArriveState, shouldShowArriveState } from './ArriveState';
 import type { Task, Station, WellNote, Workshop, CoFlowDate, CoFlowCheckin, InviteCounts, CalendarEventKV } from './api';
 import * as api from './api';
+import { milestoneLabel } from '../../lib/nextUpLabel';
 
 // ── Wellshop category → workshop tag matching ────────────────────────────────
 const WELLSHOP_TAG_MAP: Record<string, string[]> = {
@@ -912,7 +913,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
             ? { title: kvMilestone.title, date: kvMilestone.start.split('T')[0] }
             : null;
         const nextMilestoneLabel = nextMilestone
-          ? `${nextMilestone.title.replace(/\s*🚀/, '')} · ${new Date(nextMilestone.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+          ? milestoneLabel(nextMilestone.title, nextMilestone.date)
           : daysToNextEvent > 0 ? `${daysToNextEvent} days to next event` : 'No upcoming events';
         // Team role check
         const assignedRoles = ['sunshine', 'monny', 'bingle'].filter(p => stations.some(s => s.owner === p));

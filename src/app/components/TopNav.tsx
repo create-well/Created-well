@@ -6,6 +6,7 @@ import { VisibilityDial } from './VisibilityDial';
 import { SensorySettings } from './SensorySettings';
 import { ThemeSelector } from './ThemeSelector';
 import { useDashboard } from '../../contexts/DashboardContext';
+import { dashboardBadgeTitle } from '../../lib/dashboardStatus';
 
 const NAV_ITEMS: { path: string; label: string; emoji: string; end?: boolean }[] = [
   { path: '/',           label: 'This Week', emoji: '💧', end: true },
@@ -36,13 +37,14 @@ export function TopNav({ onSignOut }: TopNavProps) {
   });
 
   const { syncStatus } = data;
-  const syncDot = syncStatus === 'fresh'
-    ? { color: '#30D158', title: 'Synced' }
+  const syncDotColor = syncStatus === 'fresh'
+    ? '#30D158'
     : syncStatus === 'failed'
-    ? { color: '#FF453A', title: 'Offline' }
+    ? '#FF453A'
     : syncStatus === 'stale'
-    ? { color: '#FF9F0A', title: 'Stale' }
-    : { color: '#FFD60A', title: 'Syncing…' };
+    ? '#FF9F0A'
+    : '#FFD60A';
+  const syncDot = { color: syncDotColor, title: dashboardBadgeTitle(syncStatus) };
 
   // Close profile card on outside click
   useEffect(() => {

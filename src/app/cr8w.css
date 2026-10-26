@@ -246,13 +246,17 @@ html.cw-no-motion *::after {
   text-decoration: none;
 }
 .flow-nav-popover-link:hover,
-.flow-nav-popover-link.active { background: var(--sandstone, rgba(123,168,157,0.12)); color: var(--cr8w-primary, #5F8D82); }
+.flow-nav-popover-link.active { background: var(--sandstone, rgba(123,168,157,0.12)); color: #3E6B5F; }
 .flow-nav-disclosure:focus-visible,
 .flow-nav-popover-link:focus-visible,
 .mobile-flow-disclosure:focus-visible,
 .mobile-flow-child-link:focus-visible,
 .hamburger:focus-visible {
-  outline: 3px solid #FFD60A;
+  /* Flow-nav follow-up: the ink outline measures >= 3:1 on every surface
+     these controls sit on (light popover/drawer #F4F1ED 13.1:1; nav
+     gradient ends #7BA89D 5.6:1, #B8A9D4 6.8:1). #FFD60A measured
+     1.1-1.9:1 on the same surfaces. */
+  outline: 3px solid var(--text-primary, #2D2438);
   outline-offset: 2px;
 }
 .nav-link-geyser {
@@ -358,9 +362,9 @@ html.cw-no-motion *::after {
   color: var(--text-secondary); transition: all 0.2s; cursor: pointer; border: none; background: none;
   text-align: left;
 }
-.mobile-menu-link:hover, .mobile-menu-link.active { background: var(--sandstone); color: var(--cr8w-primary); }
+.mobile-menu-link:hover, .mobile-menu-link.active { background: var(--sandstone); color: #3E6B5F; }
 .mobile-menu-link-geyser {
-  background: rgba(123,168,157,0.07); border: 1px solid rgba(123,168,157,0.15); color: var(--cr8w-primary); font-weight: 600;
+  background: rgba(123,168,157,0.07); border: 1px solid rgba(123,168,157,0.15); color: #3E6B5F; font-weight: 600;
 }
 .mobile-menu-link-geyser:hover, .mobile-menu-link-geyser.active { background: rgba(123,168,157,0.15); }
 .mobile-menu-link-playground { color: var(--cr8w-text, #2D2438) !important; font-weight: 600; }
@@ -1131,12 +1135,19 @@ a.gcc-pill-link:hover { background: rgba(255,255,255,0.52); transform: translate
 .workdocs-header-title { font-family: var(--font-display); font-size: 1.6rem; font-weight: 600; color: var(--text-primary); }
 .workdocs-header-subtitle { font-family: var(--font-body); font-size: 0.88rem; color: var(--text-secondary); margin: 2px 0 0 0; }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* Nav presentation switch (flow-nav follow-up): the drawer presentation
+   holds at or below 1100px and the desktop bar from 1101px, matching the
+   (min-width: 1101px) query in TopNav.tsx. Only the nav switch lives in
+   this block; content rules stay in the 768px block below. */
+@media (max-width: 1100px) {
   .nav-links { display: none; }
   .nav-avatars { display: none; }
   .nav-signout-desktop { display: none !important; }
   .hamburger { display: flex; }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
   .cr-main { padding-left: 16px; padding-right: 16px; }
   .hub-header { padding: 32px 12px 24px; }
   .hub-tagline-cw { font-size: 1.4rem; }
@@ -2018,6 +2029,22 @@ a.gcc-pill-link:hover { background: rgba(255,255,255,0.52); transform: translate
   margin-bottom: 12px;
   transition: background 0.15s;
 }
+.mobile-menu-close {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-soft, rgba(196,164,132,0.3));
+  border-radius: var(--cr-radius-md);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
 .mobile-menu-header:hover {
   background: rgba(123,168,157,0.08);
 }
@@ -2046,7 +2073,7 @@ a.gcc-pill-link:hover { background: rgba(255,255,255,0.52); transform: translate
 }
 .mobile-menu-link.active {
   background: rgba(123,168,157,0.12);
-  color: var(--cr8w-primary);
+  color: #3E6B5F;
   font-weight: 600;
 }
 .mobile-menu-link-geyser.active {
@@ -2073,7 +2100,7 @@ a.gcc-pill-link:hover { background: rgba(255,255,255,0.52); transform: translate
 .mobile-flow-disclosure.open { background: rgba(123,168,157,0.1); }
 .mobile-flow-children { display: flex; flex-direction: column; gap: 2px; padding: 2px 0 4px 18px; }
 .mobile-flow-child-link { min-height: 44px; text-decoration: none; }
-.mobile-menu :focus-visible { outline: 3px solid var(--cr8w-primary, #5F8D82); outline-offset: 2px; }
+.mobile-menu :focus-visible { outline: 3px solid var(--text-primary, #2D2438); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   .flow-nav-disclosure > span,

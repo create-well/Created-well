@@ -50,7 +50,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
   const desktopFlowPanelRef = useRef<HTMLDivElement>(null);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const mobileFirstNavLinkRef = useRef<HTMLAnchorElement>(null);
+  const mobileCloseButtonRef = useRef<HTMLButtonElement>(null);
   const mobileOpenRef = useRef(false);
   const previousPathRef = useRef(location.pathname);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -139,8 +139,32 @@ export function TopNav({ onSignOut }: TopNavProps) {
 
   useEffect(() => {
     if (!mobileOpen) return;
-    const frame = window.requestAnimationFrame(() => mobileFirstNavLinkRef.current?.focus());
+    const frame = window.requestAnimationFrame(() => mobileCloseButtonRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
+  }, [mobileOpen]);
+
+  // Full modal inertness while the drawer is open (flow-nav follow-up):
+  // the top nav's own controls and every app-shell sibling outside the
+  // drawer overlay become inert, so keyboard, switch, and pointer input
+  // can only reach the dialog. Cleanup removes exactly what was applied
+  // and runs when mobileOpen flips, before any focus() call on close
+  // (closeMobileDrawer and the resize handler focus inside a frame).
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const shell = mobileMenuRef.current?.closest('.cr8w-app');
+    if (!shell) return;
+    const applied: HTMLElement[] = [];
+    shell.childNodes.forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      if (mobileMenuRef.current && node.contains(mobileMenuRef.current)) return;
+      if (!node.hasAttribute('inert')) {
+        node.setAttribute('inert', '');
+        applied.push(node);
+      }
+    });
+    return () => {
+      applied.forEach((el) => el.removeAttribute('inert'));
+    };
   }, [mobileOpen]);
 
   useEffect(() => {
@@ -152,7 +176,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
   }, [location.pathname]);
 
   useEffect(() => {
-    const desktopMedia = window.matchMedia('(min-width: 769px)');
+    const desktopMedia = window.matchMedia('(min-width: 1101px)');
     function closeHiddenNavigation(event: MediaQueryListEvent) {
       if (event.matches) {
         const drawerWasOpen = mobileOpenRef.current;
@@ -484,6 +508,15 @@ export function TopNav({ onSignOut }: TopNavProps) {
           onClick={e => e.stopPropagation()}
         >
           <div className="mobile-menu-header" onClick={() => { navigate('/'); closeMobileDrawer(); }} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              ref={mobileCloseButtonRef}
+              type="button"
+              className="mobile-menu-close"
+              aria-label="Close navigation menu"
+              onClick={(e) => { e.stopPropagation(); closeMobileDrawer(); }}
+            >
+              <span aria-hidden="true">×</span>
+            </button>
             <img
               src={cwLogoImg}
               alt="Create Well"
@@ -518,7 +551,6 @@ export function TopNav({ onSignOut }: TopNavProps) {
               key={item.path}
               to={item.path}
               end={item.end}
-              ref={item.path === '/' ? mobileFirstNavLinkRef : undefined}
               className={({ isActive }) =>
                 `mobile-menu-link${item.path === '/moves' ? ' mobile-menu-link-geyser' : ''}${isActive ? ' active' : ''}`
               }

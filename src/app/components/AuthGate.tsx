@@ -12,16 +12,14 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId } from '/utils/supabase/info';
 import { lookupUsername, registerUsername } from './api';
 import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 
 // ── Supabase browser client ───────────────────────────────────────────────────
 // SUPABASE_ANON_JWT: JWT anon key required by Supabase Auth (signIn, signUp, etc.)
-// publicAnonKey from info.tsx is the sb_publishable key used for Edge Function calls.
 const SUPABASE_URL = `https://${projectId}.supabase.co`;
 const SUPABASE_ANON_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlydHFjeWdyaWVkdmRpanBwbnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjMwOTEsImV4cCI6MjEwNDczOTA5MX0.tmItTHhTcsV7yLNUv7XiECJ4wY6_sA87PUIcD4hYU5Y";
-const BASE = `https://${projectId}.supabase.co/functions/v1/make-server-dabe1c74`;
 
 // Persist on window so HMR module re-evaluations reuse the same GoTrueClient
 // and avoid the "Multiple GoTrueClient instances" warning.
@@ -238,16 +236,15 @@ export function AuthGate({ onAuthenticated }: Props) {
     if (!email.trim() || !password) return;
     setBusy(true); setError(''); setNotice('');
 
-    // Resolve username → email via Edge Function before Supabase auth
+    // Resolve username → email via the app server (username-lookup route)
+    // before Supabase auth. lookupUsername throws on an unknown username.
     let resolvedEmail = email.trim().toLowerCase();
     if (!resolvedEmail.includes('@')) {
-      const res = await fetch(`${BASE}/resolve-username`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
-        body: JSON.stringify({ username: resolvedEmail }),
-      });
-      if (!res.ok) { setError('Sign in failed'); triggerShake(); setBusy(false); return; }
-      resolvedEmail = (await res.json()).email;
+      try {
+        resolvedEmail = await lookupUsername(resolvedEmail);
+      } catch {
+        setError('Sign in failed'); triggerShake(); setBusy(false); return;
+      }
     }
 
     const { data, error: err } = await client().auth.signInWithPassword({

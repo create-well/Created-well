@@ -9,6 +9,7 @@ import { getStoredProfile } from '../app/components/AuthGate';
 import { shouldShowOnboarding } from '../app/components/WelcomeModal';
 import type { DashboardContextValue, DashboardPayload, SyncStatus } from '../types/dashboard';
 import { displayedDashboardStatus } from '../lib/dashboardStatus';
+import { MoveDeleteNotice } from '../app/components/MoveDeleteNotice';
 
 const DashboardCtx = createContext<DashboardContextValue | null>(null);
 
@@ -48,6 +49,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const silentFailCount = useRef(0);
   const fetchSyncRef = useRef<((silent?: boolean) => Promise<void>) | undefined>(undefined);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [failedMoveDelete, setFailedMoveDelete] = useState<number | null>(null);
 
   // ── UI state ─────────────────────────────────────────────────────────────────
   const initialProfile = getStoredProfile() ?? 'monny';
@@ -257,7 +260,11 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
       try {
         await api.deleteTask(id);
         setTasks(prev => prev.filter(t => t.id !== id));
-      } catch (e) { console.error('Delete task error:', e); }
+        setFailedMoveDelete(prev => prev === id ? null : prev);
+      } catch (e) {
+        console.error('Delete task error:', e);
+        setFailedMoveDelete(id);
+      }
     },
 
     // Stations
@@ -577,6 +584,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   return (
     <DashboardCtx.Provider value={{ data, actions, ui }}>
       {children}
+      {failedMoveDelete !== null && <MoveDeleteNotice onDismiss={() => setFailedMoveDelete(null)} />}
     </DashboardCtx.Provider>
   );
 }

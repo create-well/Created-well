@@ -58,6 +58,10 @@ test('failure shapes are the explicit unavailable state, never empty-ok', async 
     async () => { throw new Error('network down'); },
     async () => ({ ok: true, json: async () => ({ items: 'not-an-array' }) }),
     async () => ({ ok: true, json: async () => { throw new Error('bad json'); } }),
+    // G-45: no parseable generatedAt — no freshness can derive, so the
+    // envelope is malformed; items never render beside a blank band.
+    async () => ({ ok: true, json: async () => envelope({ generatedAt: undefined }) }),
+    async () => ({ ok: true, json: async () => envelope({ generatedAt: 'not-a-date' }) }),
   ];
   for (const impl of cases) {
     const restore = stubFetch(impl);

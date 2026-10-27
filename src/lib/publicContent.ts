@@ -64,10 +64,18 @@ export async function fetchPublicContent(): Promise<ReleaseState> {
     }
     const generatedRaw = stringOrNull(envelope.generatedAt);
     const generatedAt = generatedRaw ? new Date(generatedRaw) : null;
+    // G-45: generatedAt is the payload clock — the contract guarantees
+    // it, and freshness derives from it or not at all. An envelope
+    // without a parseable generatedAt is malformed (same class as a
+    // non-array items): the unavailable state, never items rendered
+    // beside a blank freshness word.
+    if (!generatedAt || !Number.isFinite(generatedAt.getTime())) {
+      return { kind: 'unavailable' };
+    }
     return {
       kind: 'ok',
       releaseId: stringOrNull(envelope.releaseId),
-      generatedAt: generatedAt && Number.isFinite(generatedAt.getTime()) ? generatedAt : null,
+      generatedAt,
       items,
     };
   } catch {

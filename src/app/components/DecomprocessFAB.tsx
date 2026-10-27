@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { showToast } from './Toast';
+import { parseDateValue } from '../../lib/dateLabel';
 
 /* ─── Types ─────────────────────────────────────────────────── */
 type InputMode = 'write' | 'voice' | 'video';
@@ -27,8 +28,15 @@ const BODY_EMOJI_MAP: Record<string, string> = {
   unsure: '\uD83E\uDD37',
 };
 
+function formatEntryTimestamp(ts: string): string {
+  const d = parseDateValue(ts);
+  if (!d) return '';
+  return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+}
+
 function formatRelativeDate(ts: string): string {
-  const d = new Date(ts);
+  const d = parseDateValue(ts);
+  if (!d) return '';
   const now = new Date();
   const diff = now.getTime() - d.getTime();
   const mins = Math.floor(diff / 60000);
@@ -920,11 +928,7 @@ export function DecomprocessFAB() {
                                 fontFamily: 'var(--font-label)', fontSize: '0.55rem',
                                 color: 'var(--text-muted)',
                               }}>
-                                {new Date(entry.timestamp).toLocaleDateString('en-US', {
-                                  weekday: 'short', month: 'short', day: 'numeric',
-                                })} at {new Date(entry.timestamp).toLocaleTimeString('en-US', {
-                                  hour: 'numeric', minute: '2-digit',
-                                })}
+                                {formatEntryTimestamp(entry.timestamp)}
                               </div>
                             </div>
                           )}

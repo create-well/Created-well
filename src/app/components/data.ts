@@ -1,3 +1,5 @@
+import { shortDateLabel } from '../../lib/dateLabel';
+
 export const PERSONS: Record<string, Person> = {
   sunshine: {
     name: 'Sunshine', role: 'ManiGen 5/1 · Emotional Authority',
@@ -443,14 +445,13 @@ export const MBODY_PRACTICES = [
 ];
 
 // Helpers
+// Date formatters route through the guarded lib (FE-2): missing or
+// unparseable input degrades to "Date not set yet.", never "Invalid Date".
 export function formatDate(dateStr: string) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return shortDateLabel(dateStr);
 }
 export function formatEventDate(dateStr: string) {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return shortDateLabel(dateStr);
 }
 export function formatTimestamp(ts?: string) {
   if (!ts) return '';

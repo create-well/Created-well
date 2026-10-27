@@ -5,6 +5,7 @@ import {
   getDaysToLaunch, formatDate, formatEventDate, formatTimestamp, getEventColor, truncate, capitalize, getDayOfYear,
   type ActionItem, type MomentumItem, type NoteItem, type Station
 } from './data';
+import { parseDateValue, DATE_NOT_SET } from '../../lib/dateLabel';
 
 type PersonTab = 'flow' | 'work' | 'depth';
 
@@ -364,13 +365,19 @@ export function PersonView({
           <div className="upcoming-events">
             <h3 className="section-title" style={{ marginTop: '24px' }}>Upcoming Events</h3>
             {upcomingCal.map((e, i) => {
-              const d = new Date(e.date + 'T00:00:00');
+              const d = parseDateValue(e.date);
               return (
                 <div key={i} className="event-card">
-                  <div className="event-date-box">
-                    <div className="event-date-month">{d.toLocaleString('en-US', { month: 'short' })}</div>
-                    <div className="event-date-day">{d.getDate()}</div>
-                  </div>
+                  {d ? (
+                    <div className="event-date-box">
+                      <div className="event-date-month">{d.toLocaleString('en-US', { month: 'short' })}</div>
+                      <div className="event-date-day">{d.getDate()}</div>
+                    </div>
+                  ) : (
+                    <div className="event-date-box">
+                      <div className="event-date-month">{DATE_NOT_SET}</div>
+                    </div>
+                  )}
                   <div>
                     <div className="event-info-title">{e.title}</div>
                     <div className="event-info-detail">{e.time || ''}{e.location ? ' · ' + e.location : ''}</div>

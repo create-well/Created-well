@@ -9,6 +9,7 @@ import type { Task, Station, ForumPost, Announcement, CalendarEventKV } from './
 import type { ForumReply as ApiForumReply, InviteCounts } from './api';
 import * as api from './api';
 import { HowWeFlowReference } from './HowWeFlowReference';
+import { parseDateValue, DATE_NOT_SET } from '../../lib/dateLabel';
 
 type GeyserTab = 'overview' | 'journey' | 'stations' | 'tasks' | 'forum';
 
@@ -284,10 +285,10 @@ export function GeyserView({
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 }}>
                 {upcoming.map(ev => {
-                  const startDate = new Date(ev.start);
-                  const isToday = startDate.toDateString() === new Date().toDateString();
-                  const dateLabel = startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                  const timeLabel = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+                  const startDate = parseDateValue(ev.start);
+                  const isToday = startDate !== null && startDate.toDateString() === new Date().toDateString();
+                  const dateLabel = startDate ? startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : DATE_NOT_SET;
+                  const timeLabel = startDate ? startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase() : '';
                   return (
                     <div key={ev.id.replace(/^kv-/, '')} style={{
                       display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',

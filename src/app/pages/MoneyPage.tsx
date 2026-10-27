@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
+import { dateLabel } from '../../lib/dateLabel';
 
 interface MoneyEntry {
   id: string;
@@ -104,7 +105,7 @@ function MoneySection({
                   {entry.label}
                 </div>
                 <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted, #6B5F7A)', marginTop: 1 }}>
-                  {new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {dateLabel(entry.date, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </div>
               </div>
               <span style={{

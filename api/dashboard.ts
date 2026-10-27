@@ -25,6 +25,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { applyCors, requireSession } from './_auth.js';
 import { hasDashboardConfiguration } from './_dashboard-config.js';
+import { getSyncFreshness } from './_sync-engine.js';
 import {
   normalizeMove,
   normalizePerson,
@@ -184,8 +185,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       calendarEvents:    calendarEvents    as SyncData['calendarEvents'],
     };
 
+    // Sync freshness from delivery state (reader decision, 2026-10-27):
+    // the same computed block /api/snapshot serves, attached here so the
+    // dashboard's freshness line derives from real sync state instead of
+    // self-reporting "not verified". getSyncFreshness is fail-soft per
+    // source (a store problem reads "unknown"), so this never fails the
+    // payload.
+    const syncFreshness = {
+      generatedAt: new Date().toISOString(),
+      sources: await getSyncFreshness(Date.now()),
+    };
+
     res.setHeader('Cache-Control', 'private, no-store');
-    res.json(payload);
+    res.json({ ...payload, syncFreshness });
   } catch (err) {
     console.error('[/api/dashboard] Error building payload:', err);
     res.status(503).json({

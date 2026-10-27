@@ -17,6 +17,7 @@ import {
   deleteSnapshotRow,
   emptyDeliveryState,
   getDeliveryState,
+  supabaseConfigured,
   listSnapshot,
   upsertDeliveryState,
   upsertSnapshotRows,
@@ -77,6 +78,60 @@ export function computeFreshness(
   if (age > 2 * CRON_INTERVAL_MS) return "degraded";
   if (age > CRON_INTERVAL_MS) return "stale";
   return "live";
+}
+
+export interface FreshnessEntry {
+  state: FreshnessState;
+  lastEventAt: string | null;
+  lastSyncOkAt: string | null;
+  syncVersion: number;
+}
+
+const UNKNOWN_FRESHNESS: FreshnessEntry = {
+  state: "unknown",
+  lastEventAt: null,
+  lastSyncOkAt: null,
+  syncVersion: 0,
+};
+
+/**
+ * The per-source freshness block, computed from delivery state at read
+ * time. One assembly shared by /api/snapshot and /api/dashboard (reader
+ * decision, 2026-10-27) so every surface renders freshness from the same
+ * shape. Fail-soft per source: a store problem marks that source
+ * "unknown" and never fails the block; an unconfigured store marks every
+ * source "unknown".
+ */
+export async function getSyncFreshness(
+  now: number,
+  readState: (source: SourceName) => Promise<DeliveryState | null> = getDeliveryState,
+): Promise<Record<SourceName, FreshnessEntry>> {
+  const entries = {} as Record<SourceName, FreshnessEntry>;
+  if (!supabaseConfigured()) {
+    for (const name of SOURCES) {
+      // eslint-disable-next-line security/detect-object-injection -- name comes from the closed SOURCES allowlist.
+      entries[name] = { ...UNKNOWN_FRESHNESS };
+    }
+    return entries;
+  }
+  await Promise.all(
+    SOURCES.map(async (name) => {
+      try {
+        const state = await readState(name);
+        // eslint-disable-next-line security/detect-object-injection -- name comes from the closed SOURCES allowlist.
+        entries[name] = {
+          state: computeFreshness(state, now),
+          lastEventAt: state?.last_event_at ?? null,
+          lastSyncOkAt: state?.last_sync_ok_at ?? null,
+          syncVersion: state?.sync_version ?? 0,
+        };
+      } catch {
+        // eslint-disable-next-line security/detect-object-injection -- name comes from the closed SOURCES allowlist.
+        entries[name] = { ...UNKNOWN_FRESHNESS };
+      }
+    }),
+  );
+  return entries;
 }
 
 export async function markEvent(

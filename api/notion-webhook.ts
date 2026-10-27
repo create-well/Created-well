@@ -278,6 +278,15 @@ export default async function handler(
     await recordEngineRun(startedAtMs, [
       { source, rows: outcome.count, cached: false },
     ]);
+    if (outcome.deferred) {
+      // Another run holds this source's lease; the event stays recorded
+      // as dirty + pending (markEvent above) and the holder's run or the
+      // cron trailing edge carries it. Never logged as a sync.
+      console.log(
+        `${LOG_PREFIX} deferred source=${source} (lease held) eventIdPresent=${eventId ? "yes" : "no"}`,
+      );
+      return res.status(200).json({ ok: true, deferred: true, source });
+    }
     console.log(
       `${LOG_PREFIX} synced source=${source} rows=${outcome.count} changed=${outcome.changed} eventIdPresent=${eventId ? "yes" : "no"}`,
     );

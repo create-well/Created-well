@@ -946,7 +946,7 @@ export function MessageDrawer({
         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(123,168,157,0.4), 0 2px 8px rgba(0,0,0,0.12)'; }}
         title="Open CR8W Chat"
       >
-        <img src="/logo.svg" alt="CR8W" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover' }} />
+        <img src="/logo.svg" alt="CR8W" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'contain', padding: 3, boxSizing: 'border-box' }} />
         {unreadCount > 0 && (
           <span style={{
             position: 'absolute', top: -3, right: -3,
@@ -991,7 +991,7 @@ export function MessageDrawer({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src="/logo.svg" alt="CW" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+          <img src="/logo.svg" alt="CW" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'contain', padding: 3, boxSizing: 'border-box' }} />
           <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', fontWeight: 600, color: '#fff' }}>CR8W Chat</span>
           {unreadCount > 0 && (
             <span style={{

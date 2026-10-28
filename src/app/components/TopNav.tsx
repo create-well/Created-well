@@ -82,7 +82,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
             src="/logo.svg"
             alt="Create Well"
             className="nav-logo-img"
-            style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }}
+            style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'contain', padding: 3, boxSizing: 'border-box' }}
           />
           <span className="nav-brand-name">create well</span>
           <span
@@ -254,7 +254,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
             <img
               src="/logo.svg"
               alt="Create Well"
-              style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }}
+              style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'contain', padding: 3, boxSizing: 'border-box' }}
             />
             <span className="mobile-menu-brand">create well</span>
             <div style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }} onClick={e => e.stopPropagation()}>

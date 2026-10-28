@@ -38,12 +38,12 @@ export const PERSONS: Record<string, Person> = {
     }
   },
   pia: {
-    name: 'Pia', fullName: 'Pia', role: 'Reflector · Lunar Authority',
-    expression: 'Mirror / Emergent Expression', color: '#9B3A5A', emoji: '🌸', authority: 'lunar',
+    name: 'Pia', fullName: 'Pia', role: 'Generator 1/3 · Sacral Authority',
+    expression: 'Mirror / Emergent Expression', color: '#9B3A5A', emoji: '🌸', authority: 'sacral',
     energyReminder: {
-      type: 'Lunar Check',
-      text: 'Give yourself the full lunar cycle before making major decisions. Sample, reflect, and wait for clarity through time.',
-      detail: 'Reflector: You are the rare mirror of the community. Your openness is your superpower — notice how spaces and people feel to you.'
+      type: 'Sacral Check',
+      text: 'Tune into your gut response today. What is your sacral saying yes to? Trust the "uh-huh" or "nuh-uh" before your mind starts negotiating.',
+      detail: '1/3 Foundation: Investigate until the ground feels solid, then respond. Every experiment — working or not — is data your design uses.'
     }
   },
 };
@@ -56,13 +56,13 @@ export interface Person {
 
 export const WELLSHEET_PROMPTS: Record<string, string[]> = {
   pia: [
-    "Where in the lunar cycle are you today, and what does that mirror back?",
-    "What have you sampled from others' energy this week that surprised you?",
-    "Which part of the community feels most alive to you right now?",
-    "What clarity emerged through waiting that wouldn't have come through rushing?",
-    "What does the space feel like to you today — what is it reflecting?",
-    "Who are you in this moment, without anyone else's energy in the room?",
-    "What decision is asking for your full lunar cycle before responding?"
+    "What is your sacral responding to today — what's the honest uh-huh or nuh-uh?",
+    "Where did satisfaction show up this week? Where did frustration point at work that isn't yours?",
+    "What foundation are you building right now, and what does it still need before it feels solid?",
+    "What did the last experiment teach you — what worked, what didn't, what's the data?",
+    "What are you lit up about today, in your body, not just your mind?",
+    "Where are your two islands today — head and gut — and what helped them meet?",
+    "What question are you sitting with that a simple yes or no would answer?"
   ],
   sunshine: [
     "Where on your emotional wave are you right now?",
@@ -303,32 +303,32 @@ export const DEFAULT_ANNOUNCEMENTS: Announcement[] = [];
 
 export const HD_PROFILES: Record<string, HDProfile> = {
   pia: {
-    type: 'Reflector', typeShort: 'Reflector', profile: '1/3', profileName: 'Investigator / Martyr',
-    authority: 'Lunar', strategy: 'Wait a Lunar Cycle',
-    signature: 'Surprise', notSelf: 'Disappointment', definition: 'No Definition',
-    sacralDefined: false, auraType: 'Resistant & Sampling',
-    centers: { defined: [], undefined: ['Head', 'Ajna', 'Throat', 'G Center', 'Will/Heart', 'Solar Plexus', 'Sacral', 'Spleen', 'Root'] },
-    typeDescription: "Reflectors are the rarest type — only ~1% of the population. With all nine centers undefined, you are a pure mirror of the people and environments around you. You don't have fixed energy; instead, you sample and reflect the health of your community back to it. Your openness is not a weakness — it is your deepest wisdom.",
-    strategyDetail: "Wait a full lunar cycle (28–29 days) before making major decisions. As the moon transits each gate and activates your undefined centers in sequence, you'll get to sample each perspective. The clarity you seek comes through time, not urgency. Ask 'how do I feel about this at different times and in different spaces?'",
-    authorityDetail: "Lunar Authority means your decision-making unfolds over a complete moon cycle. Talk your decision through with trusted people — not for their opinion, but to hear yourself. Notice how the same decision feels different on different days. Clarity arrives as a stable, consistent knowing that persists across the full cycle.",
+    type: 'Generator', typeShort: 'Generator', profile: '1/3', profileName: 'Investigator / Martyr',
+    authority: 'Sacral', strategy: 'To Respond',
+    signature: 'Satisfaction', notSelf: 'Frustration', definition: 'Split Definition',
+    sacralDefined: true, auraType: 'Open & Enveloping',
+    centers: { defined: ['Head', 'Ajna', 'G Center', 'Sacral'], undefined: ['Throat', 'Will/Heart', 'Solar Plexus', 'Spleen', 'Root'] },
+    typeDescription: "Generators are the life force of the planet, and you are a pure one. You have deep, sustainable sacral energy — the most powerful motor in the bodygraph. Your design is to master what you love through response: when you're lit up by what you're doing, the energy keeps coming. When you're not, everything feels like slogging through mud.",
+    strategyDetail: "Wait to respond. Don't initiate from the mind — let life bring you something and check your sacral response. The sacral speaks in sounds (uh-huh / nuh-uh) and body sensations (leaning in / pulling back). Your Sacral authority means your gut response IS the answer — no waiting period, no cycle to complete.",
+    authorityDetail: "Sacral Authority is the most embodied of all authorities. Your gut knows instantly, in the moment the question lands. The practice is learning to hear it before the mind starts negotiating: ask yes/no questions, notice expansion (yes) or contraction (no). The sacral doesn't do \"maybe\" — that's the mind interfering.",
     profileDetail: {
       line1: "The Investigator — You need a solid foundation of knowledge before you feel secure enough to move forward. Research and investigation aren't procrastination; they're your process. Your insecurity when under-prepared is real and should be honored.",
       line3: "The Martyr — You learn through trial and error, through what doesn't work. Each 'failure' is essential data. Your life is full of experiments, bonds made and broken, paths tried and abandoned. This is not instability — it's your design gathering wisdom."
     },
-    definitionDetail: "No Definition means you have no fixed energy signature of your own. You are entirely conditioned by the people and environments around you. This makes you uniquely sensitive to collective energy — you literally feel the health of the group. A thriving community makes a Reflector thrive. A dysfunctional one depletes them.",
+    definitionDetail: "Split Definition means your defined centers form two separate islands — your Head and Ajna in one, your G Center and Sacral in the other — that don't connect directly. You bridge the gap through people and environments, which is why the right company completes your circuit: alone, the two sides of you take their time finding each other; with the right people present, thought and gut meet.",
     livingYourDesign: [
-      'Pay attention to how different environments and people make you feel — that IS data',
-      'For big decisions, give yourself the full lunar cycle before committing',
-      'Surround yourself with people who are living their design — you reflect their health',
-      'Talk decisions through with multiple trusted people over multiple days',
-      'Learn your correct environment — the right place amplifies your gifts exponentially',
-      "Your disappointment is the signal you've given up on the process too soon"
+      'Practice sacral check-ins: ask yourself yes/no questions and listen for the gut sound',
+      'Keep a "sacral log" — what got a full-body yes this week? What got a no?',
+      "Build the foundation first: your 1st line needs the research before the response feels safe",
+      'Treat every trial-and-error miss as 3rd-line data, not failure',
+      "When frustrated, it's a signal you're doing work that's not yours to respond to",
+      'Give your split time: let ideas and gut feelings find each other before you commit'
     ],
     hdQuotes: [
-      "You are the community's mirror. What you reflect back is the deepest truth.",
-      "Your openness is not emptiness — it's infinite capacity for wisdom.",
-      "Surprise is your signature: unexpected gifts emerge when you honor your timing.",
-      "The lunar cycle isn't a delay. It's the speed of your deepest intelligence."
+      "Your sacral is a truth machine. Learn to trust it over your mind.",
+      "Frustration isn't failure — it's redirection toward what's truly yours.",
+      "Investigate deeply, respond honestly, learn from every attempt.",
+      "Satisfaction comes from responding to what lights you up — not what you think you should do."
     ]
   },
   sunshine: {

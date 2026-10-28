@@ -90,13 +90,24 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
   const entries: LedgerSourceEntry[] = [];
   const summary: Record<string, { rows: number; changed: number }> = {};
+  const deferredSources: string[] = [];
 
   for (const source of SOURCES) {
     try {
       const outcome = await syncSource(source, notionSecret);
-      entries.push({ source, rows: outcome.count, cached: false });
       // eslint-disable-next-line security/detect-object-injection -- source comes from the closed SOURCES allowlist in _sync-engine.
       summary[source] = { rows: outcome.count, changed: outcome.changed };
+      if (outcome.deferred) {
+        // Another run holds this source's lease. A deferral is not a
+        // sync: it writes no ledger entry (the entry would read as an
+        // ordinary ok run carrying the mirrored row count — QA
+        // ledger-leg finding, 2026-10-27). The source stays dirty in
+        // delivery state; the holder's run or the next tick carries it.
+        deferredSources.push(source);
+        console.log(`[reconcile] deferred source=${source} (lease held)`);
+        continue;
+      }
+      entries.push({ source, rows: outcome.count, cached: false });
     } catch (error) {
       entries.push({
         source,
@@ -107,7 +118,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
   }
 
-  await recordEngineRun(startedAtMs, entries);
+  // No entries means every source deferred: no run record at all, for
+  // the same reason a single deferral writes none.
+  if (entries.length > 0) {
+    await recordEngineRun(startedAtMs, entries);
+  }
   const failed = entries.filter((entry) => entry.error).length;
   return res.status(200).json({
     ok: failed === 0,
@@ -116,5 +131,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     failedSources: entries
       .filter((entry) => entry.error)
       .map((entry) => entry.source),
+    deferredSources,
   });
 }

@@ -14,13 +14,18 @@
 //   the guaranteed trailing edge.
 
 import {
+  acquireLease,
   deleteSnapshotRow,
   emptyDeliveryState,
   getDeliveryState,
+  LEASE_TTL_MS,
   supabaseConfigured,
   listSnapshot,
+  releaseLease,
+  renewLease,
   upsertDeliveryState,
   upsertSnapshotRows,
+  verifyLease,
   type DeliveryState,
 } from "./_supabase.js";
 import {
@@ -39,6 +44,11 @@ export { SOURCES };
 // window after a sync starts are carried as dirty + pending instead of
 // each starting its own sync.
 export const COALESCE_WINDOW_MS = 10_000;
+
+// While a lease is held, its owner renews on this cadence (TTL is
+// LEASE_TTL_MS in _supabase). Syncs run in seconds; the renew exists so
+// a long reconcile of a large source never outlives its own lease.
+export const LEASE_RENEW_MS = 30_000;
 
 export const CRON_INTERVAL_MS = 15 * 60_000;
 
@@ -172,6 +182,10 @@ export interface SyncOutcome {
   count: number;
   changed: number;
   version: number;
+  // True when another run held the source's lease and this call synced
+  // nothing: count is the current mirrored row count, changed is 0.
+  // Callers record a deferral, never a failure and never a sync.
+  deferred: boolean;
 }
 
 // One full read + diff + apply cycle for a single source. Throws on
@@ -181,14 +195,45 @@ export async function syncSource(
   source: SourceName,
   notionSecret: string,
 ): Promise<SyncOutcome> {
-  const state =
-    (await getDeliveryState(source)) ?? emptyDeliveryState(source);
-  state.last_sync_started_at = new Date().toISOString();
-  state.dirty = false;
-  state.pending_entity_ids = [];
-  await upsertDeliveryState(state);
+  const priorState = await getDeliveryState(source);
+  const state = priorState ?? emptyDeliveryState(source);
+
+  // Per-source lease (G-02 Option A): one run syncs a source at a time,
+  // across every instance. Losing the acquire is a deferral, not a
+  // failure — the source stays dirty + pending on the webhook path and
+  // retries next tick on the cron path. A source with no delivery-state
+  // row yet has nothing to lease and bootstraps unleased, as before.
+  const owner = `sync-${source}-${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
+  const epoch = await acquireLease(source, owner, Date.now(), LEASE_TTL_MS);
+  if (epoch === null && priorState !== null) {
+    const existing = await listSnapshot(source);
+    return {
+      source,
+      count: existing.length,
+      changed: 0,
+      version: state.sync_version,
+      deferred: true,
+    };
+  }
+
+  const renewTimer =
+    epoch !== null
+      ? setInterval(() => {
+          void renewLease(source, owner, epoch, Date.now(), LEASE_TTL_MS).catch(
+            () => undefined,
+          );
+        }, LEASE_RENEW_MS)
+      : null;
+  (renewTimer as unknown as { unref?: () => void } | null)?.unref?.();
 
   try {
+    state.last_sync_started_at = new Date().toISOString();
+    state.dirty = false;
+    state.pending_entity_ids = [];
+    await upsertDeliveryState(state);
+
     const rows = await fetchSourceRows(source, notionSecret);
     const existing = await listSnapshot(source);
     const existingById = new Map(
@@ -237,17 +282,28 @@ export async function syncSource(
       }
     }
 
+    // Standard fencing (Option A): re-verify ownership immediately
+    // before the commit write. Snapshot rows already applied carry the
+    // run's sync_version and converge on the next sync; the delivery
+    // state is never committed by a run that lost its lease.
+    if (epoch !== null && !(await verifyLease(source, owner, epoch))) {
+      throw new Error(`sync lease lost for ${source}`);
+    }
+
     state.sync_version = version;
     state.last_sync_ok_at = new Date().toISOString();
     state.last_error = null;
     await upsertDeliveryState(state);
-    return { source, count: rows.length, changed, version };
+    return { source, count: rows.length, changed, version, deferred: false };
   } catch (error) {
     state.last_error =
       error instanceof Error ? error.message : "sync failed";
     state.dirty = true;
     await upsertDeliveryState(state).catch(() => undefined);
     throw error;
+  } finally {
+    if (renewTimer) clearInterval(renewTimer);
+    if (epoch !== null) await releaseLease(source, owner, epoch);
   }
 }
 

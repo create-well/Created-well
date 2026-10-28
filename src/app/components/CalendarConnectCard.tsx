@@ -5,7 +5,7 @@ import { useCalendarSync } from '../../lib/useCalendarSync';
 // all <button> elements below are raw HTML with this justification applied globally.
 
 function formatSyncTime(date: Date | null): string {
-  if (!date) return 'never';
+  if (!date || !Number.isFinite(date.getTime())) return 'never';
   const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
   if (diffSec < 60) return 'just now';
   if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;

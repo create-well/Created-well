@@ -93,6 +93,7 @@ type AnyMsg = (Message | SyncMsg) & { isSync?: boolean };
 function formatMsgTime(ts?: string) {
   if (!ts) return '';
   const d = new Date(ts);
+  if (!Number.isFinite(d.getTime())) return '';
   const diffMs = Date.now() - d.getTime();
   const m = Math.floor(diffMs / 60000);
   if (m < 1)  return 'just now';

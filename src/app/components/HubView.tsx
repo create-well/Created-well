@@ -12,6 +12,7 @@ import { ArriveState, shouldShowArriveState } from './ArriveState';
 import type { Task, Station, WellNote, Workshop, CoFlowDate, CoFlowCheckin, InviteCounts, CalendarEventKV } from './api';
 import * as api from './api';
 import { milestoneLabel } from '../../lib/nextUpLabel';
+import { shortDateLabel } from '../../lib/dateLabel';
 
 // ── Wellshop category → workshop tag matching ────────────────────────────────
 const WELLSHOP_TAG_MAP: Record<string, string[]> = {
@@ -1377,7 +1378,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                                 fontFamily: 'var(--font-label)', fontSize: '0.6rem', fontWeight: 700,
                                 color: cat.accent, textTransform: 'uppercase', minWidth: 55,
                               }}>
-                                {new Date(w.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                {shortDateLabel(w.date)}
                               </span>
                               <span style={{
                                 fontFamily: "var(--font-label)", fontSize: '0.82rem',
@@ -1524,7 +1525,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                                   fontFamily: 'var(--font-label)', fontSize: '0.58rem', fontWeight: 700,
                                   color: cat.accent, textTransform: 'uppercase', minWidth: 50,
                                 }}>
-                                  {new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                  {shortDateLabel(entry.date)}
                                 </span>
                                 <span style={{
                                   fontFamily: "var(--font-label)", fontSize: '0.8rem',
@@ -1686,6 +1687,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
             };
 
             function formatRelDate(d: Date): string {
+              if (!Number.isFinite(d.getTime())) return 'Date not set yet.';
               const diff = Math.ceil((d.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
               if (diff === 0) return 'Today';
               if (diff === 1) return 'Tomorrow';

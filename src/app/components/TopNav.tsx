@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router';
-import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 import { PERSONS } from './data';
 import { VisibilityDial } from './VisibilityDial';
 import { SensorySettings } from './SensorySettings';
@@ -80,7 +79,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
           style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
         >
           <img
-            src={cwLogoImg}
+            src="/logo.svg"
             alt="Create Well"
             className="nav-logo-img"
             style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }}
@@ -253,7 +252,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
         <div className="mobile-menu" onClick={e => e.stopPropagation()}>
           <div className="mobile-menu-header" onClick={() => { navigate('/'); setMobileOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <img
-              src={cwLogoImg}
+              src="/logo.svg"
               alt="Create Well"
               style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }}
             />

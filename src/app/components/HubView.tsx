@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 import { showToast } from './Toast';
 import {
   CALENDAR_EVENTS, PERSONS, getDaysToNextEvent, formatTimestamp, capitalize,
@@ -55,7 +54,7 @@ interface HubViewProps {
 function LogoCW({ size = 28 }: { size?: number }) {
   return (
     <img
-      src={cwLogoImg}
+      src="/logo.svg"
       alt="CW"
       style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
     />

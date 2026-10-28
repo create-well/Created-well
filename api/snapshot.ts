@@ -10,13 +10,8 @@
 // the live merge; this route is additive.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import {
-  getDeliveryState,
-  listSnapshot,
-  supabaseConfigured,
-  type DeliveryState,
-} from "./_supabase.js";
-import { computeFreshness, SOURCES } from "./_sync-engine.js";
+import { listSnapshot, supabaseConfigured } from "./_supabase.js";
+import { getSyncFreshness, SOURCES } from "./_sync-engine.js";
 import { type SourceName } from "./_notion-sources.js";
 import { applyCors, requireSession } from "./_auth.js";
 
@@ -56,27 +51,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   const now = Date.now();
   const sources: Record<string, { count: number; rows: unknown[] }> = {};
-  const freshness: Record<
-    string,
-    {
-      state: string;
-      lastEventAt: string | null;
-      lastSyncOkAt: string | null;
-      syncVersion: number;
-    }
-  > = {};
+  // One shared assembly with /api/dashboard (reader decision, 2026-10-27).
+  const freshness = await getSyncFreshness(now);
 
   if (!supabaseConfigured()) {
     for (const name of SOURCES) {
       // eslint-disable-next-line security/detect-object-injection -- name comes from the closed SOURCES allowlist in _sync-engine.
       sources[name] = { count: 0, rows: [] };
-      // eslint-disable-next-line security/detect-object-injection -- name comes from the closed SOURCES allowlist in _sync-engine.
-      freshness[name] = {
-        state: "unknown",
-        lastEventAt: null,
-        lastSyncOkAt: null,
-        syncVersion: 0,
-      };
     }
     return res.status(200).json({
       generatedAt: new Date(now).toISOString(),
@@ -88,21 +69,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   await Promise.all(
     SOURCES.map(async (name: SourceName) => {
-      const [state, rows] = await Promise.all([
-        getDeliveryState(name) as Promise<DeliveryState | null>,
-        listSnapshot(name),
-      ]);
+      const rows = await listSnapshot(name);
       // eslint-disable-next-line security/detect-object-injection -- name comes from the closed SOURCES allowlist in _sync-engine.
       sources[name] = {
         count: rows.length,
         rows: rows.map((entry) => entry.row),
-      };
-      // eslint-disable-next-line security/detect-object-injection -- name comes from the closed SOURCES allowlist in _sync-engine.
-      freshness[name] = {
-        state: computeFreshness(state, now),
-        lastEventAt: state?.last_event_at ?? null,
-        lastSyncOkAt: state?.last_sync_ok_at ?? null,
-        syncVersion: state?.sync_version ?? 0,
       };
     }),
   );

@@ -26,6 +26,7 @@ export const router = createBrowserRouter([
       { path: 'money',       ...page(() => import('./pages/MoneyPage'), 'MoneyPage') },
       { path: 'decisions',   ...page(() => import('./pages/DecisionsPage'), 'DecisionsPage') },
       { path: 'system',      ...page(() => import('./pages/SystemPage'), 'SystemPage') },
+      { path: 'source-first', ...page(() => import('./pages/SourceFirstPage'), 'SourceFirstPage') },
     ],
   },
 ]);

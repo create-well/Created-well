@@ -1,0 +1,131 @@
+{
+ "pulledAt": "2026-10-26T16:11:15+0000",
+ "dashboardLedger": {
+  "dataSourceId": "97008143-d0d8-46f3-bda1-702402018b6f",
+  "totalRuns": 207,
+  "okRuns": 203,
+  "failedRuns": 4,
+  "windowStart": "2026-10-22T11:15:00.000+00:00",
+  "windowEnd": "2026-10-26T12:42:00.000+00:00",
+  "perSource": {
+   "events": {
+    "runs": 155,
+    "started": "2026-10-26T12:42:00.000+00:00",
+    "rows": 0,
+    "cached": false,
+    "runStatus": "ok"
+   },
+   "money": {
+    "runs": 11,
+    "started": "2026-10-25T07:23:00.000+00:00",
+    "rows": 2,
+    "cached": false,
+    "runStatus": "ok"
+   },
+   "flows": {
+    "runs": 11,
+    "started": "2026-10-25T07:23:00.000+00:00",
+    "rows": 37,
+    "cached": false,
+    "runStatus": "ok"
+   },
+   "people": {
+    "runs": 11,
+    "started": "2026-10-25T07:23:00.000+00:00",
+    "rows": 28,
+    "cached": false,
+    "runStatus": "ok"
+   },
+   "moves": {
+    "runs": 11,
+    "started": "2026-10-25T07:23:00.000+00:00",
+    "rows": 14,
+    "cached": false,
+    "runStatus": "ok"
+   },
+   "content": {
+    "runs": 12,
+    "started": "2026-10-25T07:23:00.000+00:00",
+    "rows": 10,
+    "cached": false,
+    "runStatus": "ok"
+   },
+   "feedback": {
+    "runs": 11,
+    "started": "2026-10-25T07:23:00.000+00:00",
+    "rows": 1,
+    "cached": false,
+    "runStatus": "ok"
+   },
+   "reconcile": {
+    "runs": 3,
+    "started": "2026-10-23T06:45:00.000+00:00",
+    "rows": 0,
+    "cached": false,
+    "runStatus": "failed"
+   }
+  },
+  "notes": [
+   "This SYNC LEDGER (Notion) is written by the createdwell dashboard's sync runs; it is a different system from the Sheets two-way sync below.",
+   "events leg: 155 runs but the latest reports rows=0 while the EVENTS source holds 15 rows. Surfaced as-is.",
+   "reconcile: last ledger entry is FAILED at 2026-10-23T06:45Z (before the Oct 25 credential fix); no later reconcile entries exist in this ledger.",
+   "moves: ledger latest rows=14 (2026-10-25T07:23Z) vs 15 rows in the live pull: one Move arrived after that run."
+  ]
+ },
+ "sheetsSync": {
+  "workbook": "Create Well OS \u2014 Sheets Sync",
+  "workbookId": "1LUR8uKCYtUlFVXP6gBaN-0-GIPgaq8_a4XTdIOJn8OQ",
+  "lastRunAt": "2026-10-26T16:08:45Z",
+  "conflicts": 0,
+  "perDb": {
+   "PEOPLE": {
+    "notionRows": 28,
+    "sheetRows": 28,
+    "match": true
+   },
+   "FLOWS": {
+    "notionRows": 37,
+    "sheetRows": 37,
+    "match": true
+   },
+   "MOVES": {
+    "notionRows": 15,
+    "sheetRows": 15,
+    "match": true
+   },
+   "MONEY": {
+    "notionRows": 2,
+    "sheetRows": 2,
+    "match": true
+   },
+   "CONTENT": {
+    "notionRows": 10,
+    "sheetRows": 10,
+    "match": true
+   },
+   "EVENTS": {
+    "notionRows": 15,
+    "sheetRows": 15,
+    "match": true
+   },
+   "FEEDBACK": {
+    "notionRows": 1,
+    "sheetRows": 1,
+    "match": true
+   }
+  },
+  "notes": [
+   "Late-October briefs reported the Sheets leg stalled (NOTION_TOKEN missing in Script Properties). Directly checked 2026-10-26: _sync_log's latest run is 2026-10-26T16:08Z (09:08 PDT), all seven databases match Notion counts, _conflicts is empty. The stall is not the current state."
+  ]
+ },
+ "notConnected": [
+  {
+   "name": "Library (brief ID f0eaf323)",
+   "state": "404 from the Create Well Sheets Sync integration: not shared with it. A different DB, Book Library (e7624acf), exists under the monny hub and is not the OS Library."
+  },
+  {
+   "name": "Comms Tracker (brief ID fea64a3d)",
+   "state": "404 from the Create Well Sheets Sync integration: not shared with it."
+  }
+ ]
+}

@@ -1,0 +1,670 @@
+.sfp-root {
+  --paper: #faf8f4;
+  /* One shade step deeper than paper: source-view headers sit at depth;
+     Home (the rim) stays on the lightest tone. */
+  --deep: #f2ecdf;
+  --ink: #23202b;
+  --muted: #6e6759;
+  --accent: #6b4fa1;
+  --accent-soft: rgba(107, 79, 161, 0.08);
+  --hairline: #e3dcd0;
+  --card: #ffffff;
+  --selected: rgba(107, 79, 161, 0.13);
+  --serif: Georgia, 'Times New Roman', Times, serif;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+}
+
+.sfp-root, .sfp-root * {
+  box-sizing: border-box;
+}
+
+.sfp-root, .sfp-root {
+  margin: 0;
+  padding: 0;
+}
+
+.sfp-root {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.sfp-root a {
+  color: var(--accent);
+}
+
+.sfp-root :focus-visible {
+  outline: 3px solid #23202b;
+  outline-offset: 2px;
+}
+
+.sfp-root .app {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+}
+
+/* ---------- header ---------- */
+
+.sfp-root .app-header {
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 14px;
+  margin-bottom: 22px;
+}
+
+.sfp-root .wordmark {
+  font-family: var(--serif);
+  font-size: 1.7rem;
+  font-weight: 600;
+  margin: 0 0 4px;
+  letter-spacing: 0.01em;
+}
+
+.sfp-root .stamp {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0 0 14px;
+}
+
+.sfp-root .tab-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sfp-root .tab-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+
+.sfp-root .tab-button:hover {
+  border-color: var(--accent);
+}
+
+.sfp-root .tab-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ---------- generic layout ---------- */
+
+.sfp-root .view-title {
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  margin: 0 0 6px;
+}
+
+.sfp-root .view-sub {
+  color: var(--muted);
+  margin: 0 0 16px;
+  font-size: 0.92rem;
+}
+
+/* Source-view header band: the depth cue. Source material sits a shade
+   deeper than the page surface; the rim (Home) carries no band. */
+.sfp-root .view-head {
+  background: var(--deep);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+}
+
+.sfp-root .view-head .view-title {
+  margin: 0 0 2px;
+}
+
+.sfp-root .rise-line {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+/* Home's single freshness line: quiet, at the foot of the rim. */
+.sfp-root .freshness-line {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin: 20px 0 0;
+}
+
+.sfp-root .money-link-line {
+  margin: 2px 0 0;
+  font-size: 0.95rem;
+}
+
+/* Emergence marker: violet, filled, earned by the data or absent. */
+.sfp-root .geyser-chip {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.sfp-root .panel {
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+
+.sfp-root .panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sfp-root .panel-title {
+  font-size: 1.02rem;
+  margin: 0 0 10px;
+}
+
+.sfp-root .source-line {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin: 12px 0 0;
+  border-top: 1px solid var(--hairline);
+  padding-top: 8px;
+}
+
+.sfp-root .muted {
+  color: var(--muted);
+}
+
+.sfp-root .meta-text {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.sfp-root .empty-state {
+  color: var(--muted);
+  font-style: italic;
+  margin: 6px 0;
+}
+
+.sfp-root .coverage-line {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+}
+
+.sfp-root .standing-note {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 8px 12px;
+  margin: 0 0 14px;
+  font-size: 0.92rem;
+}
+
+.sfp-root .notice-banner {
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+  font-size: 0.93rem;
+}
+
+/* ---------- chips ---------- */
+
+.sfp-root .chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 2px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.sfp-root button.chip {
+  cursor: pointer;
+  min-height: 36px;
+}
+
+.sfp-root .chip-link:hover {
+  background: var(--accent-soft);
+}
+
+.sfp-root .chip-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.sfp-root .chip-filter {
+  background: var(--card);
+}
+
+.sfp-root .chip-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.sfp-root .filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+/* ---------- lists ---------- */
+
+.sfp-root .row-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sfp-root .list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 10px 8px;
+  border-top: 1px solid var(--hairline);
+}
+
+.sfp-root .list-row:first-child {
+  border-top: none;
+}
+
+.sfp-root .list-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sfp-root .list-row-title {
+  font-weight: 600;
+}
+
+.sfp-root .list-row-meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.sfp-root .row-selected {
+  background: var(--selected);
+  border-radius: 6px;
+}
+
+.sfp-root .body-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.sfp-root .clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sfp-root .final-mark {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.sfp-root .ext-link {
+  font-size: 0.85rem;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ---------- tables ---------- */
+
+.sfp-root .table-wrap {
+  overflow-x: auto;
+}
+
+.sfp-root .data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.sfp-root .data-table th, .sfp-root .data-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-top: 1px solid var(--hairline);
+  vertical-align: top;
+}
+
+.sfp-root .data-table thead th {
+  border-top: none;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sfp-root .data-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sfp-root .cell-title {
+  font-weight: 600;
+}
+
+/* ---------- money ---------- */
+
+.sfp-root .money-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.sfp-root .money-figure {
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 170px;
+}
+
+.sfp-root .money-figure-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sfp-root .money-figure-value {
+  font-family: var(--serif);
+  font-size: 1.35rem;
+}
+
+.sfp-root .money-figure-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* ---------- flows board ---------- */
+
+.sfp-root .board {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.sfp-root .board-column {
+  flex: 0 0 250px;
+  min-width: 0;
+}
+
+.sfp-root .board-column-title {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 4px;
+}
+
+.sfp-root .board-count {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.sfp-root .flow-card {
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sfp-root .card-title-button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+  min-height: 36px;
+}
+
+.sfp-root .card-title-button:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.sfp-root .card-meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* ---------- people ---------- */
+
+.sfp-root .people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.sfp-root .person-card {
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sfp-root .person-name {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.sfp-root .person-card p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* ---------- intake ---------- */
+
+.sfp-root .intake-forms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 0 18px;
+}
+
+.sfp-root .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+.sfp-root .field > span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.sfp-root .field input, .sfp-root .field select, .sfp-root .field textarea {
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  padding: 8px 10px;
+  min-height: 36px;
+}
+
+.sfp-root .field textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.sfp-root .submit-button {
+  min-height: 36px;
+  padding: 8px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sfp-root .submit-button:hover {
+  background: #593d87;
+}
+
+/* ---------- sync health ---------- */
+
+.sfp-root .callout-list {
+  margin: 12px 0 0;
+  padding-left: 18px;
+}
+
+.sfp-root .callout-list li {
+  margin-bottom: 6px;
+  font-size: 0.92rem;
+}
+
+.sfp-root .not-connected-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.sfp-root .not-connected-card {
+  border: 1px dashed var(--muted);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.sfp-root .not-connected-card h4 {
+  margin: 0 0 6px;
+}
+
+.sfp-root .not-connected-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* ---------- detail drawer ---------- */
+
+.sfp-root .detail-drawer {
+  margin-top: 22px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--card);
+  padding: 18px 20px;
+}
+
+.sfp-root .detail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.sfp-root .detail-source {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sfp-root .detail-title {
+  font-family: var(--serif);
+  margin: 2px 0 10px;
+  font-size: 1.3rem;
+}
+
+.sfp-root .detail-close {
+  min-height: 36px;
+  min-width: 36px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sfp-root .detail-list {
+  margin: 0;
+}
+
+.sfp-root .detail-row {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: 12px;
+  padding: 7px 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.sfp-root .detail-row dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.sfp-root .detail-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.sfp-root .detail-text {
+  white-space: pre-wrap;
+}
+
+.sfp-root .detail-notion-link {
+  margin: 12px 0 0;
+}
+
+@media (max-width: 640px) {
+.sfp-root .detail-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+.sfp-root .list-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+}

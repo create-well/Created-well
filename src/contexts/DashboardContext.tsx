@@ -44,6 +44,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
   // Legacy field name: successful payload reception, not source-sync time.
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [syncFreshness, setSyncFreshness] = useState<import('../lib/syncFreshnessLine').SyncFreshnessBlock | null>(null);
   const [statusClock, setStatusClock] = useState(Date.now);
   const dataLoadedRef = useRef(false);
   const silentFailCount = useRef(0);
@@ -142,6 +143,10 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
           usedFallback = true;
         }
         if (!active) return;
+        // Delivery-state block (FE-3): only the primary payload carries
+        // it; the fallback path may not claim delivery state, so a
+        // fallback load clears it rather than leaving a stale claim.
+        setSyncFreshness(usedFallback ? null : (data.syncFreshness ?? null));
         setTasks(data.tasks || []);
         setStations(data.stations || []);
         setForum(data.forum || []);
@@ -565,6 +570,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     wellNotes,
     syncStatus: computedSyncStatus,
     lastSynced,
+    syncFreshness,
     permissions: {
       careConsent: true,
     },

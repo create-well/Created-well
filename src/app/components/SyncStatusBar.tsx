@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDashboard } from '../../contexts/DashboardContext';
+import { sourcesCheckedSegment } from '../../lib/syncFreshnessLine';
 
 function relativeTime(date: Date): string {
   const diffMs = Date.now() - date.getTime();
@@ -20,7 +21,7 @@ const STATUS_CONFIG = {
 
 export function SyncStatusBar() {
   const { data, actions } = useDashboard();
-  const { syncStatus, lastSynced } = data;
+  const { syncStatus, lastSynced, syncFreshness } = data;
   const [, setTick] = useState(0);
 
   // Refresh relative time every 30 seconds
@@ -31,6 +32,11 @@ export function SyncStatusBar() {
 
   const cfg = STATUS_CONFIG[syncStatus];
   const timeLabel = lastSynced ? `Last loaded ${relativeTime(lastSynced)}` : 'No successful load yet';
+  // FE-3: when the payload carries the delivery-state block, the line
+  // derives from real sync state and the "not verified" self-report is
+  // retired. Without a block (fallback path, first load), the
+  // transport-only wording stands — it makes no source claim.
+  const segment = sourcesCheckedSegment(syncFreshness);
 
 
   return (
@@ -62,7 +68,7 @@ export function SyncStatusBar() {
           transition: 'background 0.3s',
         }}
       />
-      <span>{timeLabel}{cfg.label ? ` · ${cfg.label}` : ''}. Source sync not verified.</span>
+      <span>{timeLabel}{cfg.label ? ` · ${cfg.label}` : ''}. {segment ? `${segment}.` : 'Source sync not verified.'}</span>
       {(syncStatus === 'failed' || syncStatus === 'stale') && (
         <button
           onClick={() => actions.retrySync()}

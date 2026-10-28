@@ -56,7 +56,7 @@ function LogoCW({ size = 28 }: { size?: number }) {
     <img
       src="/logo.svg"
       alt="CW"
-      style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+      style={{ width: size, height: size, borderRadius: '50%', objectFit: 'contain', padding: 3, boxSizing: 'border-box', flexShrink: 0 }}
     />
   );
 }

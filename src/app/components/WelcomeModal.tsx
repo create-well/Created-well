@@ -227,7 +227,9 @@ export function WelcomeModal({ activeUser, onDismiss }: WelcomeModalProps) {
               width: 48,
               height: 48,
               borderRadius: '50%',
-              objectFit: 'cover',
+              objectFit: 'contain',
+              padding: 3,
+              boxSizing: 'border-box',
               marginBottom: 10,
               border: '2px solid rgba(123,168,157,0.2)',
             }}

@@ -165,6 +165,136 @@ export async function upsertDeliveryState(
   });
 }
 
+// ── Per-source sync leases (G-02 Option A; DDL: docs/live-sync-lease-supabase.sql) ──
+//
+// The lease columns live on the delivery-state row itself. Acquire is a
+// compare-and-swap: one PATCH whose filters pin the epoch the caller read
+// AND require the prior lease to be absent or expired. The statement is
+// atomic, so exactly one contender's PATCH lands; the returned row count
+// is the verdict (1 = won, 0 = lost). The epoch is the fencing token:
+// every successful acquire increments it, and renew / release / verify
+// all match on owner + epoch, so a stale owner can never renew, release,
+// or pass verification against a lease that has been taken over.
+
+export const LEASE_TTL_MS = 120_000;
+
+interface LeaseRow {
+  lease_owner: string | null;
+  lease_epoch: number;
+  lease_expires_at: string | null;
+}
+
+async function getLeaseRow(source: string): Promise<LeaseRow | null> {
+  const raw = await rest(
+    `sync_delivery_state?source=eq.${encodeURIComponent(source)}&select=lease_owner,lease_epoch,lease_expires_at`,
+    { expectObject: true },
+  );
+  if (!isRecord(raw)) return null;
+  return {
+    lease_owner:
+      typeof raw.lease_owner === "string" ? raw.lease_owner : null,
+    lease_epoch:
+      typeof raw.lease_epoch === "number"
+        ? raw.lease_epoch
+        : Number(raw.lease_epoch ?? 0) || 0,
+    lease_expires_at:
+      typeof raw.lease_expires_at === "string" ? raw.lease_expires_at : null,
+  };
+}
+
+// Win the source's lease, or return null when another run holds it (or
+// the source has no delivery-state row to lease yet). On a win, returns
+// the new epoch — the fencing token for renew / verify / release.
+export async function acquireLease(
+  source: string,
+  owner: string,
+  nowMs: number,
+  ttlMs: number,
+): Promise<number | null> {
+  const row = await getLeaseRow(source);
+  if (!row) return null;
+  const nowIso = new Date(nowMs).toISOString();
+  const expiryFilter = encodeURIComponent(
+    `(lease_expires_at.is.null,lease_expires_at.lt.${nowIso})`,
+  );
+  const result = await rest(
+    `sync_delivery_state?source=eq.${encodeURIComponent(source)}&lease_epoch=eq.${row.lease_epoch}&or=${expiryFilter}`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({
+        lease_owner: owner,
+        lease_epoch: row.lease_epoch + 1,
+        lease_expires_at: new Date(nowMs + ttlMs).toISOString(),
+        updated_at: nowIso,
+      }),
+    },
+  );
+  return Array.isArray(result) && result.length === 1
+    ? row.lease_epoch + 1
+    : null;
+}
+
+// Extend a held lease. False when the lease is no longer the caller's
+// (taken over or released) — the caller treats that as lease-lost.
+export async function renewLease(
+  source: string,
+  owner: string,
+  epoch: number,
+  nowMs: number,
+  ttlMs: number,
+): Promise<boolean> {
+  const result = await rest(
+    `sync_delivery_state?source=eq.${encodeURIComponent(source)}&lease_owner=eq.${encodeURIComponent(owner)}&lease_epoch=eq.${epoch}`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({
+        lease_expires_at: new Date(nowMs + ttlMs).toISOString(),
+        updated_at: new Date(nowMs).toISOString(),
+      }),
+    },
+  );
+  return Array.isArray(result) && result.length === 1;
+}
+
+// True when owner + epoch still hold the source's lease (the standard
+// fencing check before a run commits its delivery-state write).
+export async function verifyLease(
+  source: string,
+  owner: string,
+  epoch: number,
+): Promise<boolean> {
+  const row = await getLeaseRow(source);
+  return row !== null && row.lease_owner === owner && row.lease_epoch === epoch;
+}
+
+// Clear the lease, only if it is still the caller's own (owner + epoch).
+// Best-effort by design: a failed release never masks the run's outcome,
+// and the TTL reclaims the lease on its own.
+export async function releaseLease(
+  source: string,
+  owner: string,
+  epoch: number,
+): Promise<void> {
+  try {
+    await rest(
+      `sync_delivery_state?source=eq.${encodeURIComponent(source)}&lease_owner=eq.${encodeURIComponent(owner)}&lease_epoch=eq.${epoch}`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          lease_owner: null,
+          lease_expires_at: null,
+          updated_at: new Date().toISOString(),
+        }),
+      },
+    );
+  } catch {
+    // Expiry is the backstop; nothing to do.
+  }
+}
+
 export async function listSnapshot(source: string): Promise<SnapshotRow[]> {
   const raw = await rest(
     `sync_snapshots?source=eq.${encodeURIComponent(source)}&select=page_id,row,last_edited,sync_version&limit=2000`,

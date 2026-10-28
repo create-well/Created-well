@@ -275,6 +275,18 @@ export default async function handler(
     }
 
     const outcome = await syncSource(source, notionSecret);
+    if (outcome.deferred) {
+      // Another run holds this source's lease; the event stays recorded
+      // as dirty + pending (markEvent above) and the holder's run or the
+      // cron trailing edge carries it. Never logged as a sync: like the
+      // coalesce path above, a deferral writes NO run record — a record
+      // here would read as an ordinary ok run carrying the mirrored row
+      // count and inflate the ledger (QA ledger-leg finding, 2026-10-27).
+      console.log(
+        `${LOG_PREFIX} deferred source=${source} (lease held) eventIdPresent=${eventId ? "yes" : "no"}`,
+      );
+      return res.status(200).json({ ok: true, deferred: true, source });
+    }
     await recordEngineRun(startedAtMs, [
       { source, rows: outcome.count, cached: false },
     ]);

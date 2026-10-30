@@ -398,6 +398,8 @@ export interface MoneyRecord {
 }
 
 export interface SyncData {
+  /** Delivery-state freshness block (PR #50); absent on the fallback sync path. */
+  syncFreshness?: import('../../lib/syncFreshnessLine').SyncFreshnessBlock;
   tasks: Task[];
   stations: Station[];
   forum: ForumPost[];

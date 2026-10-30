@@ -33,6 +33,8 @@ export interface DashboardPayload {
   syncStatus: SyncStatus;
   /** Legacy name: last successful payload load, not source observation time. */
   lastSynced: Date | null;
+  /** Delivery-state freshness block from the payload (FE-3); null when the payload carried none. */
+  syncFreshness: import('../lib/syncFreshnessLine').SyncFreshnessBlock | null;
   permissions: DashboardPermissions;
 }
 

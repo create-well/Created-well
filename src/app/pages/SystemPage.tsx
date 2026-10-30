@@ -330,6 +330,13 @@ export function SystemPage() {
             value={data.lastSynced ? data.lastSynced.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' }) : 'Never'}
             status={data.lastSynced ? 'neutral' : 'warn'}
           />
+          {/* Run history has no store until the G-35 decision lands;
+              the placeholder standard marks the absence, never invents it. */}
+          <HealthRow
+            label="Run history"
+            value="[ ] run history"
+            status="neutral"
+          />
           <HealthRow
             label="Permissions: Care consent"
             value={data.permissions.careConsent ? 'Granted' : 'Not granted'}

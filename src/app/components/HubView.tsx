@@ -9,6 +9,7 @@ import { MBodyWidget } from './MBodyWidget';
 import { NotesFromTheWell } from './NotesFromTheWell';
 import { ArriveState, shouldShowArriveState } from './ArriveState';
 import { HomePanels } from './HomePanels';
+import CalendarAgenda from './CalendarAgenda';
 import type { Task, Station, WellNote, Workshop, CoFlowDate, CoFlowCheckin, InviteCounts, CalendarEventKV } from './api';
 import * as api from './api';
 import { milestoneLabel } from '../../lib/nextUpLabel';
@@ -129,7 +130,6 @@ const WORKSPACE_TOOLS = [
 ];
 
 // ── Shared Team Calendar embed URL ──────────────────────────────────────────
-const TEAM_CALENDAR_EMBED = 'https://calendar.google.com/calendar/embed?height=400&wkst=1&ctz=America%2FLos_Angeles&src=ODUyODMxYTc1MDhkYWZjMmUwYjNhYjcyOGZkYzczMWU3YmQ0NWI1NjhiNGFiOGIwZmQ3NjU3YTVlNTc3MTkzNEBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%23f4be40';
 
 // ── Synergy data ─────────────────────────────────────────────────────────────
 
@@ -950,20 +950,10 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
           </div>
         </div>
 
-        {/* Layer 1: Shared Team Calendar embed (always visible, no auth) */}
-        <iframe
-          src={TEAM_CALENDAR_EMBED}
-          title="CR8W Shared Team Calendar"
-          style={{
-            width: '100%',
-            height: 400,
-            borderRadius: 12,
-            border: '1px solid rgba(0,0,0,0.1)',
-            marginBottom: 0,
-          }}
-          frameBorder="0"
-          scrolling="no"
-        />
+        {/* Layer 1: Shared Team Calendar — native agenda (FE-12; the
+            Google embed iframe is retired). Renders the CalendarEventKV
+            records the iCal sync already loads, plus co-flow dates. */}
+        <CalendarAgenda kvEvents={kvCalEvents} coFlowDates={coFlowDates} loaded={kvCalLoaded} />
 
         {/* Divider */}
         <div style={{

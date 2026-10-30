@@ -154,6 +154,15 @@ export function MessageDrawer({
   activeAs, onSetActiveAs, onAddWellNote,
 }: MessageDrawerProps) {
   const [open,           setOpen]           = useState(false);
+
+  // FE-13: Escape closes the drawer (the backdrop click and the
+  // header click already do; the keyboard path completes the set).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open ]);
   const [text,           setText]           = useState('');
   const [msgType,        setMsgType]        = useState<MsgType>('message');
   const [sending,        setSending]        = useState(false);
@@ -966,20 +975,40 @@ export function MessageDrawer({
       </button>
     )}
 
-    {/* ── Expanded drawer (slides up from bottom-right) ── */}
-    <div style={{
-      position: 'fixed', bottom: 0, right: 0, zIndex: 1001,
-      display: 'flex', flexDirection: 'column',
-      transition: 'all 0.38s cubic-bezier(0.32, 0.72, 0, 1)',
-      height: open ? 'min(82vh, 740px)' : '0px',
-      width: open ? 'min(100vw, 420px)' : '0px',
-      opacity: open ? 1 : 0,
-      pointerEvents: open ? 'auto' : 'none',
-      background: drawerBg,
-      borderRadius: '22px 0 0 0',
-      boxShadow: open ? '0 -4px 40px rgba(0,0,0,0.5), -4px 0 20px rgba(0,0,0,0.15)' : 'none',
-      overflow: 'hidden',
-    }}>
+    {/* ── Backdrop (FE-13): dims the primary content while the
+        drawer is open; one click anywhere on it closes. ── */}
+    <div
+      onClick={() => setOpen(false)}
+      aria-hidden="true"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(38, 24, 18, 0.45)',
+        opacity: open ? 1 : 0,
+        pointerEvents: open ? 'auto' : 'none',
+        transition: 'opacity 0.32s ease',
+      }}
+    />
+
+    {/* ── Slide-over drawer (FE-13): full-height, in from the
+        right. The backdrop carries the modal contract, so the
+        panel itself never fights or obscures a page control. ── */}
+    <div
+      role="dialog"
+      aria-label="CR8W Chat"
+      aria-hidden={!open}
+      style={{
+        position: 'fixed', top: 0, bottom: 0, right: 0, zIndex: 1001,
+        display: 'flex', flexDirection: 'column',
+        transition: 'transform 0.38s cubic-bezier(0.32, 0.72, 0, 1)',
+        transform: open ? 'translateX(0)' : 'translateX(102%)',
+        height: '100dvh',
+        width: 'min(100vw, 420px)',
+        pointerEvents: open ? 'auto' : 'none',
+        background: drawerBg,
+        borderRadius: '16px 0 0 16px',
+        boxShadow: open ? '-12px 0 44px rgba(0,0,0,0.45)' : 'none',
+        overflow: 'hidden',
+      }}>
 
       {/* ── Header ── */}
       <div

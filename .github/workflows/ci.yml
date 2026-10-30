@@ -1,0 +1,61 @@
+name: CI
+
+# The gate suite, run the way the lanes run it by hand (G-54 / STACK-01):
+# the per-file test suite under BOTH timezones — date-shaped work has
+# failed in one zone and passed in the other — plus both lease-engine
+# drivers, the typecheck, and the production build. A green run here is
+# evidence QA scores against; it replaces hand re-runs, not verdicts.
+#
+# Installs authenticate to the Figma registry through the committed
+# .npmrc, exactly as local installs do. No workflow secrets are used.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  suite:
+    name: suite (${{ matrix.tz }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tz: [America/Los_Angeles, UTC]
+    env:
+      TZ: ${{ matrix.tz }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Test suite (per file, TZ=${{ matrix.tz }})
+        run: |
+          set -e
+          for f in tests/*.test.mjs; do
+            echo "== $f (TZ=$TZ)"
+            node --test "$f"
+          done
+
+  checks:
+    name: drivers + typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Lease engine driver
+        run: node tests/sync-lease-engine.driver.mjs
+      - name: Lease ledger driver
+        run: node tests/sync-lease-ledger.driver.mjs
+      - run: npx tsc --noEmit
+      - run: npm run build

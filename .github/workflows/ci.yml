@@ -8,13 +8,6 @@ name: CI
 #
 # Installs authenticate to the Figma registry through the committed
 # .npmrc, exactly as local installs do. No workflow secrets are used.
-#
-# No lockfile is committed in this repo, so setup-node's npm cache and
-# `npm ci` both fail before any test runs (cache needs a lockfile to
-# key on; ci refuses without one). Install is therefore plain
-# `npm install`, which resolves ephemerally in the runner. Committing
-# a lockfile is the follow-up that restores `npm ci` plus caching;
-# it is a separate change, not part of this fix.
 
 on:
   pull_request:
@@ -40,7 +33,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: npm install
+          cache: npm
+      - run: npm ci
       - name: Test suite (per file, TZ=${{ matrix.tz }})
         run: |
           set -e
@@ -57,7 +51,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: npm install
+          cache: npm
+      - run: npm ci
       - name: Lease engine driver
         run: node tests/sync-lease-engine.driver.mjs
       - name: Lease ledger driver

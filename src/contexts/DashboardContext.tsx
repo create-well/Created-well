@@ -45,6 +45,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   // Legacy field name: successful payload reception, not source-sync time.
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [syncFreshness, setSyncFreshness] = useState<import('../lib/syncFreshnessLine').SyncFreshnessBlock | null>(null);
+  const [peopleCare, setPeopleCare] = useState<{ total: number; consentGaps: number } | null>(null);
   const [statusClock, setStatusClock] = useState(Date.now);
   const dataLoadedRef = useRef(false);
   const silentFailCount = useRef(0);
@@ -147,6 +148,9 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         // it; the fallback path may not claim delivery state, so a
         // fallback load clears it rather than leaving a stale claim.
         setSyncFreshness(usedFallback ? null : (data.syncFreshness ?? null));
+        // PEOPLE care aggregate: same rule — only the primary payload
+        // carries it; a fallback load clears it, never a stale count.
+        setPeopleCare(usedFallback ? null : (data.peopleCare ?? null));
         setTasks(data.tasks || []);
         setStations(data.stations || []);
         setForum(data.forum || []);
@@ -571,6 +575,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     syncStatus: computedSyncStatus,
     lastSynced,
     syncFreshness,
+    peopleCare,
     permissions: {
       careConsent: true,
     },

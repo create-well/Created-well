@@ -35,6 +35,8 @@ export interface DashboardPayload {
   lastSynced: Date | null;
   /** Delivery-state freshness block from the payload (FE-3); null when the payload carried none. */
   syncFreshness: import('../lib/syncFreshnessLine').SyncFreshnessBlock | null;
+  /** PEOPLE consent-care aggregate from the payload (counts only, never values); null when the payload carried none. */
+  peopleCare: { total: number; consentGaps: number } | null;
   permissions: DashboardPermissions;
 }
 

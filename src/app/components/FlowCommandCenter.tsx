@@ -14,6 +14,7 @@ import {
 import { useDashboard } from "../../contexts/DashboardContext";
 import type { CoFlowDate } from "./api";
 import { flowsProvenanceText } from "../../lib/freshnessLabel";
+import { localDateString } from "../../lib/dateLabel";
 import type { SyncStatus } from "../../types/dashboard";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { Badge } from "./ui/badge";
@@ -52,7 +53,7 @@ function weekDays(anchor: Date) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
     return {
-      iso:     d.toISOString().slice(0, 10),
+      iso:     localDateString(d),
       short:   d.toLocaleDateString("en-US", { weekday: "short" }),
       num:     d.getDate(),
       isToday: d.toDateString() === anchor.toDateString(),
@@ -71,11 +72,11 @@ function nextFriday(): string {
   const d = new Date();
   const delta = (5 - d.getDay() + 7) % 7 || 7;
   d.setDate(d.getDate() + delta);
-  return d.toISOString().slice(0, 10);
+  return localDateString(d);
 }
 
 function pickNextFlow(flows: CoFlowDate[]): CoFlowDate | undefined {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString();
   return flows
     .filter((f) => UPCOMING.has(f.status) && (!f.date || f.date >= today))
     .sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"))[0];

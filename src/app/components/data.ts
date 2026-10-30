@@ -1,4 +1,4 @@
-import { shortDateLabel } from '../../lib/dateLabel';
+import { shortDateLabel, localDateString, calendarDayDiff } from '../../lib/dateLabel';
 
 export const PERSONS: Record<string, Person> = {
   sunshine: {
@@ -492,19 +492,18 @@ export type CommunityEventType = typeof COMMUNITY_EVENT_TYPES[number];
  * Returns 0 if no upcoming events are found.
  */
 export function getDaysToNextEvent(events: { date: string; status?: string }[]): number {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = localDateString();
   const upcoming = events
     .filter(e => e.date && e.date >= todayStr && e.status !== 'archived')
     .sort((a, b) => a.date.localeCompare(b.date));
   if (!upcoming.length) return 0;
   const nextDate = new Date(upcoming[0].date + 'T00:00:00');
   const now = new Date();
-  return Math.max(0, Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  return Math.max(0, calendarDayDiff(now, nextDate));
 }
 export function getDayOfYear(date: Date) {
-  const start = new Date(date.getFullYear(), 0, 0);
-  const diff = date.getTime() - start.getTime();
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
+  // Calendar components, not a floored ms span (DST-immune).
+  return calendarDayDiff(new Date(date.getFullYear(), 0, 0), date);
 }
 
 export const WELL_GREETINGS: string[] = [

@@ -121,7 +121,11 @@ const PROJECT_MARK = /project/i;
  */
 export function startingSoon(flows: HomeFlow[], now: Date): HomeFlow[] {
   const today = startOfDay(now).getTime();
-  const horizon = today + 14 * 24 * 60 * 60 * 1000;
+  // Calendar days, not fixed milliseconds: across a fall-back the
+  // ms horizon lands an hour short and a day-14 flow drops early.
+  const horizonDate = startOfDay(now);
+  horizonDate.setDate(horizonDate.getDate() + 14);
+  const horizon = horizonDate.getTime();
   return flows
     .filter((f) => {
       if (CLOSED_FLOW_STATUSES.has(f.status)) return false;

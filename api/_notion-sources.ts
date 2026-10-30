@@ -2,7 +2,7 @@
 //
 // Adaptation note: on cr8w-dashboard the sync sources are that app's
 // seven dashboard databases and fetchSourceRows lives in notion-sync,
-// returning UI-shaped rows. Createdwell's five databases feed seven UI
+// returning UI-shaped rows. Createdwell's six databases feed seven UI
 // collections through the pure normalizers behind /api/dashboard, so a
 // per-database snapshot in UI shape cannot represent them 1:1. The
 // snapshot here therefore stores the normalizer INPUT: one row per
@@ -19,6 +19,7 @@ export const SOURCES = [
   "flows",
   "content",
   "money",
+  "openasks",
 ] as const;
 
 export type SourceName = (typeof SOURCES)[number];
@@ -29,6 +30,7 @@ const SOURCE_ENV: Record<SourceName, string> = {
   flows: "NOTION_DB_FLOWS",
   content: "NOTION_DB_CONTENT",
   money: "NOTION_DB_MONEY",
+  openasks: "NOTION_DB_OPEN_ASKS",
 };
 
 export function sourceDatabaseId(source: SourceName): string | null {

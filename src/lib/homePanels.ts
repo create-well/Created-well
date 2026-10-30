@@ -184,10 +184,17 @@ export function forumRowName(content: string): string {
 export function syncCareCount(
   block: SyncFreshnessBlock | null | undefined,
 ): { notFlowing: number; total: number } | null {
-  if (!block || !Array.isArray(block.sources)) return null;
-  const total = block.sources.length;
+  // The payload carries sources as a Record keyed by source name
+  // (SyncFreshnessBlock in syncFreshnessLine) — read it with
+  // Object.values, the same parity as the freshness bar's
+  // sourcesCheckedSegment. An Array.isArray guard here returned
+  // null on every real payload, and the Needs care sync group
+  // rendered a permanent false absence (F-SYNCCARE-SHAPE).
+  if (!block || !block.sources) return null;
+  const entries = Object.values(block.sources);
+  const total = entries.length;
   if (total === 0) return null;
-  const flowing = block.sources.filter(
+  const flowing = entries.filter(
     (s) => s.state === 'live' || s.state === 'reconciling',
   ).length;
   return { notFlowing: total - flowing, total };

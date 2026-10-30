@@ -4,6 +4,7 @@ import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { CalendarConnectCard } from '../components/CalendarConnectCard';
 import { freshnessBand } from '../../lib/freshnessLabel';
+import { ReleaseVerificationPanel } from '../components/ReleaseVerificationPanel';
 
 // Hub CMS database URLs — these are the four DBs the dashboard reads/writes.
 // Distinct from the operational five (PEOPLE/FLOWS/MOVES/MONEY/CONTENT) which
@@ -391,6 +392,16 @@ export function SystemPage() {
           <DataCountRow label="Well notes"   count={data.wellNotes.length}      emoji="💧" internalPath="/"       notionHref={NOTION_DB_LINKS.wellNotes} source="CONTENT hub" />
           <DataCountRow label="Brain dumps"  count={data.brainDumps.length}     emoji="🧠" internalPath="/"       notionHref={NOTION_DB_LINKS.brainDumps} source="CONTENT hub" />
           <DataCountRow label="Announcements" count={data.announcements.length} emoji="📢" internalPath="/"       notionHref={NOTION_DB_LINKS.announcements} source="CONTENT hub" />
+        </div>
+
+        {/* Public release verification (G-11 Consumer 1) */}
+        <SectionHeader title="Public release" />
+        <div style={{
+          background: 'var(--cr8w-card-bg, #F4F1ED)',
+          border: '1px solid var(--border-soft, rgba(196,164,132,0.15))',
+          borderRadius: 12, padding: '4px 16px',
+        }}>
+          <ReleaseVerificationPanel workingRows={data.forum} />
         </div>
 
         {/* Content channels */}

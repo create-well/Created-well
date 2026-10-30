@@ -21,6 +21,6 @@ export const MOCK_PAYLOAD: DashboardPayload = {
   peopleCare: null,
   openAsksCare: null,
   permissions: {
-    careConsent: true,
+    careConsent: false,
   },
 };

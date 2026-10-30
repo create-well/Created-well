@@ -121,7 +121,11 @@ const PROJECT_MARK = /project/i;
  */
 export function startingSoon(flows: HomeFlow[], now: Date): HomeFlow[] {
   const today = startOfDay(now).getTime();
-  const horizon = today + 14 * 24 * 60 * 60 * 1000;
+  // Calendar days, not fixed milliseconds: across a fall-back the
+  // ms horizon lands an hour short and a day-14 flow drops early.
+  const horizonDate = startOfDay(now);
+  horizonDate.setDate(horizonDate.getDate() + 14);
+  const horizon = horizonDate.getTime();
   return flows
     .filter((f) => {
       if (CLOSED_FLOW_STATUSES.has(f.status)) return false;
@@ -217,4 +221,18 @@ export function openAsksCareValue(
   if (typeof care.total !== 'number' || typeof care.unanswered !== 'number') return null;
   if (care.total === 0) return null;
   return { unanswered: care.unanswered, total: care.total };
+}
+
+ * The care-consent flag (DashboardContext permissions), derived
+ * from the PEOPLE census — never hard-coded. Granted ONLY when the
+ * census is present and complete (total > 0, zero gaps): a partial
+ * census must not read as granted, and an absent census (including
+ * every fallback load) reads as not granted.
+ */
+export function careConsentGranted(
+  care: { total: number; consentGaps: number } | null | undefined,
+): boolean {
+  if (!care) return false;
+  if (typeof care.total !== 'number' || typeof care.consentGaps !== 'number') return false;
+  return care.total > 0 && care.consentGaps === 0;
 }

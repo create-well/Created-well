@@ -12,6 +12,7 @@ import {
   forumRowName,
   syncCareCount,
   peopleCareValue,
+  careConsentGranted,
   openAsksCareValue,
 } from '../src/lib/homePanels.ts';
 
@@ -135,4 +136,13 @@ test('openAsksCareValue: zero-total source renders honest absence, not 0 of 0', 
 
 test('openAsksCareValue: counts pass through unchanged', () => {
   assert.deepEqual(openAsksCareValue({ total: 65, unanswered: 9 }), { unanswered: 9, total: 65 });
+test('careConsentGranted: only a complete census opens the gate', () => {
+  // [ ] fixture aggregates — counts only, no realistic people.
+  assert.equal(careConsentGranted(null), false);
+  assert.equal(careConsentGranted(undefined), false);
+  assert.equal(careConsentGranted({ total: 0, consentGaps: 0 }), false);
+  assert.equal(careConsentGranted({ total: 28, consentGaps: 28 }), false);
+  assert.equal(careConsentGranted({ total: 28, consentGaps: 1 }), false);
+  assert.equal(careConsentGranted({ total: 28, consentGaps: 0 }), true);
+  assert.equal(careConsentGranted({ total: '[]', consentGaps: 0 }), false);
 });

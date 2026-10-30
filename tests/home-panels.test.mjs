@@ -93,19 +93,25 @@ test('contentReadyCounts reads the normalizer suffix, never guesses', () => {
 });
 
 test('syncCareCount derives from delivery state; null block stays null', () => {
+  // The fixture carries the payload's REAL shape (F-SYNCCARE-SHAPE):
+  // sources is a Record keyed by source name, each entry carrying
+  // {state, lastEventAt, lastSyncOkAt, syncVersion} — the shape
+  // getSyncFreshness returns and SyncFreshnessBlock declares. The
+  // previous array-shaped fixture let an Array.isArray guard pass
+  // the suite while every real payload failed it.
   const block = {
     generatedAt: '2026-10-27T19:00:00Z',
-    sources: [
-      { source: 'PEOPLE', state: 'live', lastEventAt: null, lastSyncOkAt: null, syncVersion: 1 },
-      { source: 'FLOWS', state: 'stale', lastEventAt: null, lastSyncOkAt: null, syncVersion: 1 },
-      { source: 'MOVES', state: 'degraded', lastEventAt: null, lastSyncOkAt: null, syncVersion: 1 },
-      { source: 'MONEY', state: 'reconciling', lastEventAt: null, lastSyncOkAt: null, syncVersion: 1 },
-      { source: 'CONTENT', state: 'unknown', lastEventAt: null, lastSyncOkAt: null, syncVersion: 0 },
-    ],
+    sources: {
+      people: { state: 'live', lastEventAt: null, lastSyncOkAt: null, syncVersion: 1 },
+      flows: { state: 'stale', lastEventAt: null, lastSyncOkAt: null, syncVersion: 1 },
+      moves: { state: 'degraded', lastEventAt: null, lastSyncOkAt: null, syncVersion: 1 },
+      money: { state: 'reconciling', lastEventAt: null, lastSyncOkAt: null, syncVersion: 1 },
+      content: { state: 'unknown', lastEventAt: null, lastSyncOkAt: null, syncVersion: 0 },
+    },
   };
   assert.deepEqual(syncCareCount(block), { notFlowing: 3, total: 5 });
   assert.equal(syncCareCount(null), null);
-  assert.equal(syncCareCount({ generatedAt: '', sources: [] }), null);
+  assert.equal(syncCareCount({ generatedAt: '', sources: {} }), null);
 });
 
 // ── PEOPLE care group (fix/people-care-slice): derivation over the

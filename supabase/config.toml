@@ -1,0 +1,4 @@
+# Supabase CLI config for the createdwell sync store.
+# The migrations under supabase/migrations/ are the schema of record;
+# see supabase/README.md for the discipline and the apply gate.
+project_id = "createdwell"

@@ -14,7 +14,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { projectId } from '/utils/supabase/info';
 import { lookupUsername, registerUsername } from './api';
-import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 
 // ── Supabase browser client ───────────────────────────────────────────────────
 // SUPABASE_ANON_JWT: JWT anon key required by Supabase Auth (signIn, signUp, etc.)
@@ -335,7 +334,7 @@ export function AuthGate({ onAuthenticated }: Props) {
     return (
       <Screen>
         <div style={{ textAlign: 'center', color: '#A07060', fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.85rem' }}>
-          <img src={cwLogoImg} alt="" onError={e => { e.currentTarget.hidden = true; }} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', marginBottom: 14, opacity: 0.85 }} />
+          <img src="/logo.svg" alt="" onError={e => { e.currentTarget.hidden = true; }} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'contain', padding: 3, boxSizing: 'border-box', marginBottom: 14, opacity: 0.85 }} />
           <div>loading…</div>
         </div>
       </Screen>
@@ -348,7 +347,7 @@ export function AuthGate({ onAuthenticated }: Props) {
 
         {/* Brand */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <img src={cwLogoImg} alt="" onError={e => { e.currentTarget.hidden = true; }} style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', marginBottom: 10, boxShadow: '0 4px 16px rgba(194,91,56,0.2)' }} />
+          <img src="/logo.svg" alt="" onError={e => { e.currentTarget.hidden = true; }} style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'contain', padding: 3, boxSizing: 'border-box', marginBottom: 10, boxShadow: '0 4px 16px rgba(194,91,56,0.2)' }} />
           <h1 style={{ margin: 0, fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1.8rem', fontWeight: 700, color: '#C25B38', lineHeight: 1 }}>Create Well</h1>
           <div style={{ fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.7rem', color: '#A07060', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 4 }}>CR8W Dashboard</div>
         </div>

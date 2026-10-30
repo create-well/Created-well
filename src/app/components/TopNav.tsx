@@ -116,7 +116,6 @@ export function TopNav({ onSignOut }: TopNavProps) {
                 style={{
                   background: person.color,
                   zIndex: CO_FOUNDERS.length - i,
-                  marginLeft: i > 0 ? -8 : 0,
                   border: ui.activePerson === key ? '2px solid #fff' : '2px solid rgba(255,255,255,0.6)',
                 }}
               >
@@ -226,7 +225,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
                       style={{
                         width: '100%', padding: '7px 0', borderRadius: 8,
                         background: 'none', border: '1px solid var(--border-soft, rgba(196,164,132,0.3))',
-                        color: '#C25B38', fontFamily: 'var(--font-label)',
+                        color: '#964226', fontFamily: 'var(--font-label)',
                         fontSize: '0.72rem', fontWeight: 600,
                         letterSpacing: '0.04em', textTransform: 'uppercase',
                         cursor: 'pointer', minHeight: 44,
@@ -256,10 +255,11 @@ export function TopNav({ onSignOut }: TopNavProps) {
               style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'contain', padding: 3, boxSizing: 'border-box' }}
             />
             <span className="mobile-menu-brand">create well</span>
-            <div style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto', gap: 20 }} onClick={e => e.stopPropagation()}>
               {CO_FOUNDERS.map(([key, person], i) => (
                 <button
                   key={key}
+                  className="hit-44"
                   onClick={(e) => { e.stopPropagation(); setExpandedProfile(expandedProfile === key ? null : key); }}
                   title={person.name}
                   style={{
@@ -268,7 +268,6 @@ export function TopNav({ onSignOut }: TopNavProps) {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     cursor: 'pointer',
                     border: ui.activePerson === key ? '2px solid var(--cr8w-primary, #7BA89D)' : '2px solid var(--cr8w-card-bg, #F4F1ED)',
-                    marginLeft: i > 0 ? -6 : 0,
                     zIndex: CO_FOUNDERS.length - i,
                     padding: 0, flexShrink: 0,
                   }}
@@ -379,7 +378,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
               <button
                 className="mobile-menu-link"
                 onClick={() => { setMobileOpen(false); onSignOut(); }}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#C25B38' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#964226' }}
               >
                 <span style={{ fontSize: '0.9rem' }}>⏻</span> sign out
                 {ui.chatActiveUser && (

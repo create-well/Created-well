@@ -186,7 +186,7 @@ export function LoginGate({ onAuthenticated }: Props) {
               <span style={{ fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.75rem', color: '#8A6A5A', userSelect: 'none' }}>Keep me signed in on this device</span>
             </label>
 
-            <button type="submit" disabled={checking || !pw.trim()} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: checking || !pw.trim() ? 'rgba(194,91,56,0.35)' : '#C25B38', color: '#fff', fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1rem', fontWeight: 600, cursor: checking || !pw.trim() ? 'default' : 'pointer', boxShadow: checking || !pw.trim() ? 'none' : '0 4px 16px rgba(194,91,56,0.3)', transition: 'background 0.15s' }}>
+            <button type="submit" disabled={checking || !pw.trim()} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: checking || !pw.trim() ? 'rgba(163,76,47,0.35)' : '#A34C2F', color: '#fff', fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1rem', fontWeight: 600, cursor: checking || !pw.trim() ? 'default' : 'pointer', boxShadow: checking || !pw.trim() ? 'none' : '0 4px 16px rgba(163,76,47,0.3)', transition: 'background 0.15s' }}>
               {checking ? 'Checking…' : 'Continue →'}
             </button>
           </form>

@@ -225,7 +225,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
                       style={{
                         width: '100%', padding: '7px 0', borderRadius: 8,
                         background: 'none', border: '1px solid var(--border-soft, rgba(196,164,132,0.3))',
-                        color: '#C25B38', fontFamily: 'var(--font-label)',
+                        color: '#964226', fontFamily: 'var(--font-label)',
                         fontSize: '0.72rem', fontWeight: 600,
                         letterSpacing: '0.04em', textTransform: 'uppercase',
                         cursor: 'pointer', minHeight: 44,
@@ -378,7 +378,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
               <button
                 className="mobile-menu-link"
                 onClick={() => { setMobileOpen(false); onSignOut(); }}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#C25B38' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#964226' }}
               >
                 <span style={{ fontSize: '0.9rem' }}>⏻</span> sign out
                 {ui.chatActiveUser && (

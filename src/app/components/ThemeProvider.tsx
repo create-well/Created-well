@@ -7,6 +7,7 @@ export interface ThemeDef {
   description: string;
   palette: [string, string, string, string, string]; // 5 swatches
   primary: string;
+  primaryText: string;
   secondary: string;
   navGradient: string;
   text: string;
@@ -22,6 +23,7 @@ export const THEMES: ThemeDef[] = [
     description: 'sage green meets soft lavender - the current default vibe',
     palette: ['#7BA89D', '#B8A9D4', '#D4A0A0', '#6B5B8A', '#F4F1ED'],
     primary: '#7BA89D',
+    primaryText: '#466F64',
     secondary: '#B8A9D4',
     navGradient: 'linear-gradient(135deg, #7BA89D, #B8A9D4)',
     text: '#2D2438',
@@ -35,6 +37,7 @@ export const THEMES: ThemeDef[] = [
     description: 'the original warm terracotta brand from the brand board with desert canyon energy',
     palette: ['#FFDEC2', '#E8AF93', '#C25B38', '#D4A771', '#EAE5D8'],
     primary: '#C25B38',
+    primaryText: '#964226',
     secondary: '#D4A771',
     navGradient: 'linear-gradient(135deg, #C25B38, #D4A771)',
     text: '#3D2B1F',
@@ -48,6 +51,7 @@ export const THEMES: ThemeDef[] = [
     description: "bingle's brand - soft lavender meets warm cognac, deep plum accents, elegant serif energy",
     palette: ['#C4B8D9', '#C4894D', '#4A2840', '#B5BAA8', '#DDD8CA'],
     primary: '#C4894D',
+    primaryText: '#7E5225',
     secondary: '#C4B8D9',
     navGradient: 'linear-gradient(135deg, #4A2840, #C4B8D9)',
     text: '#4A2840',
@@ -61,6 +65,7 @@ export const THEMES: ThemeDef[] = [
     description: 'the cosmic trio blend - charcoal plum base with all three founder colors woven in',
     palette: ['#2D2438', '#7BA89D', '#E8C875', '#C1694F', '#F4F1ED'],
     primary: '#E8C875',
+    primaryText: '#2D2438',
     secondary: '#7BA89D',
     navGradient: 'linear-gradient(135deg, #2D2438, #7BA89D)',
     text: '#2D2438',
@@ -97,6 +102,7 @@ function hexToRgb(hex: string): string {
 export function applyTheme(theme: ThemeDef) {
   const root = document.documentElement;
   root.style.setProperty('--cr8w-primary', theme.primary);
+  root.style.setProperty('--cr8w-primary-text', theme.primaryText);
   root.style.setProperty('--cr8w-secondary', theme.secondary);
   // UX gradient ruling (2026-10-30), variable level: the nav
   // gradient token is RETIRED — no setter, no default, no surface

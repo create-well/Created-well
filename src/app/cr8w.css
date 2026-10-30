@@ -66,6 +66,7 @@ html.cw-no-motion *::after {
   --nav-height: 60px;
   /* ── Theme CSS variables (set dynamically by ThemeProvider) ── */
   --cr8w-primary: #7BA89D;
+  --cr8w-primary-text: #466F64;
   --cr8w-secondary: #B8A9D4;
   --cr8w-text: #2D2438;
   --cr8w-card-bg: #F4F1ED;
@@ -309,14 +310,14 @@ html.cw-no-motion *::after {
   display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
   padding-bottom: 16px; border-bottom: 1px solid var(--border-soft); cursor: pointer;
 }
-.mobile-menu-brand { font-family: var(--font-display); font-size: 1.05rem; font-weight: 500; color: var(--cr8w-primary); }
+.mobile-menu-brand { font-family: var(--font-display); font-size: 1.05rem; font-weight: 500; color: var(--cr8w-primary-text, #466F64); }
 .mobile-menu-link {
   display: flex; align-items: center; gap: 10px; padding: 12px 16px;
   border-radius: var(--cr-radius-md); font-family: var(--font-label); font-size: 1rem;
   color: var(--text-secondary); transition: all 0.2s; cursor: pointer; border: none; background: none;
   text-align: left;
 }
-.mobile-menu-link:hover, .mobile-menu-link.active { background: var(--sandstone); color: var(--cr8w-primary); }
+.mobile-menu-link:hover, .mobile-menu-link.active { background: var(--sandstone); color: var(--cr8w-primary-text, #466F64); }
 .mobile-menu-link-geyser {
   background: rgba(123,168,157,0.07); border: 1px solid rgba(123,168,157,0.15); color: var(--cr8w-primary); font-weight: 600;
 }
@@ -348,7 +349,7 @@ html.cw-no-motion *::after {
 }
 .notion-sync-dot.offline { background: var(--text-muted); animation: none; }
 .notion-sync-dot.online { background: #6BAF6B; box-shadow: 0 0 6px rgba(107,175,107,0.5); }
-.notion-sync-link { color: var(--cr8w-primary); font-weight: 600; text-decoration: none; }
+.notion-sync-link { color: var(--cr8w-primary-text, #466F64); font-weight: 600; text-decoration: none; }
 .notion-sync-link:hover { text-decoration: underline; }
 .notion-sync-time { font-size: 0.68rem; color: var(--text-muted); margin-left: auto; opacity: 0.7; }
 
@@ -2240,7 +2241,7 @@ a.gcc-pill-link:hover { background: var(--cr8w-card-bg, #F4F1ED); transform: tra
 .home-panel-action { margin-top: 12px; }
 .home-action-link {
   font-family: var(--font-label); font-size: 0.75rem; font-weight: 600;
-  color: var(--cr8w-primary, #7BA89D); background: none; border: none;
+  color: var(--cr8w-primary-text, #466F64); background: none; border: none;
   padding: 4px 0; cursor: pointer; text-decoration: none;
   min-height: 44px; display: inline-flex; align-items: center;
 }

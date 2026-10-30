@@ -143,7 +143,7 @@ function DataCountRow({
             to={internalPath}
             style={{
               fontFamily: 'var(--font-body)', fontSize: '0.78rem',
-              color: 'var(--cr8w-primary, #7BA89D)', textDecoration: 'none',
+              color: 'var(--cr8w-primary-text, #466F64)', textDecoration: 'none',
               fontWeight: 500,
             }}
           >
@@ -234,7 +234,7 @@ function RouteRow({ path, label, emoji, sources }: { path: string; label: string
           to={path}
           style={{
             fontFamily: 'var(--font-label)', fontSize: '0.73rem', fontWeight: 600,
-            color: 'var(--cr8w-primary, #7BA89D)', textDecoration: 'none',
+            color: 'var(--cr8w-primary-text, #466F64)', textDecoration: 'none',
           }}
         >
           {path}

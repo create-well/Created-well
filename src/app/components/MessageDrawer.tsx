@@ -1120,7 +1120,7 @@ export function MessageDrawer({
         {/* ── Digest (only when new items exist) ── */}
         {hasNewItems && !focusMode && (
           <div style={{
-            background: 'linear-gradient(135deg, rgba(123,168,157,0.10), rgba(184,169,212,0.07))',
+            background: 'rgba(var(--cr8w-primary-rgb, 123,168,157), 0.09)',
             border: '1px solid rgba(123,168,157,0.22)',
             borderRadius: 16, padding: '10px 14px', margin: '8px 0',
           }}>

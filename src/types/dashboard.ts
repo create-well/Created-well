@@ -37,6 +37,8 @@ export interface DashboardPayload {
   syncFreshness: import('../lib/syncFreshnessLine').SyncFreshnessBlock | null;
   /** PEOPLE consent-care aggregate from the payload (counts only, never values); null when the payload carried none. */
   peopleCare: { total: number; consentGaps: number } | null;
+  /** OPEN ASKS care aggregate from the payload (counts only, never values); null when the payload carried none. */
+  openAsksCare: { total: number; unanswered: number } | null;
   permissions: DashboardPermissions;
 }
 

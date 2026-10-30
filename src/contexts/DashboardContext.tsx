@@ -46,6 +46,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [syncFreshness, setSyncFreshness] = useState<import('../lib/syncFreshnessLine').SyncFreshnessBlock | null>(null);
   const [peopleCare, setPeopleCare] = useState<{ total: number; consentGaps: number } | null>(null);
+  const [openAsksCare, setOpenAsksCare] = useState<{ total: number; unanswered: number } | null>(null);
   const [statusClock, setStatusClock] = useState(Date.now);
   const dataLoadedRef = useRef(false);
   const silentFailCount = useRef(0);
@@ -151,6 +152,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         // PEOPLE care aggregate: same rule — only the primary payload
         // carries it; a fallback load clears it, never a stale count.
         setPeopleCare(usedFallback ? null : (data.peopleCare ?? null));
+        setOpenAsksCare(usedFallback ? null : (data.openAsksCare ?? null));
         setTasks(data.tasks || []);
         setStations(data.stations || []);
         setForum(data.forum || []);
@@ -576,6 +578,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     lastSynced,
     syncFreshness,
     peopleCare,
+    openAsksCare,
     permissions: {
       careConsent: true,
     },

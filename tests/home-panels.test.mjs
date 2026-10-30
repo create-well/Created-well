@@ -13,6 +13,7 @@ import {
   syncCareCount,
   peopleCareValue,
   careConsentGranted,
+  openAsksCareValue,
 } from '../src/lib/homePanels.ts';
 
 const NOW = new Date('2026-10-27T12:00:00-07:00');
@@ -121,6 +122,20 @@ test('peopleCareValue: zero-total source renders honest absence, not 0 of 0', ()
 test('peopleCareValue: counts pass through unchanged', () => {
   assert.deepEqual(peopleCareValue({ total: 28, consentGaps: 28 }), { gaps: 28, total: 28 });
   assert.deepEqual(peopleCareValue({ total: 3, consentGaps: 1 }), { gaps: 1, total: 3 });
+});
+
+// ── OPEN ASKS care group (fix/open-asks-source): same absence rules.
+test('openAsksCareValue: absent slice renders honest absence', () => {
+  assert.equal(openAsksCareValue(undefined), null);
+  assert.equal(openAsksCareValue(null), null);
+});
+
+test('openAsksCareValue: zero-total source renders honest absence, not 0 of 0', () => {
+  assert.equal(openAsksCareValue({ total: 0, unanswered: 0 }), null);
+});
+
+test('openAsksCareValue: counts pass through unchanged', () => {
+  assert.deepEqual(openAsksCareValue({ total: 65, unanswered: 9 }), { unanswered: 9, total: 65 });
 });
 
 test('careConsentGranted: only a complete census opens the gate', () => {

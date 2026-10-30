@@ -11,6 +11,7 @@ import {
   contentReadyCounts,
   syncCareCount,
   peopleCareValue,
+  openAsksCareValue,
 } from '../../lib/homePanels';
 import { shortDateLabel } from '../../lib/dateLabel';
 
@@ -68,6 +69,7 @@ export function HomePanels({
   const content = contentReadyCounts(data.forum);
   const syncCare = syncCareCount(data.syncFreshness);
   const peopleCare = peopleCareValue(data.peopleCare);
+  const openAsksCare = openAsksCareValue(data.openAsksCare);
 
   return (
     <div className="home-panels">
@@ -180,7 +182,13 @@ export function HomePanels({
           </li>
           <li className="home-care-row">
             <span className="home-care-name">Unanswered asks</span>
-            <span className="home-care-value">no records yet</span>
+            {openAsksCare ? (
+              <span className="home-care-value">
+                <span className="home-metric-sm">{openAsksCare.unanswered}</span> of {openAsksCare.total}
+              </span>
+            ) : (
+              <span className="home-care-value">no records yet</span>
+            )}
             <DepthTag>OPEN ASKS</DepthTag>
           </li>
         </ul>

@@ -30,6 +30,7 @@ import {
   normalizeMove,
   normalizePerson,
   peopleCareCounts,
+  openAsksCareCounts,
   normalizeContent,
   normalizeFlow,
   normalizeMoney,
@@ -130,6 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const dbFlows    = process.env.NOTION_DB_FLOWS;
   const dbContent  = process.env.NOTION_DB_CONTENT;
   const dbMoney    = process.env.NOTION_DB_MONEY;
+  const dbOpenAsks = process.env.NOTION_DB_OPEN_ASKS;
 
   // KV keys for data not yet migrated to Notion
   const KV_KEYS = [
@@ -155,11 +157,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         secret && dbFlows   ? queryNotionDatabase(dbFlows, secret)   : Promise.resolve([]),
         secret && dbContent ? queryNotionDatabase(dbContent, secret) : Promise.resolve([]),
         secret && dbMoney   ? queryNotionDatabase(dbMoney, secret)   : Promise.resolve([]),
+        secret && dbOpenAsks ? queryNotionDatabase(dbOpenAsks, secret) : Promise.resolve([]),
       ]),
       Promise.all(KV_KEYS.map(k => kvGetList(k))),
     ]);
 
-    const [movesPages, peoplePages, flowsPages, contentPages, moneyPages] = notionResults;
+    const [movesPages, peoplePages, flowsPages, contentPages, moneyPages, openAsksPages] = notionResults;
     const [
       messages, braindumps, announcements, forumReplies,
       workshops, workshopPrograms, workshopResources,
@@ -171,6 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       tasks:             movesPages.map(normalizeMove),
       stations:          peoplePages.map(normalizePerson),
       peopleCare:        peopleCareCounts(peoplePages),
+      openAsksCare:      openAsksCareCounts(openAsksPages),
       forum:             contentPages.map(normalizeContent),
       coflowDates:       flowsPages.map(normalizeFlow),
       money:             moneyPages.map(normalizeMoney) as MoneyRecord[],

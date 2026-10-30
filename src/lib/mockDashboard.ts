@@ -19,6 +19,7 @@ export const MOCK_PAYLOAD: DashboardPayload = {
   lastSynced: new Date(),
   syncFreshness: null,
   peopleCare: null,
+  openAsksCare: null,
   permissions: {
     careConsent: false,
   },

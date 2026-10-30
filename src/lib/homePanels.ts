@@ -209,6 +209,21 @@ export function peopleCareValue(
 }
 
 /**
+ * Needs care (§4 panel 4), the OPEN ASKS group: unanswered asks from
+ * the payload's counts-only OPEN ASKS aggregate. Null when the
+ * payload carried no aggregate or the source was empty — the group
+ * then renders its honest absence, not a zero.
+ */
+export function openAsksCareValue(
+  care: { total: number; unanswered: number } | null | undefined,
+): { unanswered: number; total: number } | null {
+  if (!care) return null;
+  if (typeof care.total !== 'number' || typeof care.unanswered !== 'number') return null;
+  if (care.total === 0) return null;
+  return { unanswered: care.unanswered, total: care.total };
+}
+
+/**
  * The care-consent flag (DashboardContext permissions), derived
  * from the PEOPLE census — never hard-coded. Granted ONLY when the
  * census is present and complete (total > 0, zero gaps): a partial

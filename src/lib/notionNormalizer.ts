@@ -281,6 +281,25 @@ export function peopleCareCounts(pages: NotionPage[]): { total: number; consentG
   return { total: pages.length, consentGaps };
 }
 
+/**
+ * OPEN ASKS care aggregate for Home's Needs care panel (design diff
+ * §4: "unanswered asks" — counts only, never values). The field of
+ * record is Status (select): a row counts as unanswered when Status
+ * is Open or Waiting. Held is a deliberate hold and Parked / Done /
+ * Closed / Answered are settled states; all are excluded (packet:
+ * open-asks-home-count-packet-2026-10-30, settled path 2026-10-30).
+ * Reads the raw pages the sync path already fetched; no per-ask
+ * data leaves this function.
+ */
+export function openAsksCareCounts(pages: NotionPage[]): { total: number; unanswered: number } {
+  let unanswered = 0;
+  for (const page of pages) {
+    const status = getSelect(pick(page.properties, 'Status'));
+    if (status === 'Open' || status === 'Waiting') unanswered += 1;
+  }
+  return { total: pages.length, unanswered };
+}
+
 // ── CONTENT → ForumPost ───────────────────────────────────────────────────────
 // Canonical CONTENT schema (Create Well OS):
 //   Name         : Title

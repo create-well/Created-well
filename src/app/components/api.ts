@@ -402,6 +402,8 @@ export interface SyncData {
   syncFreshness?: import('../../lib/syncFreshnessLine').SyncFreshnessBlock;
   /** PEOPLE consent-care aggregate (counts only, never values); absent when PEOPLE did not load. */
   peopleCare?: { total: number; consentGaps: number };
+  /** OPEN ASKS care aggregate (counts only, never values); absent when OPEN ASKS did not load. */
+  openAsksCare?: { total: number; unanswered: number };
   tasks: Task[];
   stations: Station[];
   forum: ForumPost[];

@@ -98,7 +98,11 @@ export function applyTheme(theme: ThemeDef) {
   const root = document.documentElement;
   root.style.setProperty('--cr8w-primary', theme.primary);
   root.style.setProperty('--cr8w-secondary', theme.secondary);
-  root.style.setProperty('--cr8w-nav-gradient', theme.navGradient);
+  // UX gradient ruling (2026-10-30), variable level: the nav
+  // gradient token is RETIRED — no setter, no default, no surface
+  // paints it. Bars and banners render the theme surface via
+  // --bg-main (set below from theme.surface). navGradient stays
+  // in the theme data (palette identity, untouched), unapplied.
   root.style.setProperty('--cr8w-text', theme.text);
   root.style.setProperty('--cr8w-card-bg', theme.cardBg);
   root.style.setProperty('--cr8w-surface', theme.surface);

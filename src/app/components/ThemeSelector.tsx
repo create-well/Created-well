@@ -147,7 +147,7 @@ export function ThemeSelector() {
 
 function PreviewStrip({ theme }: { theme: ThemeDef }) {
   const items: { label: string; bg: string; border?: string }[] = [
-    { label: 'nav', bg: theme.navGradient },
+    { label: 'nav', bg: theme.surface },
     { label: 'card', bg: theme.cardBg, border: '1px solid rgba(0,0,0,0.08)' },
     { label: 'button', bg: theme.primary },
     { label: 'text', bg: theme.text },

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
-import { dateLabel } from '../../lib/dateLabel';
+import { dateLabel, localDateString } from '../../lib/dateLabel';
 
 interface MoneyEntry {
   id: string;
@@ -42,13 +42,13 @@ function MoneySection({
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState('');
   const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(localDateString());
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!label.trim() || !amount) return;
     onAdd({ label: label.trim(), amount: parseFloat(amount), date, category });
-    setLabel(''); setAmount(''); setDate(new Date().toISOString().split('T')[0]);
+    setLabel(''); setAmount(''); setDate(localDateString());
     setAdding(false);
   }
 

@@ -5,7 +5,7 @@ import { ViewShell } from '../components/ViewShell';
 import type { CoFlowDate } from '../components/api';
 import { FlowCommandCenter } from '../components/FlowCommandCenter';
 import { isPodyap } from '../../lib/flows';
-import { eventDateLabel, parseDateValue } from '../../lib/dateLabel';
+import { eventDateLabel, parseDateValue, calendarDayDiff } from '../../lib/dateLabel';
 import { ReleaseStatusStrip } from '../components/ReleaseStatusStrip';
 
 const PODCAST_PLATFORMS = [
@@ -20,7 +20,7 @@ const PODCAST_PLATFORMS = [
 function daysUntil(dateStr: string): number {
   const target = new Date(dateStr + 'T00:00:00');
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  return calendarDayDiff(today, target);
 }
 
 function formatDate(dateStr: string): string {

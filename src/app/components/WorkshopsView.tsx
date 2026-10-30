@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Plus, X, Users, Calendar, MapPin, ExternalLink, FileText, Video, StickyNote, BookOpen, ChevronDown, ChevronUp, Trash2, GripVertical, Tag, RefreshCw, Unlink, Edit3, Clock, Check } from 'lucide-react';
 import { PERSONS, GCAL_CLIENT_ID, GCAL_REDIRECT_URI } from './data';
-import { parseDateValue, shortDateLabel } from '../../lib/dateLabel';
+import { parseDateValue, shortDateLabel, calendarDayDiff } from '../../lib/dateLabel';
 import type { Workshop, WorkshopProgram, WorkshopResource, CalendarEventKV } from './api';
 import { getSetting, setSetting, getCalendarEvents } from './api';
 
@@ -2028,7 +2028,7 @@ function CalendarSection({ workshops }: { workshops: Workshop[] }) {
               {upcomingEvents.map(ev => {
                 const dateLabel = ev._date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
                 const timeLabel = formatEventTime(ev);
-                const diffDays = Math.ceil((ev._date.getTime() - new Date().setHours(0,0,0,0)) / (86400000));
+                const diffDays = calendarDayDiff(new Date(), ev._date);
                 const relLabel = diffDays === 0 ? 'today' : diffDays === 1 ? 'tomorrow' : `in ${diffDays}d`;
                 return (
                   <div key={ev.id} style={{

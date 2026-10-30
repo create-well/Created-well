@@ -58,3 +58,29 @@ test('valid values format exactly as the surfaces formatted them before', () => 
     new Date('2026-10-27T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
   );
 });
+
+// ── G-31 sweep F1.1 / F2.1: calendar-day arithmetic ─────────────
+// Constructed from local components, so these hold in any TZ and
+// FAIL under TZ=America/Los_Angeles on the old ms-division math.
+import { calendarDayDiff, localDateString } from '../src/lib/dateLabel.ts';
+
+test('calendarDayDiff: fall-back span counts calendar days', () => {
+  // Oct 30 -> Nov 2 crosses the Nov 1 fall-back (73h span).
+  assert.equal(calendarDayDiff(new Date(2026, 9, 30), new Date(2026, 10, 2)), 3);
+  assert.equal(calendarDayDiff(new Date(2026, 10, 2), new Date(2026, 9, 30)), -3);
+});
+
+test('calendarDayDiff: spring-forward span counts calendar days', () => {
+  // Mar 6 -> Mar 9 crosses the Mar 8 spring-forward (71h span).
+  assert.equal(calendarDayDiff(new Date(2026, 2, 6), new Date(2026, 2, 9)), 3);
+});
+
+test('calendarDayDiff: same day and next day', () => {
+  assert.equal(calendarDayDiff(new Date(2026, 9, 30, 23, 59), new Date(2026, 9, 30, 0, 1)), 0);
+  assert.equal(calendarDayDiff(new Date(2026, 9, 30, 23, 59), new Date(2026, 9, 31, 0, 1)), 1);
+});
+
+test('localDateString: local components, zero-padded', () => {
+  assert.equal(localDateString(new Date(2026, 0, 5, 23, 30)), '2026-01-05');
+  assert.equal(localDateString(new Date(2026, 10, 2, 0, 30)), '2026-11-02');
+});

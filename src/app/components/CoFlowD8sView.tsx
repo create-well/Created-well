@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, X, MapPin, Clock, Users, ChevronDown, ChevronUp, Lock, Unlock, Edit3, ExternalLink, Archive, Calendar } from 'lucide-react';
 import { PERSONS, capitalize, formatTimestamp } from './data';
-import { parseDateValue, dateLabel, shortDateLabel, DATE_NOT_SET } from '../../lib/dateLabel';
+import { parseDateValue, dateLabel, shortDateLabel, DATE_NOT_SET, calendarDayDiff } from '../../lib/dateLabel';
 import type { CoFlowDate, CoFlowCheckin, CalendarEventKV } from './api';
 import * as api from './api';
 
@@ -65,7 +65,7 @@ function getCountdown(dateStr: string): { label: string; urgent: boolean } {
   const d = parseDateValue(dateStr);
   if (!d) return { label: DATE_NOT_SET, urgent: false };
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const diffDays = Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = calendarDayDiff(today, d);
   if (diffDays === 0) return { label: 'TODAY!', urgent: true };
   if (diffDays === 1) return { label: 'TOMORROW', urgent: true };
   if (diffDays < 0) return { label: `${Math.abs(diffDays)} days ago`, urgent: false };

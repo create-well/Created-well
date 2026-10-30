@@ -12,7 +12,7 @@ import { HomePanels } from './HomePanels';
 import type { Task, Station, WellNote, Workshop, CoFlowDate, CoFlowCheckin, InviteCounts, CalendarEventKV } from './api';
 import * as api from './api';
 import { milestoneLabel } from '../../lib/nextUpLabel';
-import { shortDateLabel } from '../../lib/dateLabel';
+import { shortDateLabel, calendarDayDiff } from '../../lib/dateLabel';
 
 // ── Wellshop category → workshop tag matching ────────────────────────────────
 const WELLSHOP_TAG_MAP: Record<string, string[]> = {
@@ -1546,7 +1546,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
 
             function formatRelDate(d: Date): string {
               if (!Number.isFinite(d.getTime())) return 'Date not set yet.';
-              const diff = Math.ceil((d.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+              const diff = calendarDayDiff(todayDate, d);
               if (diff === 0) return 'Today';
               if (diff === 1) return 'Tomorrow';
               const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });

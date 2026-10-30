@@ -9,7 +9,7 @@ import type { Task, Station, ForumPost, Announcement, CalendarEventKV } from './
 import type { ForumReply as ApiForumReply, InviteCounts } from './api';
 import * as api from './api';
 import { HowWeFlowReference } from './HowWeFlowReference';
-import { parseDateValue, DATE_NOT_SET } from '../../lib/dateLabel';
+import { parseDateValue, DATE_NOT_SET, calendarDayDiff } from '../../lib/dateLabel';
 
 type GeyserTab = 'overview' | 'journey' | 'stations' | 'tasks' | 'forum';
 
@@ -62,7 +62,7 @@ function getDueClass(due_date?: string, status?: string): string {
   if (!due_date || status === 'done') return '';
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const due = new Date(due_date + 'T00:00:00');
-  const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = calendarDayDiff(today, due);
   if (diffDays < 0) return 'overdue';
   if (diffDays <= 3) return 'due-soon';
   return '';

@@ -223,6 +223,7 @@ export function openAsksCareValue(
   return { unanswered: care.unanswered, total: care.total };
 }
 
+/**
  * The care-consent flag (DashboardContext permissions), derived
  * from the PEOPLE census — never hard-coded. Granted ONLY when the
  * census is present and complete (total > 0, zero gaps): a partial

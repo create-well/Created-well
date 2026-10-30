@@ -287,9 +287,11 @@ export default async function handler(
       );
       return res.status(200).json({ ok: true, deferred: true, source });
     }
-    await recordEngineRun(startedAtMs, [
-      { source, rows: outcome.count, cached: false },
-    ]);
+    await recordEngineRun(
+      startedAtMs,
+      [{ source, rows: outcome.count, cached: false }],
+      { trigger: "webhook" },
+    );
     console.log(
       `${LOG_PREFIX} synced source=${source} rows=${outcome.count} changed=${outcome.changed} eventIdPresent=${eventId ? "yes" : "no"}`,
     );
@@ -297,9 +299,11 @@ export default async function handler(
   } catch (error) {
     const message = error instanceof Error ? error.message : "sync failed";
     console.log(`${LOG_PREFIX} error=${message}`);
-    await recordEngineRun(startedAtMs, [
-      { source: "webhook", rows: 0, cached: false, error: message },
-    ]);
+    await recordEngineRun(
+      startedAtMs,
+      [{ source: "webhook", rows: 0, cached: false, error: message }],
+      { trigger: "webhook" },
+    );
     return res.status(200).json({ ok: false, error: "sync failed" });
   }
 }

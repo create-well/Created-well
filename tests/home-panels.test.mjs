@@ -11,6 +11,7 @@ import {
   contentReadyCounts,
   forumRowName,
   syncCareCount,
+  peopleCareValue,
 } from '../src/lib/homePanels.ts';
 
 const NOW = new Date('2026-10-27T12:00:00-07:00');
@@ -103,4 +104,20 @@ test('syncCareCount derives from delivery state; null block stays null', () => {
   assert.deepEqual(syncCareCount(block), { notFlowing: 3, total: 5 });
   assert.equal(syncCareCount(null), null);
   assert.equal(syncCareCount({ generatedAt: '', sources: [] }), null);
+});
+
+// ── PEOPLE care group (fix/people-care-slice): derivation over the
+// payload's counts-only aggregate. Absent or empty stays absent.
+test('peopleCareValue: absent slice renders honest absence', () => {
+  assert.equal(peopleCareValue(undefined), null);
+  assert.equal(peopleCareValue(null), null);
+});
+
+test('peopleCareValue: zero-total source renders honest absence, not 0 of 0', () => {
+  assert.equal(peopleCareValue({ total: 0, consentGaps: 0 }), null);
+});
+
+test('peopleCareValue: counts pass through unchanged', () => {
+  assert.deepEqual(peopleCareValue({ total: 28, consentGaps: 28 }), { gaps: 28, total: 28 });
+  assert.deepEqual(peopleCareValue({ total: 3, consentGaps: 1 }), { gaps: 1, total: 3 });
 });

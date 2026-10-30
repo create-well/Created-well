@@ -188,3 +188,18 @@ export function syncCareCount(
   ).length;
   return { notFlowing: total - flowing, total };
 }
+
+/**
+ * Needs care (§4 panel 4), the PEOPLE group: consent gaps from
+ * the payload's counts-only PEOPLE aggregate. Null when the payload
+ * carried no aggregate or the source was empty — the group then
+ * renders its honest absence, not a zero.
+ */
+export function peopleCareValue(
+  care: { total: number; consentGaps: number } | null | undefined,
+): { gaps: number; total: number } | null {
+  if (!care) return null;
+  if (typeof care.total !== 'number' || typeof care.consentGaps !== 'number') return null;
+  if (care.total === 0) return null;
+  return { gaps: care.consentGaps, total: care.total };
+}

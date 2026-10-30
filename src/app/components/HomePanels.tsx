@@ -10,6 +10,7 @@ import {
   startingSoon,
   contentReadyCounts,
   syncCareCount,
+  peopleCareValue,
 } from '../../lib/homePanels';
 import { shortDateLabel } from '../../lib/dateLabel';
 
@@ -66,6 +67,7 @@ export function HomePanels({
   const soon = startingSoon(data.coFlowDates, now);
   const content = contentReadyCounts(data.forum);
   const syncCare = syncCareCount(data.syncFreshness);
+  const peopleCare = peopleCareValue(data.peopleCare);
 
   return (
     <div className="home-panels">
@@ -156,7 +158,13 @@ export function HomePanels({
         <ul className="home-care-list">
           <li className="home-care-row">
             <span className="home-care-name">Consent gaps</span>
-            <span className="home-care-value">no records yet</span>
+            {peopleCare ? (
+              <span className="home-care-value">
+                <span className="home-metric-sm">{peopleCare.gaps}</span> of {peopleCare.total}
+              </span>
+            ) : (
+              <span className="home-care-value">no records yet</span>
+            )}
             <DepthTag>PEOPLE</DepthTag>
           </li>
           <li className="home-care-row">

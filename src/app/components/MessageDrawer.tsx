@@ -932,7 +932,7 @@ export function MessageDrawer({
           width: 54,
           height: 54,
           borderRadius: '50%',
-          background: 'linear-gradient(135deg, #7BA89D 0%, #6A9A8F 100%)',
+          background: 'var(--cr8w-primary, #7BA89D)',
           border: '2.5px solid rgba(255,255,255,0.25)',
           boxShadow: '0 4px 20px rgba(123,168,157,0.4), 0 2px 8px rgba(0,0,0,0.12)',
           cursor: 'pointer',

@@ -5,7 +5,6 @@ import { VisibilityDial } from './VisibilityDial';
 import { SensorySettings } from './SensorySettings';
 import { ThemeSelector } from './ThemeSelector';
 import { useDashboard } from '../../contexts/DashboardContext';
-import { dashboardBadgeTitle } from '../../lib/dashboardStatus';
 
 const NAV_ITEMS: { path: string; label: string; emoji: string; end?: boolean }[] = [
   { path: '/',           label: 'This Week', emoji: '💧', end: true },
@@ -23,7 +22,7 @@ interface TopNavProps {
 }
 
 export function TopNav({ onSignOut }: TopNavProps) {
-  const { data, ui } = useDashboard();
+  const { ui } = useDashboard();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -35,17 +34,8 @@ export function TopNav({ onSignOut }: TopNavProps) {
     return stored ? parseInt(stored) : 1;
   });
 
-  const { syncStatus } = data;
-  const syncDotColor = syncStatus === 'fresh'
-    ? '#30D158'
-    : syncStatus === 'failed'
-    ? '#FF453A'
-    : syncStatus === 'stale'
-    ? '#FF9F0A'
-    : '#FFD60A';
-  const syncDot = { color: syncDotColor, title: dashboardBadgeTitle(syncStatus) };
-
-  // Close profile card on outside click
+  // Close profile card on outside click or Escape (FE-9: the avatar
+  // menu is labeled and keyboard-reachable, not icon-only).
   useEffect(() => {
     if (!expandedProfile) return;
     function handleClick(e: MouseEvent) {
@@ -53,8 +43,15 @@ export function TopNav({ onSignOut }: TopNavProps) {
         setExpandedProfile(null);
       }
     }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setExpandedProfile(null);
+    }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
   }, [expandedProfile]);
 
   function openPerson(key: string) {
@@ -85,15 +82,8 @@ export function TopNav({ onSignOut }: TopNavProps) {
             style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'contain', padding: 3, boxSizing: 'border-box' }}
           />
           <span className="nav-brand-name">create well</span>
-          <span
-            title={syncDot.title}
-            style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: syncDot.color, flexShrink: 0,
-              boxShadow: `0 0 4px ${syncDot.color}88`,
-              transition: 'background 0.3s',
-            }}
-          />
+          {/* FE-5 / §4: no badges in the header — the freshness line
+              in the bar under this nav is Home's only freshness claim. */}
         </NavLink>
 
         {/* Desktop Nav Links */}
@@ -111,15 +101,18 @@ export function TopNav({ onSignOut }: TopNavProps) {
           ))}
         </div>
 
-        {/* Co-founder Avatars */}
+        {/* Co-founder Avatars — FE-9: a labeled workspace cluster;
+            each avatar opens that person's menu (dialog semantics). */}
         <div className="nav-avatars" ref={profileRef}>
-          <div className="nav-avatar-stack">
+          <div className="nav-avatar-stack" role="group" aria-label="Team workspace">
             {CO_FOUNDERS.map(([key, person], i) => (
               <button
                 key={key}
                 className={`nav-avatar-circle ${ui.activePerson === key ? 'nav-avatar-active' : ''}`}
                 onClick={() => setExpandedProfile(expandedProfile === key ? null : key)}
                 title={person.name}
+                aria-haspopup="dialog"
+                aria-expanded={expandedProfile === key}
                 style={{
                   background: person.color,
                   zIndex: CO_FOUNDERS.length - i,
@@ -137,7 +130,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
             const person = PERSONS[expandedProfile];
             if (!person) return null;
             return (
-              <div className="nav-profile-card" style={{ borderTopColor: person.color }}>
+              <div className="nav-profile-card" role="dialog" aria-label={`${person.name}'s profile`} style={{ borderTopColor: person.color }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: '50%', background: person.color,
@@ -217,30 +210,36 @@ export function TopNav({ onSignOut }: TopNavProps) {
                 >
                   open {person.name.toLowerCase()}'s well
                 </button>
+                {/* FE-9: account actions live under the user's own
+                    avatar menu — sign out one action away, never deeper. */}
+                {onSignOut && expandedProfile === ui.activePerson && (
+                  <div style={{ borderTop: '1px solid var(--border-soft, rgba(196,164,132,0.25))', marginTop: 10, paddingTop: 10 }}>
+                    <div style={{
+                      fontFamily: 'var(--font-label)', fontSize: '0.6rem', fontWeight: 700,
+                      textTransform: 'uppercase', letterSpacing: '0.08em',
+                      color: 'var(--text-muted, #6B5F7A)', marginBottom: 6,
+                    }}>
+                      Account · signed in as {person.name}
+                    </div>
+                    <button
+                      onClick={onSignOut}
+                      style={{
+                        width: '100%', padding: '7px 0', borderRadius: 8,
+                        background: 'none', border: '1px solid var(--border-soft, rgba(196,164,132,0.3))',
+                        color: '#C25B38', fontFamily: 'var(--font-label)',
+                        fontSize: '0.72rem', fontWeight: 600,
+                        letterSpacing: '0.04em', textTransform: 'uppercase',
+                        cursor: 'pointer', minHeight: 44,
+                      }}
+                    >
+                      ⏻ sign out
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })()}
         </div>
-
-        {/* Desktop sign-out */}
-        {onSignOut && (
-          <button
-            className="nav-signout-desktop"
-            onClick={onSignOut}
-            title="Sign out"
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              background: 'none', border: '1px solid var(--border-soft, rgba(196,164,132,0.3))',
-              borderRadius: 8, padding: '5px 10px', marginLeft: 10, cursor: 'pointer',
-              fontFamily: 'var(--font-label, sans-serif)', fontSize: '0.68rem', fontWeight: 600,
-              color: 'var(--text-muted, #6B5F7A)', transition: 'all 0.15s', flexShrink: 0,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#C25B38'; e.currentTarget.style.borderColor = '#C25B38'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted, #6B5F7A)'; e.currentTarget.style.borderColor = 'var(--border-soft, rgba(196,164,132,0.3))'; }}
-          >
-            ⏻ sign out
-          </button>
-        )}
 
         <button className="hamburger" onClick={() => setMobileOpen(!mobileOpen)}>
           <span></span><span></span><span></span>

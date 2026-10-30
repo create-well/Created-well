@@ -400,6 +400,8 @@ export interface MoneyRecord {
 export interface SyncData {
   /** Delivery-state freshness block (PR #50); absent on the fallback sync path. */
   syncFreshness?: import('../../lib/syncFreshnessLine').SyncFreshnessBlock;
+  /** PEOPLE consent-care aggregate (counts only, never values); absent when PEOPLE did not load. */
+  peopleCare?: { total: number; consentGaps: number };
   tasks: Task[];
   stations: Station[];
   forum: ForumPost[];

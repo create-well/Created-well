@@ -47,7 +47,7 @@ function statusPill(status: string) {
 }
 
 function FlowCard({ flow }: { flow: CoFlowDate }) {
-  const dateStr = flow.date ? formatDate(flow.date) : 'Date TBD';
+  const dateStr = flow.date ? formatDate(flow.date) : 'Date not set yet.';
   const hostPerson = flow.host ? PERSONS[flow.host] : null;
   return (
     <div style={{

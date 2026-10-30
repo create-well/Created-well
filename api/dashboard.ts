@@ -29,6 +29,7 @@ import { getSyncFreshness } from './_sync-engine.js';
 import {
   normalizeMove,
   normalizePerson,
+  peopleCareCounts,
   normalizeContent,
   normalizeFlow,
   normalizeMoney,
@@ -169,6 +170,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Notion-backed
       tasks:             movesPages.map(normalizeMove),
       stations:          peoplePages.map(normalizePerson),
+      peopleCare:        peopleCareCounts(peoplePages),
       forum:             contentPages.map(normalizeContent),
       coflowDates:       flowsPages.map(normalizeFlow),
       money:             moneyPages.map(normalizeMoney) as MoneyRecord[],

@@ -34,6 +34,9 @@ alter table public.sync_runs enable row level security;
 
 -- No policies: service_role bypasses RLS; anon/authenticated/public get
 -- no grants at all (the posture of the existing three sync tables).
+-- Explicit revoke first, mirroring migration 1: a fresh rebuild must not
+-- inherit the project's default grants (the A-16 deviation).
+revoke all privileges on table public.sync_runs from public, anon, authenticated, service_role;
 grant insert, select, delete on table public.sync_runs to service_role;
 grant usage, select on sequence public.sync_runs_id_seq to service_role;
 

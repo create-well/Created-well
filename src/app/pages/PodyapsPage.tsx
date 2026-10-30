@@ -6,6 +6,7 @@ import type { CoFlowDate } from '../components/api';
 import { FlowCommandCenter } from '../components/FlowCommandCenter';
 import { isPodyap } from '../../lib/flows';
 import { eventDateLabel, parseDateValue } from '../../lib/dateLabel';
+import { ReleaseStatusStrip } from '../components/ReleaseStatusStrip';
 
 const PODCAST_PLATFORMS = [
   { label: 'Spotify',        emoji: '🎵', href: 'https://open.spotify.com/show/0Tj253e1ZAE7vsKd4Tffvi',                                                                                color: '#1DB954' },
@@ -256,6 +257,9 @@ export function PodyapsPage() {
             Create Well's recorded gatherings — Podyaps, Book Clubs & more
           </p>
         </div>
+
+        {/* Release status (G-11 Consumer 2) */}
+        <ReleaseStatusStrip />
 
         {/* Podyap Preflight (Omar's Operations Room) */}
         <div style={{ marginBottom: 24 }}>

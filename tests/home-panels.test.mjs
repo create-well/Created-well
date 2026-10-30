@@ -136,6 +136,8 @@ test('openAsksCareValue: zero-total source renders honest absence, not 0 of 0', 
 
 test('openAsksCareValue: counts pass through unchanged', () => {
   assert.deepEqual(openAsksCareValue({ total: 65, unanswered: 9 }), { unanswered: 9, total: 65 });
+});
+
 test('careConsentGranted: only a complete census opens the gate', () => {
   // [ ] fixture aggregates — counts only, no realistic people.
   assert.equal(careConsentGranted(null), false);

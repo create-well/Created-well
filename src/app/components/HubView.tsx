@@ -460,7 +460,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
     sunshine: { hdType: 'ManiGen 5/1', zone: 'internal expression — the atmosphere architect', craft: 'space, atmosphere, playlists' },
     monny: { hdType: 'Generator 5/1', zone: 'systems, narrative, somatic', craft: 'systems, narrative, somatic' },
     bingle: { hdType: 'Projector 2/4', zone: 'lens, identity, visual story', craft: 'lens, identity, visual story' },
-    pia: { hdType: 'Reflector 1/3', zone: 'mirror, community health, space-reading', craft: 'feedback, reflection, community pulse' },
+    pia: { hdType: 'Generator 1/3', zone: 'mirror, community health, space-reading', craft: 'feedback, reflection, community pulse' },
   };
 
   // Close profile card on outside click

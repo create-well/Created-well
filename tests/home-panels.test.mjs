@@ -12,6 +12,7 @@ import {
   forumRowName,
   syncCareCount,
   peopleCareValue,
+  careConsentGranted,
 } from '../src/lib/homePanels.ts';
 
 const NOW = new Date('2026-10-27T12:00:00-07:00');
@@ -120,4 +121,15 @@ test('peopleCareValue: zero-total source renders honest absence, not 0 of 0', ()
 test('peopleCareValue: counts pass through unchanged', () => {
   assert.deepEqual(peopleCareValue({ total: 28, consentGaps: 28 }), { gaps: 28, total: 28 });
   assert.deepEqual(peopleCareValue({ total: 3, consentGaps: 1 }), { gaps: 1, total: 3 });
+});
+
+test('careConsentGranted: only a complete census opens the gate', () => {
+  // [ ] fixture aggregates — counts only, no realistic people.
+  assert.equal(careConsentGranted(null), false);
+  assert.equal(careConsentGranted(undefined), false);
+  assert.equal(careConsentGranted({ total: 0, consentGaps: 0 }), false);
+  assert.equal(careConsentGranted({ total: 28, consentGaps: 28 }), false);
+  assert.equal(careConsentGranted({ total: 28, consentGaps: 1 }), false);
+  assert.equal(careConsentGranted({ total: 28, consentGaps: 0 }), true);
+  assert.equal(careConsentGranted({ total: '[]', consentGaps: 0 }), false);
 });

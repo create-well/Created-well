@@ -203,3 +203,18 @@ export function peopleCareValue(
   if (care.total === 0) return null;
   return { gaps: care.consentGaps, total: care.total };
 }
+
+/**
+ * The care-consent flag (DashboardContext permissions), derived
+ * from the PEOPLE census — never hard-coded. Granted ONLY when the
+ * census is present and complete (total > 0, zero gaps): a partial
+ * census must not read as granted, and an absent census (including
+ * every fallback load) reads as not granted.
+ */
+export function careConsentGranted(
+  care: { total: number; consentGaps: number } | null | undefined,
+): boolean {
+  if (!care) return false;
+  if (typeof care.total !== 'number' || typeof care.consentGaps !== 'number') return false;
+  return care.total > 0 && care.consentGaps === 0;
+}

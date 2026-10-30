@@ -9,6 +9,7 @@ import { getStoredProfile } from '../app/components/AuthGate';
 import { shouldShowOnboarding } from '../app/components/WelcomeModal';
 import type { DashboardContextValue, DashboardPayload, SyncStatus } from '../types/dashboard';
 import { displayedDashboardStatus } from '../lib/dashboardStatus';
+import { careConsentGranted } from '../lib/homePanels';
 import { MoveDeleteNotice } from '../app/components/MoveDeleteNotice';
 
 const DashboardCtx = createContext<DashboardContextValue | null>(null);
@@ -577,7 +578,9 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     syncFreshness,
     peopleCare,
     permissions: {
-      careConsent: true,
+      // Derived from the PEOPLE census (lib/homePanels) — granted
+      // only at a complete census; never hard-coded.
+      careConsent: careConsentGranted(peopleCare),
     },
   };
 

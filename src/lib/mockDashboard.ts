@@ -20,6 +20,6 @@ export const MOCK_PAYLOAD: DashboardPayload = {
   syncFreshness: null,
   peopleCare: null,
   permissions: {
-    careConsent: true,
+    careConsent: false,
   },
 };

@@ -100,7 +100,7 @@ export function PersonView({
   const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
   const personEvents = CALENDAR_EVENTS
     .filter(e => e.persons.includes(person) && new Date(e.date + 'T00:00:00') >= todayDate)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    .sort((a, b) => (parseDateValue(a.date)?.getTime() ?? 0) - (parseDateValue(b.date)?.getTime() ?? 0));
 
   const urgentItems = personItems.filter(i => i.status !== 'done').sort((a, b) => {
     if (a.priority === 'high' && b.priority !== 'high') return -1;

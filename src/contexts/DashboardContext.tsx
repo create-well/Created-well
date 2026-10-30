@@ -10,6 +10,7 @@ import { shouldShowOnboarding } from '../app/components/WelcomeModal';
 import type { DashboardContextValue, DashboardPayload, SyncStatus } from '../types/dashboard';
 import { displayedDashboardStatus } from '../lib/dashboardStatus';
 import { careConsentGranted } from '../lib/homePanels';
+import { localDateString } from '../lib/dateLabel';
 import { MoveDeleteNotice } from '../app/components/MoveDeleteNotice';
 
 const DashboardCtx = createContext<DashboardContextValue | null>(null);
@@ -217,7 +218,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     if (syncStatus !== 'fresh' || !dataLoadedRef.current || wednesdayReminderSent.current) return;
     const today = new Date();
     if (today.getDay() !== 3) return;
-    const key = `cr8w_wed_reminder_${today.toISOString().split('T')[0]}`;
+    const key = `cr8w_wed_reminder_${localDateString(today)}`;
     if (localStorage.getItem(key)) { wednesdayReminderSent.current = true; return; }
     const reminderContent = "[REMINDER] 📋 It's Wednesday! Time to drop your weekly check-in on PlayD8s before the next behind h0es doors. Head to PlayD8s → Check-In tab.";
     if (messages.some(m => m.author === 'system' && m.content?.trim() === reminderContent)) {

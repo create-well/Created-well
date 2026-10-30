@@ -12,7 +12,7 @@ import { HomePanels } from './HomePanels';
 import type { Task, Station, WellNote, Workshop, CoFlowDate, CoFlowCheckin, InviteCounts, CalendarEventKV } from './api';
 import * as api from './api';
 import { milestoneLabel } from '../../lib/nextUpLabel';
-import { shortDateLabel, calendarDayDiff } from '../../lib/dateLabel';
+import { shortDateLabel, calendarDayDiff, localDateString, parseDateValue } from '../../lib/dateLabel';
 
 // ── Wellshop category → workshop tag matching ────────────────────────────────
 const WELLSHOP_TAG_MAP: Record<string, string[]> = {
@@ -1218,7 +1218,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                     {(() => {
                       const matched = workshops
                         .filter(w => matchesCategory(w, cat.key) && (w.status === 'scheduled' || w.status === 'planning'))
-                        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                        .sort((a, b) => (parseDateValue(a.date)?.getTime() ?? 0) - (parseDateValue(b.date)?.getTime() ?? 0))
                         .slice(0, 4);
                       return matched.length > 0 ? (
                         <div style={{
@@ -1287,7 +1287,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                               setWellshopLogForm(null);
                             } else {
                               setWellshopLogForm(cat.key);
-                              setWellshopLogData({ date: new Date().toISOString().split('T')[0], title: '', reflection: '' });
+                              setWellshopLogData({ date: localDateString(), title: '', reflection: '' });
                               setWellshopShowHistory(prev => ({ ...prev, [cat.key]: true }));
                             }
                           }}
@@ -1347,7 +1347,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                               if (!wellshopLogData.title.trim()) { showToast('add a title first', 'alert'); return; }
                               const entry: WellshopHistoryEntry = {
                                 id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                                date: wellshopLogData.date || new Date().toISOString().split('T')[0],
+                                date: wellshopLogData.date || localDateString(),
                                 title: wellshopLogData.title.trim(),
                                 reflection: wellshopLogData.reflection.trim(),
                               };
@@ -1488,7 +1488,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
             const kvEvents: UpcomingEvent[] = kvCalDeduped
               .map(ev => {
                 const startDate = new Date(ev.start);
-                const dateStr = ev.start.split('T')[0] || startDate.toISOString().split('T')[0];
+                const dateStr = ev.start.split('T')[0] || localDateString(startDate);
                 const time = startDate.getTime() ? startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase() : '';
                 return {
                   key: `kv-${ev.id}`,

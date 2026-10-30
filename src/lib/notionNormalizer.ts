@@ -261,6 +261,26 @@ export function normalizePerson(page: NotionPage): Station {
   };
 }
 
+/**
+ * PEOPLE care aggregate for Home's Needs care panel (design diff
+ * §4: "consent gaps (PEOPLE)" — counts only, never values).
+ * A person counts as captured when the Consent multi-select carries
+ * any option OR a Consent Captured date is set; otherwise the row is
+ * a consent gap. Reads the raw pages dashboard.ts already fetched;
+ * no per-person data leaves this function.
+ */
+export function peopleCareCounts(pages: NotionPage[]): { total: number; consentGaps: number } {
+  let consentGaps = 0;
+  for (const page of pages) {
+    const p = page.properties;
+    const captured =
+      getMultiSelect(pick(p, 'Consent')).length > 0 ||
+      getDate(pick(p, 'Consent Captured')) !== '';
+    if (!captured) consentGaps += 1;
+  }
+  return { total: pages.length, consentGaps };
+}
+
 // ── CONTENT → ForumPost ───────────────────────────────────────────────────────
 // Canonical CONTENT schema (Create Well OS):
 //   Name         : Title

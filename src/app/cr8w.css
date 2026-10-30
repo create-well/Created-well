@@ -184,13 +184,18 @@ html.cw-no-motion *::after {
 .nav-link {
   display: flex; align-items: center; gap: 5px;
   padding: 7px 12px; border-radius: var(--cr-radius-lg);
-  font-family: var(--font-label); font-size: 0.78rem; font-weight: 600;
-  color: rgba(255,255,255,0.85);
+  font-family: var(--font-label); font-size: 0.78rem; font-weight: 500;
+  color: rgba(255,255,255,0.88);
   text-transform: uppercase; letter-spacing: 0.5px;
   transition: all 0.25s ease; cursor: pointer; border: none; background: none;
 }
 .nav-link:hover { background: rgba(255,255,255,0.15); color: #fff; }
-.nav-link.active { background: rgba(255,255,255,0.25); color: #fff; font-weight: 600; }
+/* FE-8: the active tab is distinct by weight AND an underline bar,
+   never by background tint alone; tabs read as tabs, not buttons. */
+.nav-link.active {
+  background: rgba(255,255,255,0.25); color: #fff; font-weight: 700;
+  box-shadow: inset 0 -3px 0 #fff;
+}
 .nav-link-geyser {
   background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.3);
   color: #fff; font-weight: 600;
@@ -2197,3 +2202,56 @@ a.gcc-pill-link:hover { background: rgba(255,255,255,0.52); transform: translate
     padding: 20px 16px 28px;
   }
 }
+
+/* ── FE-5 settled Home panels (§4): one card shape — 20px padding
+   (16–24 band), one radius, one tag treatment, metric numerals. */
+.home-panels { display: flex; flex-direction: column; gap: 16px; margin: 8px 0 20px; }
+.home-panel {
+  background: var(--cr8w-card-bg, #fff); border: 1px solid var(--border-soft, rgba(196,164,132,0.25));
+  border-radius: 16px; padding: 20px;
+}
+.home-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.home-panel-title {
+  font-family: var(--font-display); font-size: 1.05rem; font-weight: 700;
+  color: var(--cr8w-text, #2D2438); margin: 0;
+}
+.home-depth-tag {
+  font-family: var(--font-label); font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted, #6B5F7A); white-space: nowrap;
+}
+.home-panel-action { margin-top: 12px; }
+.home-action-link {
+  font-family: var(--font-label); font-size: 0.75rem; font-weight: 600;
+  color: var(--cr8w-primary, #7BA89D); background: none; border: none;
+  padding: 4px 0; cursor: pointer; text-decoration: none;
+  min-height: 44px; display: inline-flex; align-items: center;
+}
+.home-next-title { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; color: var(--cr8w-text, #2D2438); }
+.home-next-date { font-family: var(--font-label); font-size: 0.85rem; color: var(--text-secondary, #443855); margin-top: 2px; }
+.home-geyser-marker {
+  margin-top: 10px; font-family: var(--font-label); font-size: 0.8rem; font-weight: 600;
+  color: var(--cr8w-text, #2D2438);
+}
+.home-metric-row { display: flex; align-items: baseline; gap: 8px; }
+.home-metric {
+  font-family: var(--font-display); font-size: 1.6rem; font-weight: 800;
+  color: var(--cr8w-text, #2D2438); line-height: 1;
+}
+.home-metric-label { font-family: var(--font-label); font-size: 0.75rem; color: var(--text-secondary, #443855); margin-right: 14px; }
+.home-metric-sm { font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; color: var(--cr8w-text, #2D2438); }
+.home-task-list, .home-soon-list, .home-care-list { list-style: none; margin: 10px 0 0; padding: 0; }
+.home-task-row, .home-soon-row {
+  display: flex; justify-content: space-between; gap: 12px; padding: 7px 0;
+  border-top: 1px solid var(--border-soft, rgba(196,164,132,0.18));
+  font-family: var(--font-label); font-size: 0.82rem; color: var(--cr8w-text, #2D2438);
+}
+.home-task-due, .home-soon-date { color: var(--text-muted, #6B5F7A); white-space: nowrap; }
+.home-care-row {
+  display: flex; align-items: baseline; gap: 10px; padding: 7px 0;
+  border-top: 1px solid var(--border-soft, rgba(196,164,132,0.18));
+  font-family: var(--font-label); font-size: 0.82rem;
+}
+.home-care-name { color: var(--cr8w-text, #2D2438); }
+.home-care-value { color: var(--text-secondary, #443855); margin-left: auto; }
+.home-empty, .home-note { font-family: var(--font-label); font-size: 0.82rem; color: var(--text-secondary, #443855); margin: 4px 0 0; }

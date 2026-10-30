@@ -19,6 +19,8 @@ export const SOURCES = [
   "flows",
   "content",
   "money",
+  "events",
+  "feedback",
 ] as const;
 
 export type SourceName = (typeof SOURCES)[number];
@@ -29,6 +31,8 @@ const SOURCE_ENV: Record<SourceName, string> = {
   flows: "NOTION_DB_FLOWS",
   content: "NOTION_DB_CONTENT",
   money: "NOTION_DB_MONEY",
+  events: "NOTION_DB_EVENTS",
+  feedback: "NOTION_DB_FEEDBACK",
 };
 
 export function sourceDatabaseId(source: SourceName): string | null {

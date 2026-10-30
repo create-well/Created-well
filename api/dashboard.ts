@@ -34,8 +34,12 @@ import {
   normalizeContent,
   normalizeFlow,
   normalizeMoney,
+  normalizeEvent,
+  normalizeFeedback,
   type NotionPage,
   type MoneyRecord,
+  type EventRecord,
+  type FeedbackRecord,
 } from '../src/lib/notionNormalizer.js';
 import type { SyncData } from '../src/app/components/api';
 
@@ -132,6 +136,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const dbContent  = process.env.NOTION_DB_CONTENT;
   const dbMoney    = process.env.NOTION_DB_MONEY;
   const dbOpenAsks = process.env.NOTION_DB_OPEN_ASKS;
+  const dbEvents   = process.env.NOTION_DB_EVENTS;
+  const dbFeedback = process.env.NOTION_DB_FEEDBACK;
 
   // KV keys for data not yet migrated to Notion
   const KV_KEYS = [
@@ -158,11 +164,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         secret && dbContent ? queryNotionDatabase(dbContent, secret) : Promise.resolve([]),
         secret && dbMoney   ? queryNotionDatabase(dbMoney, secret)   : Promise.resolve([]),
         secret && dbOpenAsks ? queryNotionDatabase(dbOpenAsks, secret) : Promise.resolve([]),
+        secret && dbEvents   ? queryNotionDatabase(dbEvents, secret)   : Promise.resolve([]),
+        secret && dbFeedback ? queryNotionDatabase(dbFeedback, secret) : Promise.resolve([]),
       ]),
       Promise.all(KV_KEYS.map(k => kvGetList(k))),
     ]);
 
-    const [movesPages, peoplePages, flowsPages, contentPages, moneyPages, openAsksPages] = notionResults;
+    const [movesPages, peoplePages, flowsPages, contentPages, moneyPages, openAsksPages, eventsPages, feedbackPages] = notionResults;
     const [
       messages, braindumps, announcements, forumReplies,
       workshops, workshopPrograms, workshopResources,
@@ -178,6 +186,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       forum:             contentPages.map(normalizeContent),
       coflowDates:       flowsPages.map(normalizeFlow),
       money:             moneyPages.map(normalizeMoney) as MoneyRecord[],
+      events:            eventsPages.map(normalizeEvent) as EventRecord[],
+      feedback:          feedbackPages.map(normalizeFeedback) as FeedbackRecord[],
       // KV-backed (passed through; typed by trust — these were written by our own API)
       messages:          messages          as SyncData['messages'],
       braindumps:        braindumps        as SyncData['braindumps'],

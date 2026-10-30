@@ -132,10 +132,10 @@ assert.equal(rres.statusCode, 200);
 assert.equal(rres.body?.ok, true);
 assert.deepEqual(
   [...(rres.body?.deferredSources ?? [])].sort(),
-  ['content', 'flows', 'money', 'moves', 'people'],
-  'all five sources reported deferred',
+  ['content', 'events', 'feedback', 'flows', 'money', 'moves', 'people'],
+  'all seven sources reported deferred',
 );
-assert.equal(lines.filter((l) => l.includes('[reconcile] deferred source=')).length, 5, 'five deferred console lines');
+assert.equal(lines.filter((l) => l.includes('[reconcile] deferred source=')).length, 7, 'seven deferred console lines');
 assert.ok(!lines.some((l) => l.includes('[sync-ledger]')), 'NO ledger record when every source defers');
 realLog('PASS reconcile: all-deferred tick writes no ledger record');
 

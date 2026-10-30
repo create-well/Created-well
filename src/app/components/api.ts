@@ -419,6 +419,33 @@ export interface SyncData {
   wellNotes: WellNote[];
   calendarEvents: CalendarEventKV[];
   money?: MoneyRecord[];
+  events?: EventRecord[];
+  feedback?: FeedbackRecord[];
+}
+
+export interface EventRecord {
+  id: number;
+  notionPageId: string;
+  name: string;
+  date: string;
+  status: string;
+  location: string;
+  visibility: string;
+  source: string;
+  link: string;
+  created_at: string;
+}
+
+export interface FeedbackRecord {
+  id: number;
+  notionPageId: string;
+  name: string;
+  date: string;
+  type: string;
+  status: string;
+  source: string;
+  body: string;
+  created_at: string;
 }
 
 export interface CalendarEventKV {

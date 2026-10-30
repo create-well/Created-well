@@ -448,3 +448,80 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
     created_at:   page.created_time,
   };
 }
+
+// ── EVENTS → EventRecord ──────────────────────────────────────────────────────
+// Canonical EVENTS schema (Create Well OS; wired 2026-10-30, Amendment 2):
+//   Event           : Title
+//   Date            : Date
+//   Location        : Text
+//   Status          : Select
+//   Visibility      : Select
+//   Source          : Select
+//   Partiful link   : URL
+//   (Flow and Related to PEOPLE are Relations — never projected, the
+//   standing rule; GCal ID is an internal identifier, not a display field.)
+export interface EventRecord {
+  id: number;
+  notionPageId: string;
+  name: string;
+  date: string;
+  status: string;
+  location: string;
+  visibility: string;
+  source: string;
+  link: string;
+  created_at: string;
+}
+
+export function normalizeEvent(page: NotionPage): EventRecord {
+  const p = page.properties;
+  return {
+    id:           stableId(page.id),
+    notionPageId: page.id,
+    name:         getText(pick(p, 'Event', 'Name', 'Title')) || 'Untitled',
+    date:         getDate(pick(p, 'Date')) || '',
+    status:       getSelect(pick(p, 'Status')) || '',
+    location:     getText(pick(p, 'Location')) || '',
+    visibility:   getSelect(pick(p, 'Visibility')) || '',
+    source:       getSelect(pick(p, 'Source')) || '',
+    link:         getUrl(pick(p, 'Partiful link', 'Link')) || '',
+    created_at:   page.created_time,
+  };
+}
+
+// ── FEEDBACK → FeedbackRecord ─────────────────────────────────────────────────
+// Canonical FEEDBACK schema (Create Well OS; wired 2026-10-30, Amendment 2):
+//   Name            : Title
+//   Date            : Date
+//   Type            : Select
+//   Status          : Select
+//   Source          : Select
+//   Body            : Text (rides this session-gated internal payload like
+//   every other source's text fields; Person and Flow are Relations —
+//   never projected.)
+export interface FeedbackRecord {
+  id: number;
+  notionPageId: string;
+  name: string;
+  date: string;
+  type: string;
+  status: string;
+  source: string;
+  body: string;
+  created_at: string;
+}
+
+export function normalizeFeedback(page: NotionPage): FeedbackRecord {
+  const p = page.properties;
+  return {
+    id:           stableId(page.id),
+    notionPageId: page.id,
+    name:         getText(pick(p, 'Name', 'Title')) || 'Untitled',
+    date:         getDate(pick(p, 'Date')) || '',
+    type:         getSelect(pick(p, 'Type')) || '',
+    status:       getSelect(pick(p, 'Status')) || '',
+    source:       getSelect(pick(p, 'Source')) || '',
+    body:         getText(pick(p, 'Body')) || '',
+    created_at:   page.created_time,
+  };
+}

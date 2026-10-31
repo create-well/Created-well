@@ -26,6 +26,7 @@ import { createClient } from '@supabase/supabase-js';
 import { applyCors, requireSession } from './_auth.js';
 import { hasDashboardConfiguration } from './_dashboard-config.js';
 import { getSyncFreshness } from './_sync-engine.js';
+import { queryCanonicalNotionDatabase } from './_notion-sources.js';
 import {
   normalizeMove,
   normalizePerson,
@@ -158,11 +159,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Configuration was checked above; configured empty sources remain valid.
     const [notionResults, kvResults] = await Promise.all([
       Promise.all([
-        secret && dbMoves   ? queryNotionDatabase(dbMoves, secret)   : Promise.resolve([]),
-        secret && dbPeople  ? queryNotionDatabase(dbPeople, secret)  : Promise.resolve([]),
-        secret && dbFlows   ? queryNotionDatabase(dbFlows, secret)   : Promise.resolve([]),
-        secret && dbContent ? queryNotionDatabase(dbContent, secret) : Promise.resolve([]),
-        secret && dbMoney   ? queryNotionDatabase(dbMoney, secret)   : Promise.resolve([]),
+        secret && dbMoves   ? queryCanonicalNotionDatabase('moves', dbMoves, secret)   : Promise.resolve([]),
+        secret && dbPeople  ? queryCanonicalNotionDatabase('people', dbPeople, secret)  : Promise.resolve([]),
+        secret && dbFlows   ? queryCanonicalNotionDatabase('flows', dbFlows, secret)   : Promise.resolve([]),
+        secret && dbContent ? queryCanonicalNotionDatabase('content', dbContent, secret) : Promise.resolve([]),
+        secret && dbMoney   ? queryCanonicalNotionDatabase('money', dbMoney, secret)   : Promise.resolve([]),
+        // Optional sources retain their existing single-attempt query path.
         secret && dbOpenAsks ? queryNotionDatabase(dbOpenAsks, secret) : Promise.resolve([]),
         secret && dbEvents   ? queryNotionDatabase(dbEvents, secret)   : Promise.resolve([]),
         secret && dbFeedback ? queryNotionDatabase(dbFeedback, secret) : Promise.resolve([]),

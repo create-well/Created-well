@@ -42,7 +42,7 @@ test('canonical query retries a transient page failure and reuses the cursor', a
       });
     }
     if (calls.length === 2) {
-      return response(502, { message: 'synthetic upstream body' }, { 'Retry-After': '0' });
+      return response(504, { message: 'synthetic upstream body' }, { 'Retry-After': '0' });
     }
     return response(200, {
       results: [page('synthetic-page-two')],
@@ -93,14 +93,28 @@ test('canonical query stops after three transient HTTP attempts', async () => {
   let calls = 0;
   await withFetch(async () => {
     calls += 1;
-    return response(503, { message: 'synthetic upstream body' });
+    return response(504, { message: 'synthetic upstream body' });
   }, async () => {
     await assert.rejects(
       queryCanonicalNotionDatabase('flows', 'synthetic-db-id', 'synthetic-token'),
-      /HTTP 503 after 3 attempt\(s\)/,
+      /HTTP 504 after 3 attempt\(s\)/,
     );
   });
   assert.equal(calls, 3);
+
+  for (const status of [502, 503]) {
+    let excludedStatusCalls = 0;
+    await withFetch(async () => {
+      excludedStatusCalls += 1;
+      return response(status, { message: 'synthetic upstream body' });
+    }, async () => {
+      await assert.rejects(
+        queryCanonicalNotionDatabase('flows', 'synthetic-db-id', 'synthetic-token'),
+        new RegExp(`HTTP ${status} after 1 attempt`),
+      );
+    });
+    assert.equal(excludedStatusCalls, 1, `HTTP ${status} must not retry`);
+  }
 });
 
 test('canonical query does not retry sooner than a Retry-After beyond the bounded wait', async () => {
@@ -226,7 +240,7 @@ test('fetchSourceRows retries canonical pages and follows the cursor', async () 
   try {
     const rows = await withFetch(async (url, init) => {
       calls.push({ url: String(url), body: JSON.parse(String(init.body)) });
-      if (calls.length < 3) return response(503, { message: 'synthetic retry' });
+      if (calls.length < 3) return response(504, { message: 'synthetic retry' });
       if (calls.length === 3) {
         return response(200, {
           results: [page('synthetic-money-one')],

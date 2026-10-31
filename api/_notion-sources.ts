@@ -87,7 +87,7 @@ const NOTION_MAX_RETRY_AFTER_MS = 1_000;
 const NOTION_BACKOFF_BASE_MS = 150;
 const NOTION_BACKOFF_MAX_MS = 500;
 const NOTION_JITTER_MAX_MS = 100;
-const RETRYABLE_NOTION_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+const RETRYABLE_NOTION_STATUSES = new Set([408, 429, 500, 504]);
 
 function parseRetryAfterMs(value: string | null): number | null {
   if (!value) return null;

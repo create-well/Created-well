@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { PERSONS } from './data';
 import type { Announcement, BrainDump } from './data';
 import type { Task, Station, WellNote, Workshop, CoFlowDate, CoFlowCheckin } from './api';
+import { latestWellNote } from '../../lib/homePanels.ts';
 
 interface CanvaHomeViewProps {
   onNavigate: (view: string) => void;
@@ -54,7 +55,7 @@ export function CanvaHomeView({
 
   const person = PERSONS[activeUser] ?? PERSONS.monny;
   const openTasks = actionItems.filter(task => task.status !== 'done' && task.status !== 'completed');
-  const latestNote = wellNotes[0];
+  const latestNote = latestWellNote(wellNotes);
   const nextWorkshop = workshops[0];
   const nextCoFlow = coFlowDates[0];
   const nextTask = openTasks[0];
@@ -94,7 +95,7 @@ export function CanvaHomeView({
         <p>Is anything you’re carrying not yours?</p>
         <div className="cw-v2-pills">
           {['I’m clear — this is mine', 'The room feels heavy', 'Not sure — need a minute'].map(option => (
-            <button key={option} className={arrival === option ? 'is-selected' : ''} onClick={() => setArrival(option)}>
+            <button key={option} className={arrival === option ? 'is-selected' : ''} aria-pressed={arrival === option} onClick={() => setArrival(option)}>
               {option}
             </button>
           ))}
@@ -107,7 +108,7 @@ export function CanvaHomeView({
           {[
             ['🌊', 'flowing'], ['🌫️', 'foggy'], ['🔥', 'fired up'],
           ].map(([icon, label]) => (
-            <button key={label} className={mood === label ? 'is-selected' : ''} onClick={() => setMood(label)}>
+            <button key={label} className={mood === label ? 'is-selected' : ''} aria-pressed={mood === label} onClick={() => setMood(label)}>
               <span>{icon}</span> {label}
             </button>
           ))}

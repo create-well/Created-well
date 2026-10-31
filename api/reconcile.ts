@@ -13,7 +13,12 @@
 
 import { createHash, timingSafeEqual } from "node:crypto";
 import { recordEngineRun, SOURCES, syncSource } from "./_sync-engine.js";
-import { supabaseConfigProblem } from "./_supabase.js";
+import {
+  getSetupValue,
+  pruneSyncRuns,
+  setSetupValue,
+  supabaseConfigProblem,
+} from "./_supabase.js";
 import type { LedgerSourceEntry } from "./_sync-ledger.js";
 
 interface ApiRequest {
@@ -71,14 +76,18 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   // because this route never checked the store configuration).
   const storeProblem = supabaseConfigProblem();
   if (storeProblem) {
-    await recordEngineRun(startedAtMs, [
-      {
-        source: "reconcile",
-        rows: 0,
-        cached: false,
-        error: `Supabase store unavailable: ${storeProblem}`,
-      },
-    ]);
+    await recordEngineRun(
+      startedAtMs,
+      [
+        {
+          source: "reconcile",
+          rows: 0,
+          cached: false,
+          error: `Supabase store unavailable: ${storeProblem}`,
+        },
+      ],
+      { trigger: "reconcile" },
+    );
     return res.status(200).json({
       ok: false,
       partial: false,
@@ -121,7 +130,31 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   // No entries means every source deferred: no run record at all, for
   // the same reason a single deferral writes none.
   if (entries.length > 0) {
-    await recordEngineRun(startedAtMs, entries);
+    await recordEngineRun(startedAtMs, entries, {
+      trigger: "reconcile",
+      deferredSources,
+    });
+  }
+
+  // Run-history retention (G-35): prune sync_runs rows older than 90
+  // days, guarded to once a day by a sync_setup watermark. Fail-soft:
+  // pruning never fails a reconcile, and until the table exists the
+  // attempts simply error and are swallowed here.
+  try {
+    const watermark = await getSetupValue("sync_runs_pruned_at");
+    const lastPrunedMs =
+      watermark && typeof watermark.at === "string"
+        ? Date.parse(watermark.at)
+        : NaN;
+    if (!Number.isFinite(lastPrunedMs) || Date.now() - lastPrunedMs > 86_400_000) {
+      const cutoff = new Date(Date.now() - 90 * 86_400_000).toISOString();
+      await pruneSyncRuns(cutoff);
+      await setSetupValue("sync_runs_pruned_at", {
+        at: new Date().toISOString(),
+      });
+    }
+  } catch {
+    // Retention is bookkeeping; a failed prune retries on a later tick.
   }
   const failed = entries.filter((entry) => entry.error).length;
   return res.status(200).json({

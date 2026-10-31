@@ -22,6 +22,7 @@ import {
   supabaseConfigured,
   listSnapshot,
   releaseLease,
+  insertSyncRun,
   renewLease,
   upsertDeliveryState,
   upsertSnapshotRows,
@@ -34,8 +35,10 @@ import {
   type SourceName,
 } from "./_notion-sources.js";
 import {
+  buildSyncRunRow,
   recordSyncRun,
   type LedgerSourceEntry,
+  type SyncRunRecord,
 } from "./_sync-ledger.js";
 
 export { SOURCES };
@@ -312,16 +315,24 @@ export async function syncSource(
 export async function recordEngineRun(
   startedAtMs: number,
   entries: LedgerSourceEntry[],
+  meta: { trigger: "reconcile" | "webhook"; deferredSources?: string[] },
 ): Promise<void> {
   const failed = entries.filter((entry) => entry.error).length;
   const status =
     failed === 0 ? "ok" : failed === entries.length ? "failed" : "partial";
-  await recordSyncRun({
+  const record: SyncRunRecord = {
     startedAt: new Date(startedAtMs).toISOString(),
     finishedAt: new Date().toISOString(),
     durationMs: Date.now() - startedAtMs,
     status,
     sources: entries,
     totalRows: entries.reduce((sum, entry) => sum + entry.rows, 0),
-  }).catch(() => undefined);
+    trigger: meta.trigger,
+    deferredSources: meta.deferredSources ?? [],
+  };
+  await recordSyncRun(record).catch(() => undefined);
+  // Durable history (G-35): the same record lands in sync_runs. Fail-soft
+  // by design: until the table exists (schema escalation) and whenever
+  // the store errors, the log line above remains the record.
+  await insertSyncRun(buildSyncRunRow(record)).catch(() => undefined);
 }

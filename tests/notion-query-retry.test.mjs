@@ -57,6 +57,20 @@ test('canonical query retries a transient page failure and reuses the cursor', a
   assert.deepEqual(pages.map((entry) => entry.id), ['synthetic-page-one', 'synthetic-page-two']);
 });
 
+test('canonical query rejects a noncanonical runtime source before fetch', async () => {
+  let calls = 0;
+  await withFetch(async () => {
+    calls += 1;
+    return response(200, { results: [], has_more: false, next_cursor: null });
+  }, async () => {
+    await assert.rejects(
+      queryCanonicalNotionDatabase('feedback', 'synthetic-db-id', 'synthetic-token'),
+      /canonical sources only/,
+    );
+  });
+  assert.equal(calls, 0);
+});
+
 test('canonical query does not retry a non-transient 400 and does not expose the body or database ID', async () => {
   let calls = 0;
   await withFetch(async () => {
@@ -131,6 +145,22 @@ test('AbortError retries for canonical sources', async () => {
   assert.equal(pages[0].id, 'synthetic-page');
 });
 
+test('TimeoutError retries for canonical sources', async () => {
+  let calls = 0;
+  const pages = await withFetch(async () => {
+    calls += 1;
+    if (calls === 1) {
+      const error = new Error('synthetic timeout');
+      error.name = 'TimeoutError';
+      throw error;
+    }
+    return response(200, { results: [page('synthetic-page')], has_more: false, next_cursor: null });
+  }, () => queryCanonicalNotionDatabase('money', 'synthetic-db-id', 'synthetic-token'));
+
+  assert.equal(calls, 2);
+  assert.equal(pages[0].id, 'synthetic-page');
+});
+
 test('malformed Retry-After falls back to the bounded retry delay', async () => {
   let calls = 0;
   const pages = await withFetch(async () => {
@@ -145,6 +175,36 @@ test('malformed Retry-After falls back to the bounded retry delay', async () => 
   assert.equal(pages[0].id, 'synthetic-page');
 });
 
+test('valid HTTP-date Retry-After uses the bounded server delay', async () => {
+  const originalNow = Date.now;
+  const originalSetTimeout = globalThis.setTimeout;
+  const fixedNow = Date.UTC(2026, 9, 30, 12, 0, 0);
+  let observedDelay;
+  let calls = 0;
+  Date.now = () => fixedNow;
+  globalThis.setTimeout = (callback, delay, ...args) => {
+    observedDelay = delay;
+    return originalSetTimeout(callback, 0, ...args);
+  };
+  try {
+    const retryAfter = new Date(fixedNow + 1_000).toUTCString();
+    const pages = await withFetch(async () => {
+      calls += 1;
+      if (calls === 1) {
+        return response(429, { message: 'synthetic rate limit' }, { 'Retry-After': retryAfter });
+      }
+      return response(200, { results: [page('synthetic-page')], has_more: false, next_cursor: null });
+    }, () => queryCanonicalNotionDatabase('people', 'synthetic-db-id', 'synthetic-token'));
+
+    assert.equal(calls, 2);
+    assert.equal(pages[0].id, 'synthetic-page');
+  } finally {
+    Date.now = originalNow;
+    globalThis.setTimeout = originalSetTimeout;
+  }
+  assert.equal(observedDelay, 1_000);
+});
+
 test('canonical query retries HTTP 408, 429, 500, and 504', async () => {
   for (const status of [408, 429, 500, 504]) {
     let calls = 0;
@@ -156,6 +216,50 @@ test('canonical query retries HTTP 408, 429, 500, and 504', async () => {
 
     assert.equal(calls, 2, `HTTP ${status} should retry once`);
     assert.equal(pages[0].id, `synthetic-${status}`);
+  }
+});
+
+test('fetchSourceRows retries canonical pages and follows the cursor', async () => {
+  const previous = process.env.NOTION_DB_MONEY;
+  process.env.NOTION_DB_MONEY = 'synthetic-money-db';
+  const calls = [];
+  try {
+    const rows = await withFetch(async (url, init) => {
+      calls.push({ url: String(url), body: JSON.parse(String(init.body)) });
+      if (calls.length < 3) return response(503, { message: 'synthetic retry' });
+      if (calls.length === 3) {
+        return response(200, {
+          results: [page('synthetic-money-one')],
+          has_more: true,
+          next_cursor: 'synthetic-money-cursor',
+        });
+      }
+      return response(200, {
+        results: [
+          page('synthetic-money-two'),
+          { id: 'synthetic-empty-properties', last_edited_time: 42, properties: null },
+          { id: null, last_edited_time: '2026-10-01T00:00:00.000Z', properties: {} },
+        ],
+        has_more: false,
+        next_cursor: null,
+      });
+    }, () => fetchSourceRows('money', 'synthetic-token'));
+
+    assert.equal(calls.length, 4);
+    assert.deepEqual(calls[0].body, { page_size: 100 });
+    assert.deepEqual(calls[0].body, calls[1].body);
+    assert.deepEqual(calls[1].body, calls[2].body);
+    assert.deepEqual(calls[3].body, { page_size: 100, start_cursor: 'synthetic-money-cursor' });
+    assert.deepEqual(rows.map((row) => row._id), [
+      'synthetic-money-one',
+      'synthetic-money-two',
+      'synthetic-empty-properties',
+    ]);
+    assert.equal(rows[2]._last_edited, null);
+    assert.deepEqual(rows[2].properties, {});
+  } finally {
+    if (previous === undefined) delete process.env.NOTION_DB_MONEY;
+    else process.env.NOTION_DB_MONEY = previous;
   }
 });
 

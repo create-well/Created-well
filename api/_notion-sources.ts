@@ -255,6 +255,9 @@ export async function queryCanonicalNotionDatabase(
   databaseId: string,
   notionSecret: string,
 ): Promise<NotionPage[]> {
+  if (!CANONICAL_SOURCE_SET.has(source)) {
+    throw new Error("Notion retry helper accepts canonical sources only");
+  }
   return (await queryNotionDatabasePages(
     source,
     databaseId,

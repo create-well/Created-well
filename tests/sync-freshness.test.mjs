@@ -1,38 +1,53 @@
 // Freshness-block assembly tests (reader decision, 2026-10-27).
 //
-// The engine module's `.js` cross-file imports cannot resolve under
-// `node --test` type stripping, so — same pattern as
-// tests/sync-lease-engine.driver.mjs — this file compiles the api graph
-// with the repo's own tsc into a temp dir and exercises the REAL compiled
-// getSyncFreshness with an injected delivery-state reader. Nothing here
-// touches the network.
+// Requires Node.js >=22.15.0 and --experimental-strip-types. A narrow resolver
+// maps relative API `.js` imports to their `.ts` sources so this file exercises
+// the real implementation without a compiler install or emitted files.
+// Nothing here touches the network.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import * as nodeModule from 'node:module';
+
+const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(Number);
+if (nodeMajor < 22 || (nodeMajor === 22 && nodeMinor < 15)) {
+  throw new Error(`sync-freshness test requires Node.js >=22.15.0; found ${process.versions.node}`);
+}
+if (!process.execArgv.includes('--experimental-strip-types')) {
+  throw new Error('run sync-freshness test with --experimental-strip-types');
+}
+
+const apiUrlPrefix = new URL('../api/', import.meta.url).href;
+const hooks = nodeModule.registerHooks({
+  resolve(specifier, context, nextResolve) {
+    const isRelative = specifier.startsWith('./') || specifier.startsWith('../');
+    if (
+      isRelative &&
+      specifier.endsWith('.js') &&
+      context.parentURL?.startsWith(apiUrlPrefix)
+    ) {
+      const target = new URL(`${specifier.slice(0, -3)}.ts`, context.parentURL);
+      if (target.href.startsWith(apiUrlPrefix)) {
+        try {
+          return nextResolve(target.href, context);
+        } catch {}
+      }
+    }
+    return nextResolve(specifier, context);
+  },
+});
 
 process.env.SUPABASE_URL = 'https://store.test';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'synthetic-service-key';
 process.env.NOTION_SECRET = 'synthetic';
 
-const outDir = mkdtempSync(join(tmpdir(), 'freshness-test-'));
-execFileSync(
-  'npx',
-  [
-    'tsc', 'api/_sync-engine.ts',
-    '--outDir', outDir,
-    '--rootDir', 'api',
-    '--module', 'nodenext',
-    '--target', 'es2022',
-    '--moduleResolution', 'nodenext',
-    '--skipLibCheck',
-  ],
-  { stdio: 'pipe' },
-);
-const { getSyncFreshness, SOURCES } = await import(join(outDir, '_sync-engine.js'));
+let syncEngine;
+try {
+  syncEngine = await import('../api/_sync-engine.ts');
+} finally {
+  hooks.deregister();
+}
+const { getSyncFreshness, SOURCES } = syncEngine;
 
 const NOW = Date.parse('2026-10-27T12:00:00.000Z');
 const iso = (ms) => new Date(ms).toISOString();

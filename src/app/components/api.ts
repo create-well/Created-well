@@ -1,4 +1,5 @@
 import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { headersForApiRequest, type StorageReader } from './reportAuth';
 // Supabase publishable key — safe to embed (not a secret, designed for public clients).
 // Read from env var first so the literal can be rotated without a code change.
 const API_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)
@@ -30,8 +31,17 @@ const BASE = resolveApiBase();
 // /api/dashboard only exists as a Vercel serverless function; not present on the Edge Function.
 export const isDashboardAvailable = BASE.endsWith('/server');
 
-// Auth header: required by Supabase edge function; Vercel routes ignore it.
+// Default auth header for the Edge Function and non-report API calls.
+// Report endpoints replace it with the signed-in Supabase Auth access token.
 const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` };
+
+function getAuthStorage(): StorageReader | null {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch {
+    return null;
+  }
+}
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   // One retry for GETs on network-level failures only; mutations fail fast.
@@ -46,7 +56,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     try {
       const res = await fetch(`${BASE}${path}`, {
         method,
-        headers,
+        headers: headersForApiRequest(path, headers, getAuthStorage()),
         body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
@@ -199,7 +209,8 @@ export const downloadHistoryCsv = async (from?: string, to?: string) => {
   const params = new URLSearchParams();
   if (from) params.set('from', from);
   if (to) params.set('to', to);
-  const res = await fetch(`${BASE}/reports/history.csv${params.toString() ? `?${params}` : ''}`, { headers });
+  const path = `/reports/history.csv${params.toString() ? `?${params}` : ''}`;
+  const res = await fetch(`${BASE}${path}`, { headers: headersForApiRequest(path, headers, getAuthStorage()) });
   if (!res.ok) throw new Error(`GET /reports/history.csv → ${res.status}`);
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);

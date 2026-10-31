@@ -13,6 +13,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { authorizeDashboardRequest, isProtectedReportRoute, isValidCronBearer, verifySupabaseUserToken } from './_dashboard-auth.js';
 import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './notionWriter.js';
 import { appendCheckinToWorkspace, appendWellNoteToWorkspace, canonicalCheckinHash, canonicalNoteHash, syncWorkspaceToDatabase, updateWellNoteInWorkspace } from './workspaceSync.js';
 
@@ -25,34 +26,35 @@ function supabase() {
 }
 
 // ── Endpoint auth ─────────────────────────────────────────────────────────────
-// The browser dashboard already sends `Authorization: Bearer <publishable key>`
-// on every request (see src/app/components/api.ts). CRON_SECRET is the
-// server-to-server secret (Vercel cron, scripts) and never enters the bundle.
-function bearerToken(req: VercelRequest): string | null {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) return null;
-  return header.slice(7).trim() || null;
-}
-
 // Server-to-server auth for the workspace sync. Fails closed: when CRON_SECRET
 // is not configured the endpoint refuses instead of running open.
 function cronAuth(req: VercelRequest, res: VercelResponse): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) { res.status(503).json({ error: 'Sync auth is not configured' }); return false; }
-  if (bearerToken(req) !== secret) { res.status(401).json({ error: 'Unauthorized' }); return false; }
+  if (!isValidCronBearer(req.headers.authorization, secret)) { res.status(401).json({ error: 'Unauthorized' }); return false; }
   return true;
 }
 
-// Dashboard + script auth for the history/report endpoints. Accepts the
-// server-to-server secret or the Supabase publishable key the dashboard
-// already sends. Fails closed when neither is configured server-side.
-function dashboardAuth(req: VercelRequest, res: VercelResponse): boolean {
-  const token = bearerToken(req);
-  if (token && process.env.CRON_SECRET && token === process.env.CRON_SECRET) return true;
-  const publishable = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!publishable) { res.status(503).json({ error: 'Report auth is not configured' }); return false; }
-  if (token !== publishable) { res.status(401).json({ error: 'Unauthorized' }); return false; }
-  return true;
+// Dashboard + script auth for the protected history/report endpoints.
+async function dashboardAuth(req: VercelRequest, res: VercelResponse): Promise<boolean> {
+  const decision = await authorizeDashboardRequest({
+    authorizationHeader: req.headers.authorization,
+    cronSecret: process.env.CRON_SECRET,
+    adminEmails: ['mb@tablante.com'],
+    verifyUserToken: (token) => verifySupabaseUserToken(
+      (userToken) => supabase().auth.getUser(userToken),
+      token,
+    ),
+  });
+
+  if (decision.authorized) return true;
+  const error = decision.status === 401
+    ? 'Unauthorized'
+    : decision.status === 403
+      ? 'Forbidden'
+      : 'Authentication unavailable';
+  res.status(decision.status).json({ error });
+  return false;
 }
 
 const TABLE = 'kv_store_dabe1c74';
@@ -253,8 +255,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(result.status === 'failed' ? 500 : result.status === 'conflict' ? 409 : 200).json(result); return;
     }
 
-    if (resource === 'reports' && (id === 'history' || id === 'history.csv')) {
-      if (!dashboardAuth(req, res)) return;
+    if (isProtectedReportRoute(resource ?? '', id ?? '') && (id === 'history' || id === 'history.csv')) {
+      if (!await dashboardAuth(req, res)) return;
       const sb = supabase();
       if (process.env.GOOGLE_WORKSPACE_SPREADSHEET_ID) await syncWorkspaceToDatabase();
       const from = typeof req.query.from === 'string' ? req.query.from : null;
@@ -284,8 +286,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.json(rows); return;
     }
 
-    if (resource === 'reports' && id === 'conflicts' && method === 'GET') {
-      if (!dashboardAuth(req, res)) return;
+    if (isProtectedReportRoute(resource ?? '', id ?? '') && id === 'conflicts' && method === 'GET') {
+      if (!await dashboardAuth(req, res)) return;
       const { data, error } = await supabase().from('workspace_sync_conflicts').select('id,entity_type,entity_id,spreadsheet_id,sheet_name,row_number,local_hash,remote_hash,remote_values,status,resolution,created_at,resolved_at').eq('status', 'open').order('created_at', { ascending: false }).limit(500);
       if (error) { res.status(500).json({ error: error.message }); return; }
       res.json(data ?? []); return;

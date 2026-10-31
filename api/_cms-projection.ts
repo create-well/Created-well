@@ -74,10 +74,27 @@ export function projectRow(page: NotionPageLike): CmsItem {
 // Readiness holds (spec section 4.2b): not gate legs. A gated row failing a
 // readiness item is held out of the collection; the first failing item in
 // this fixed order is the named reason.
+// Publish dates are Pacific calendar dates (the CONTENT Publish Date is a
+// date-only string in the team's timezone). Comparing them against the UTC
+// date (now.toISOString()) releases a tomorrow-dated post up to ~7 hours
+// early on a Pacific evening (finding F2.3). Derive the Pacific date from
+// `now` with an explicit timezone instead; the server clock's own zone is
+// never consulted.
+export function pacificDateString(now: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
 export function heldReason(item: CmsItem, now: Date): HeldReason | null {
   if (!item.link) return "missing_link";
   if (!item.publishDate) return "missing_publish_date";
-  if (item.publishDate.slice(0, 10) > now.toISOString().slice(0, 10)) {
+  if (item.publishDate.slice(0, 10) > pacificDateString(now)) {
     return "future_publish_date";
   }
   if (!item.where) return "missing_where";

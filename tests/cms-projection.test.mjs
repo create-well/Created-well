@@ -4,6 +4,8 @@ import {
   buildProjection,
   createManifestCache,
   freshnessLabel,
+  heldReason,
+  pacificDateString,
   passesGate,
 } from '../api/_cms-projection.ts';
 
@@ -117,4 +119,27 @@ test('last good manifest stays addressable after TTL', () => {
   const manifest = cache.replace([], NOW);
   assert.equal(cache.current(), manifest);
   assert.equal(cache.ageMs(new Date(NOW.getTime() + 120_000)), 120_000);
+});
+
+test('F2.3: future_publish_date compares against the Pacific date, not UTC', () => {
+  // 2026-10-31T02:30:00Z is Oct 30, 19:30 in Los Angeles. A post dated
+  // Oct 31 is tomorrow in Pacific and must hold; the old UTC comparison
+  // (UTC date already Oct 31) released it up to ~7 hours early.
+  const evening = new Date('2026-10-31T02:30:00Z');
+  assert.equal(pacificDateString(evening), '2026-10-30');
+  const held = buildProjection(
+    [page({ 'Publish Date': { type: 'date', date: { start: '2026-10-31' } } })], evening);
+  assert.equal(held.items.length, 0);
+  assert.equal(held.held.future_publish_date, 1);
+  // Same-evening Pacific date still releases.
+  const sameDay = buildProjection(
+    [page({ 'Publish Date': { type: 'date', date: { start: '2026-10-30' } } })], evening);
+  assert.equal(sameDay.items.length, 1);
+  // Reverse edge: 2026-10-30T06:59:00Z is Oct 29, 23:59 in Los Angeles;
+  // a post dated Oct 30 is still future in Pacific.
+  assert.equal(pacificDateString(new Date('2026-10-30T06:59:00Z')), '2026-10-29');
+  assert.equal(
+    heldReason({ link: 'x', publishDate: '2026-10-30', where: 'Spotify' },
+      new Date('2026-10-30T06:59:00Z')),
+    'future_publish_date');
 });

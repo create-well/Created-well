@@ -1,4 +1,5 @@
 import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { headersForApiRequest, type StorageReader } from './reportAuth';
 // Supabase publishable key — safe to embed (not a secret, designed for public clients).
 // Read from env var first so the literal can be rotated without a code change.
 const API_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)
@@ -30,11 +31,8 @@ const BASE = resolveApiBase();
 // /api/dashboard only exists as a Vercel serverless function; not present on the Edge Function.
 export const isDashboardAvailable = BASE.endsWith('/server');
 
-// Session access token: AuthGate persists the Supabase session in
-// localStorage under this key. API calls send the user's access token so the
-// Vercel routes can validate the session server-side (api/_auth.ts); the
-// publishable key remains only as the pre-auth fallback (username lookup,
-// registration, and the degraded Edge Function path).
+// API requests use the current Supabase user access token when present. The
+// publishable key remains a fallback for pre-auth flows and the Edge Function.
 const SESSION_STORAGE_KEY = 'cr8w_supabase_auth';
 
 export function sessionAccessToken(): string | null {
@@ -61,6 +59,14 @@ function authHeaders(): Record<string, string> {
   };
 }
 
+function getAuthStorage(): StorageReader | null {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch {
+    return null;
+  }
+}
+
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
   // One retry for GETs on network-level failures only; mutations fail fast.
   const maxRetries = method === 'GET' ? 1 : 0;
@@ -74,7 +80,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     try {
       const res = await fetch(`${BASE}${path}`, {
         method,
-        headers: authHeaders(),
+        headers: headersForApiRequest(path, authHeaders(), getAuthStorage()),
         body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
@@ -189,6 +195,57 @@ export const setInviteCounts = (counts: Omit<InviteCounts, 'updated_at'>) => req
 // Calendar Events (synced from Google Calendar via KV)
 export const getCalendarEvents = () => req<CalendarEventKV[]>('GET', '/calendar-events');
 export const setCalendarEvents = (events: CalendarEventKV[]) => req<{ ok: boolean; count: number }>('POST', '/calendar-events', events);
+
+// Historical Well reporting and Workspace conflict visibility
+export interface HistoryReport {
+  generated_at: string;
+  from: string | null;
+  to: string | null;
+  notes: WellNote[];
+  checkins: CoFlowCheckin[];
+  summary: { note_count: number; checkin_count: number; landed_count: number };
+}
+export interface WorkspaceConflict {
+  id: string;
+  entity_type: 'well_note' | 'care_loop_checkin';
+  entity_id: number;
+  spreadsheet_id: string;
+  sheet_name: string;
+  row_number: number;
+  local_hash: string;
+  remote_hash: string;
+  remote_values: unknown[];
+  status: 'open' | 'resolved' | 'ignored';
+  resolution?: string;
+  created_at: string;
+}
+export const getHistoryReport = (from?: string, to?: string) => {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  return req<HistoryReport>('GET', `/reports/history${params.toString() ? `?${params}` : ''}`);
+};
+export const getWorkspaceConflicts = () => req<WorkspaceConflict[]>('GET', '/reports/conflicts');
+// Authenticated CSV download: the export endpoint requires the Authorization
+// header, which a plain <a href> navigation never sends, so fetch it and save
+// the blob instead.
+export const downloadHistoryCsv = async (from?: string, to?: string) => {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  const path = `/reports/history.csv${params.toString() ? `?${params}` : ''}`;
+  const res = await fetch(`${BASE}${path}`, { headers: headersForApiRequest(path, authHeaders(), getAuthStorage()) });
+  if (!res.ok) throw new Error(`GET /reports/history.csv → ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'created-well-history.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
 
 // ── /api/dashboard — Notion-backed unified payload ───────────────────────────
 // Derives the dashboard URL from the same hostname logic as BASE so that

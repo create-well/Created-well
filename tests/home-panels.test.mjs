@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  latestWellNote,
   nextUpFlow,
   isEmergenceDay,
   nextUpDateLabel,
@@ -147,4 +148,45 @@ test('careConsentGranted: only a complete census opens the gate', () => {
   assert.equal(careConsentGranted({ total: 28, consentGaps: 1 }), false);
   assert.equal(careConsentGranted({ total: 28, consentGaps: 0 }), true);
   assert.equal(careConsentGranted({ total: '[]', consentGaps: 0 }), false);
+});
+
+test('latestWellNote picks the greatest valid timestamp independent of array order', () => {
+  const notes = [
+    { id: 2, created_at: '2026-10-30T12:00:00Z' },
+    { id: 1, created_at: '2026-10-29T12:00:00Z' },
+  ];
+  assert.equal(latestWellNote(notes), notes[0]);
+});
+
+test('latestWellNote picks the later array item for equal timestamps', () => {
+  const notes = [
+    { id: 1, created_at: '2026-10-30T12:00:00Z' },
+    { id: 2, created_at: '2026-10-30T12:00:00Z' },
+  ];
+  assert.equal(latestWellNote(notes), notes[1]);
+});
+
+test('latestWellNote skips invalid timestamps and falls back only when all are invalid', () => {
+  const mixed = [
+    { id: 1, created_at: 'bad' },
+    { id: 2, created_at: '2026-10-30T12:00:00Z' },
+    { id: 3 },
+  ];
+  const invalid = [{ id: 4, created_at: 'bad' }, { id: 5 }];
+  assert.equal(latestWellNote(mixed), mixed[1]);
+  assert.equal(latestWellNote(invalid), invalid[1]);
+});
+
+test('latestWellNote returns undefined for empty input', () => {
+  assert.equal(latestWellNote([]), undefined);
+});
+
+test('latestWellNote does not mutate the input array', () => {
+  const notes = [
+    { id: 2, created_at: '2026-10-30T12:00:00Z' },
+    { id: 1, created_at: '2026-10-29T12:00:00Z' },
+  ];
+  const originalOrder = [...notes];
+  latestWellNote(notes);
+  assert.deepEqual(notes, originalOrder);
 });

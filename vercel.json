@@ -3,6 +3,10 @@
     {
       "path": "/api/reconcile",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/server/workspace-sync",
+      "schedule": "0 9 * * *"
     }
   ],
   "buildCommand": "npm run build",

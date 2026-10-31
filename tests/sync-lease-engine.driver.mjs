@@ -1,19 +1,15 @@
 // Engine-level lease driver (G-02 Option A) — NOT a node --test file.
 //
-// Why this exists: the repo's test harness runs `node --test` with type
-// stripping, which cannot resolve the engine module's `.js` cross-file
-// imports. This driver compiles the api graph with the repo's own tsc
-// into a temp dir, then exercises the REAL compiled syncSource against
-// the same fake PostgREST as tests/sync-lease.test.mjs, proving the
-// deferral wiring end to end: under a held lease, syncSource returns a
-// deferred outcome, performs no Notion read, and writes no state.
+// Why this exists: the repo's node test harness cannot resolve the engine's
+// `.js` cross-file imports. This driver uses Node's narrow native TypeScript
+// resolver to exercise the real syncSource without a compiler install or
+// emitted files. Under a held lease, it must defer, read no Notion pages,
+// and write no state, using the same fake store as the lease unit tests.
 //
-// Run: node tests/sync-lease-engine.driver.mjs   (exit 0 = PASS)
+// Requires Node.js >=22.15.0 and --experimental-strip-types.
+// Run: node --experimental-strip-types tests/sync-lease-engine.driver.mjs
 
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import * as nodeModule from 'node:module';
 import assert from 'node:assert/strict';
 
 process.env.SUPABASE_URL = 'https://store.test';
@@ -92,22 +88,33 @@ globalThis.fetch = async (url, init = {}) => {
   throw new Error(`unexpected ${method} ${url}`);
 };
 
-const outDir = mkdtempSync(join(tmpdir(), 'lease-engine-'));
-execFileSync(
-  'npx',
-  [
-    'tsc', 'api/_sync-engine.ts',
-    '--outDir', outDir,
-    '--rootDir', 'api',
-    '--module', 'nodenext',
-    '--target', 'es2022',
-    '--moduleResolution', 'nodenext',
-    '--skipLibCheck',
-  ],
-  { stdio: 'inherit' },
-);
+const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(Number);
+if (nodeMajor < 22 || (nodeMajor === 22 && nodeMinor < 15)) {
+  throw new Error(`lease engine driver requires Node.js >=22.15.0; found ${process.versions.node}`);
+}
+if (!process.execArgv.includes('--experimental-strip-types')) {
+  throw new Error('run lease engine driver with --experimental-strip-types');
+}
 
-const engine = await import(join(outDir, '_sync-engine.js'));
+const apiUrlPrefix = new URL('../api/', import.meta.url).href;
+const hooks = nodeModule.registerHooks({
+  resolve(specifier, context, nextResolve) {
+    const isRelative = specifier.startsWith('./') || specifier.startsWith('../');
+    if (isRelative && specifier.endsWith('.js') && context.parentURL?.startsWith(apiUrlPrefix)) {
+      const target = new URL(`${specifier.slice(0, -3)}.ts`, context.parentURL);
+      if (target.href.startsWith(apiUrlPrefix)) {
+        try { return nextResolve(target.href, context); } catch {}
+      }
+    }
+    return nextResolve(specifier, context);
+  },
+});
+let engine;
+try {
+  engine = await import('../api/_sync-engine.ts');
+} finally {
+  hooks.deregister();
+}
 const startedBefore = row.last_sync_started_at;
 const outcome = await engine.syncSource('moves', 'synthetic-notion-secret');
 

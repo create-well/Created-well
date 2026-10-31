@@ -7,21 +7,27 @@
 // "deferred source=X (lease held)" lines, the { deferred: true } webhook
 // response, and reconcile's deferredSources list.
 //
-// Compiles the real api graph with the repo's tsc (the node --test
-// harness cannot resolve the engine's `.js` cross-imports) and drives
-// the REAL webhook + reconcile handlers against a fake PostgREST where
-// every source's lease is held by another run. Positive-path recording
-// (a real sync writes a record) is covered by the engine driver and QA's
-// production checks; this driver's scope is the ledger leg only.
+// The node --test harness cannot resolve the engine's `.js` cross-imports,
+// so this driver uses Node's narrow native TypeScript resolver to load the
+// real webhook and reconcile handlers without a compiler install or output.
+// It drives them against fake PostgREST where every source lease is held.
+// Positive-path recording is covered elsewhere; this driver's scope is the
+// ledger leg only.
 //
-// Run: node tests/sync-lease-ledger.driver.mjs   (exit 0 = PASS)
+// Requires Node.js >=22.15.0 and --experimental-strip-types.
+// Run: node --experimental-strip-types tests/sync-lease-ledger.driver.mjs
 
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import * as nodeModule from 'node:module';
 import { createHmac } from 'node:crypto';
 import assert from 'node:assert/strict';
+
+const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(Number);
+if (nodeMajor < 22 || (nodeMajor === 22 && nodeMinor < 15)) {
+  throw new Error(`lease ledger driver requires Node.js >=22.15.0; found ${process.versions.node}`);
+}
+if (!process.execArgv.includes('--experimental-strip-types')) {
+  throw new Error('run lease ledger driver with --experimental-strip-types');
+}
 
 process.env.SUPABASE_URL = 'https://store.test';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'synthetic-service-key';
@@ -80,17 +86,27 @@ const lines = [];
 const realLog = console.log;
 console.log = (...args) => { lines.push(args.join(' ')); };
 
-const outDir = mkdtempSync(join(tmpdir(), 'lease-ledger-'));
-execFileSync(
-  'npx',
-  ['tsc', 'api/notion-webhook.ts', 'api/reconcile.ts',
-   '--outDir', outDir, '--rootDir', 'api',
-   '--module', 'nodenext', '--target', 'es2022',
-   '--moduleResolution', 'nodenext', '--skipLibCheck'],
-  { stdio: 'pipe' },
-);
-const webhook = (await import(join(outDir, 'notion-webhook.js'))).default;
-const reconcile = (await import(join(outDir, 'reconcile.js'))).default;
+const apiUrlPrefix = new URL('../api/', import.meta.url).href;
+const hooks = nodeModule.registerHooks({
+  resolve(specifier, context, nextResolve) {
+    const isRelative = specifier.startsWith('./') || specifier.startsWith('../');
+    if (isRelative && specifier.endsWith('.js') && context.parentURL?.startsWith(apiUrlPrefix)) {
+      const target = new URL(`${specifier.slice(0, -3)}.ts`, context.parentURL);
+      if (target.href.startsWith(apiUrlPrefix)) {
+        try { return nextResolve(target.href, context); } catch {}
+      }
+    }
+    return nextResolve(specifier, context);
+  },
+});
+let webhook;
+let reconcile;
+try {
+  webhook = (await import('../api/notion-webhook.ts')).default;
+  reconcile = (await import('../api/reconcile.ts')).default;
+} finally {
+  hooks.deregister();
+}
 
 const mockRes = () => ({
   statusCode: 0, body: null,

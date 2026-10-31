@@ -155,29 +155,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   ] as const;
 
   try {
-    // Fan-out: all Notion DB queries + all KV reads in parallel.
-    // Configuration was checked above; configured empty sources remain valid.
-    const [notionResults, kvResults] = await Promise.all([
-      Promise.all([
-        secret && dbMoves   ? queryCanonicalNotionDatabase('moves', dbMoves, secret)   : Promise.resolve([]),
-        secret && dbPeople  ? queryCanonicalNotionDatabase('people', dbPeople, secret)  : Promise.resolve([]),
-        secret && dbFlows   ? queryCanonicalNotionDatabase('flows', dbFlows, secret)   : Promise.resolve([]),
-        secret && dbContent ? queryCanonicalNotionDatabase('content', dbContent, secret) : Promise.resolve([]),
-        secret && dbMoney   ? queryCanonicalNotionDatabase('money', dbMoney, secret)   : Promise.resolve([]),
-        // Optional sources retain their existing single-attempt query path.
-        secret && dbOpenAsks ? queryNotionDatabase(dbOpenAsks, secret) : Promise.resolve([]),
-        secret && dbEvents   ? queryNotionDatabase(dbEvents, secret)   : Promise.resolve([]),
-        secret && dbFeedback ? queryNotionDatabase(dbFeedback, secret) : Promise.resolve([]),
-      ]),
-      Promise.all(KV_KEYS.map(k => kvGetList(k))),
-    ]);
+    // Fan-out: all Notion DB queries + all KV reads in parallel, settled
+    // per source (F-FANOUT). A failing query degrades only its own slice
+    // to empty and the failure is named in `sourceErrors` on the payload;
+    // it no longer 503s the whole dashboard. Retries for the canonical
+    // sources already ran inside their query; this is the catch after
+    // retries are exhausted. Configuration was checked above; configured
+    // empty sources remain valid.
+    const settleNamed = async <T>(name: string, run: () => Promise<T[]>): Promise<{ values: T[]; error?: string }> => {
+      try {
+        return { values: await run() };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[/api/dashboard] Source ${name} failed; slice degraded to empty:`, message);
+        return { values: [], error: message };
+      }
+    };
 
-    const [movesPages, peoplePages, flowsPages, contentPages, moneyPages, openAsksPages, eventsPages, feedbackPages] = notionResults;
+    const notionSettled = await Promise.all([
+      settleNamed('moves',   () => secret && dbMoves   ? queryCanonicalNotionDatabase('moves', dbMoves, secret)   : Promise.resolve([])),
+      settleNamed('people',  () => secret && dbPeople  ? queryCanonicalNotionDatabase('people', dbPeople, secret)  : Promise.resolve([])),
+      settleNamed('flows',   () => secret && dbFlows   ? queryCanonicalNotionDatabase('flows', dbFlows, secret)   : Promise.resolve([])),
+      settleNamed('content', () => secret && dbContent ? queryCanonicalNotionDatabase('content', dbContent, secret) : Promise.resolve([])),
+      settleNamed('money',   () => secret && dbMoney   ? queryCanonicalNotionDatabase('money', dbMoney, secret)   : Promise.resolve([])),
+      // Optional sources retain their existing single-attempt query path.
+      settleNamed('openAsks', () => secret && dbOpenAsks ? queryNotionDatabase(dbOpenAsks, secret) : Promise.resolve([])),
+      settleNamed('events',   () => secret && dbEvents   ? queryNotionDatabase(dbEvents, secret)   : Promise.resolve([])),
+      settleNamed('feedback', () => secret && dbFeedback ? queryNotionDatabase(dbFeedback, secret) : Promise.resolve([])),
+    ]);
+    const kvSettled = await Promise.all(
+      KV_KEYS.map((k) => settleNamed(`kv:${k}`, () => kvGetList(k))),
+    );
+
+    const sourceErrors: Record<string, string> = {};
+    for (const [name, settled] of [
+      ...notionSettled.map((s, i) => [['moves', 'people', 'flows', 'content', 'money', 'openAsks', 'events', 'feedback'][i], s] as const),
+      ...kvSettled.map((s, i) => [`kv:${KV_KEYS[i]}`, s] as const),
+    ]) {
+      if (settled.error) sourceErrors[name] = settled.error;
+    }
+
+    const [movesPages, peoplePages, flowsPages, contentPages, moneyPages, openAsksPages, eventsPages, feedbackPages] =
+      notionSettled.map((s) => s.values);
     const [
       messages, braindumps, announcements, forumReplies,
       workshops, workshopPrograms, workshopResources,
       coflowCheckins, wellNotes, calendarEvents,
-    ] = kvResults;
+    ] = kvSettled.map((s) => s.values);
 
     const payload: SyncData = {
       // Notion-backed
@@ -215,7 +239,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     res.setHeader('Cache-Control', 'private, no-store');
-    res.json({ ...payload, syncFreshness });
+    res.json({ ...payload, syncFreshness, sourceErrors });
   } catch (err) {
     console.error('[/api/dashboard] Error building payload:', err);
     res.status(503).json({

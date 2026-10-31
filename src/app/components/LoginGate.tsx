@@ -10,7 +10,6 @@
  *   localStorage  cr8w_user_profile    = key   chosen profile key
  */
 import React, { useState, useCallback } from 'react';
-import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 
 // ── Default password ──────────────────────────────────────────────────────────
 // SHA-256 of "createwell" — set VITE_APP_PASSWORD_HASH to change it
@@ -128,7 +127,7 @@ export function LoginGate({ onAuthenticated }: Props) {
 
           {/* Brand */}
           <div style={{ textAlign: 'center', marginBottom: 28 }}>
-            <img src={cwLogoImg} alt="Create Well" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', marginBottom: 12, boxShadow: '0 4px 16px rgba(194,91,56,0.2)' }} />
+            <img src="/logo.svg" alt="Create Well" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'contain', padding: 3, boxSizing: 'border-box', marginBottom: 12, boxShadow: '0 4px 16px rgba(194,91,56,0.2)' }} />
             <div style={{ fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1.9rem', fontWeight: 700, color: '#C25B38', lineHeight: 1 }}>Create Well</div>
             <div style={{ fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.72rem', color: '#A07060', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 4 }}>CR8W Dashboard</div>
           </div>
@@ -187,7 +186,7 @@ export function LoginGate({ onAuthenticated }: Props) {
               <span style={{ fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.75rem', color: '#8A6A5A', userSelect: 'none' }}>Keep me signed in on this device</span>
             </label>
 
-            <button type="submit" disabled={checking || !pw.trim()} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: checking || !pw.trim() ? 'rgba(194,91,56,0.35)' : '#C25B38', color: '#fff', fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1rem', fontWeight: 600, cursor: checking || !pw.trim() ? 'default' : 'pointer', boxShadow: checking || !pw.trim() ? 'none' : '0 4px 16px rgba(194,91,56,0.3)', transition: 'background 0.15s' }}>
+            <button type="submit" disabled={checking || !pw.trim()} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: checking || !pw.trim() ? 'rgba(163,76,47,0.35)' : '#A34C2F', color: '#fff', fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1rem', fontWeight: 600, cursor: checking || !pw.trim() ? 'default' : 'pointer', boxShadow: checking || !pw.trim() ? 'none' : '0 4px 16px rgba(163,76,47,0.3)', transition: 'background 0.15s' }}>
               {checking ? 'Checking…' : 'Continue →'}
             </button>
           </form>

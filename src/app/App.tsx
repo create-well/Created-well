@@ -178,8 +178,7 @@ function usePWA() {
     ) {
       const icon = document.createElement("link");
       icon.rel = "apple-touch-icon";
-      icon.href =
-        "/assets/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png";
+      icon.href = "/logo.svg";
       document.head.appendChild(icon);
       injected.push(icon);
     }

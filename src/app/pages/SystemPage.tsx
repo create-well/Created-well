@@ -4,6 +4,8 @@ import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { CalendarConnectCard } from '../components/CalendarConnectCard';
 import { getHistoryReport, downloadHistoryCsv, getWorkspaceConflicts, type HistoryReport, type WorkspaceConflict } from '../components/api';
+import { freshnessBand } from '../../lib/freshnessLabel';
+import { ReleaseVerificationPanel } from '../components/ReleaseVerificationPanel';
 
 // Hub CMS database URLs — these are the four DBs the dashboard reads/writes.
 // Distinct from the operational five (PEOPLE/FLOWS/MOVES/MONEY/CONTENT) which
@@ -118,13 +120,14 @@ function HealthRow({ label, value, status }: { label: string; value: string; sta
 }
 
 function DataCountRow({
-  label, count, emoji, internalPath, notionHref,
+  label, count, emoji, internalPath, notionHref, source,
 }: {
   label: string;
   count: number;
   emoji: string;
   internalPath?: string;
   notionHref?: string;
+  source?: string;
 }) {
   return (
     <div style={{
@@ -141,7 +144,7 @@ function DataCountRow({
             to={internalPath}
             style={{
               fontFamily: 'var(--font-body)', fontSize: '0.78rem',
-              color: 'var(--cr8w-primary, #7BA89D)', textDecoration: 'none',
+              color: 'var(--cr8w-primary-text, #466F64)', textDecoration: 'none',
               fontWeight: 500,
             }}
           >
@@ -150,6 +153,11 @@ function DataCountRow({
         ) : (
           <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: 'var(--cr8w-text, #2D2438)' }}>
             {label}
+          </span>
+        )}
+        {source && (
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.68rem', color: 'var(--text-muted)', opacity: 0.75 }}>
+            · {source}
           </span>
         )}
       </span>
@@ -227,7 +235,7 @@ function RouteRow({ path, label, emoji, sources }: { path: string; label: string
           to={path}
           style={{
             fontFamily: 'var(--font-label)', fontSize: '0.73rem', fontWeight: 600,
-            color: 'var(--cr8w-primary, #7BA89D)', textDecoration: 'none',
+            color: 'var(--cr8w-primary-text, #466F64)', textDecoration: 'none',
           }}
         >
           {path}
@@ -281,16 +289,20 @@ export function SystemPage() {
     return () => { active = false; };
   }, []);
 
-  const syncColor = data.syncStatus === 'fresh' ? 'ok' :
-    data.syncStatus === 'stale' ? 'warn' :
-    data.syncStatus === 'failed' ? 'error' : 'neutral';
+  // Freshness wording derives from the load timestamp's age at render
+  // (G-26: the Fresh/Aging/Stale family, CMS §4 thresholds), never from a
+  // stored claim: the previous fresh label read "Synced {x ago}" beside a
+  // stale label in different vocabulary, with no Aging band.
+  const band = freshnessBand(data.lastSynced);
+  const syncColor = data.syncStatus === 'failed' ? 'error' :
+    data.syncStatus === 'loading' ? 'neutral' :
+    band === 'Fresh' ? 'ok' :
+    band ? 'warn' : 'neutral';
 
-  const syncLabel = {
-    loading: 'Connecting…',
-    fresh: data.lastSynced ? `Synced ${relativeTime(data.lastSynced)}` : 'Fresh',
-    stale: data.lastSynced ? `Stale · last ${relativeTime(data.lastSynced)}` : 'Stale',
-    failed: 'Sync failed',
-  }[data.syncStatus];
+  const syncLabel = data.syncStatus === 'loading' ? 'Connecting…' :
+    data.syncStatus === 'failed' ? 'Sync failed' :
+    band && data.lastSynced ? `${band} · last loaded ${relativeTime(data.lastSynced)}` :
+    'No successful load yet';
 
   return (
     <ViewShell state="fresh">
@@ -334,6 +346,13 @@ export function SystemPage() {
             label="Last sync"
             value={data.lastSynced ? data.lastSynced.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' }) : 'Never'}
             status={data.lastSynced ? 'neutral' : 'warn'}
+          />
+          {/* Run history has no store until the G-35 decision lands;
+              the placeholder standard marks the absence, never invents it. */}
+          <HealthRow
+            label="Run history"
+            value="[ ] run history"
+            status="neutral"
           />
           <HealthRow
             label="Permissions: Care consent"
@@ -410,16 +429,26 @@ export function SystemPage() {
           border: '1px solid var(--border-soft, rgba(196,164,132,0.15))',
           borderRadius: 12, padding: '4px 16px',
         }}>
-          <DataCountRow label="Tasks"        count={data.tasks.length}          emoji="⛲️" internalPath="/moves"  notionHref={NOTION_DB_LINKS.tasks} />
-          <DataCountRow label="Stations"     count={data.stations.length}       emoji="🗂️" internalPath="/moves"  notionHref={NOTION_DB_LINKS.stations} />
-          <DataCountRow label="Forum posts"  count={data.forum.length}          emoji="💬" internalPath="/moves"  notionHref={NOTION_DB_LINKS.forum} />
-          <DataCountRow label="Messages"     count={data.messages.length}       emoji="📨" internalPath="/care"   notionHref={NOTION_DB_LINKS.messages} />
-          <DataCountRow label="Workshops"    count={data.workshops.length}      emoji="🛠️" internalPath="/flows"  notionHref={NOTION_DB_LINKS.workshops} />
-          <DataCountRow label="CoFlow dates" count={data.coFlowDates.length}    emoji="🫧" internalPath="/flows"  notionHref={NOTION_DB_LINKS.coFlowDates} />
-          <DataCountRow label="Check-ins"    count={data.coFlowCheckins.length} emoji="✅" internalPath="/care"   notionHref={NOTION_DB_LINKS.checkins} />
-          <DataCountRow label="Well notes"   count={data.wellNotes.length}      emoji="💧" internalPath="/"       notionHref={NOTION_DB_LINKS.wellNotes} />
-          <DataCountRow label="Brain dumps"  count={data.brainDumps.length}     emoji="🧠" internalPath="/"       notionHref={NOTION_DB_LINKS.brainDumps} />
-          <DataCountRow label="Announcements" count={data.announcements.length} emoji="📢" internalPath="/"       notionHref={NOTION_DB_LINKS.announcements} />
+          <DataCountRow label="Tasks"        count={data.tasks.length}          emoji="⛲️" internalPath="/moves"  notionHref={NOTION_DB_LINKS.tasks} source="MOVES hub" />
+          <DataCountRow label="Stations"     count={data.stations.length}       emoji="🗂️" internalPath="/moves"  notionHref={NOTION_DB_LINKS.stations} source="MOVES hub" />
+          <DataCountRow label="Forum posts"  count={data.forum.length}          emoji="💬" internalPath="/moves"  notionHref={NOTION_DB_LINKS.forum} source="MOVES hub" />
+          <DataCountRow label="Messages"     count={data.messages.length}       emoji="📨" internalPath="/care"   notionHref={NOTION_DB_LINKS.messages} source="PEOPLE hub" />
+          <DataCountRow label="Workshops"    count={data.workshops.length}      emoji="🛠️" internalPath="/flows"  notionHref={NOTION_DB_LINKS.workshops} source="FLOWS hub" />
+          <DataCountRow label="CoFlow dates" count={data.coFlowDates.length}    emoji="🫧" internalPath="/flows"  notionHref={NOTION_DB_LINKS.coFlowDates} source="FLOWS hub" />
+          <DataCountRow label="Check-ins"    count={data.coFlowCheckins.length} emoji="✅" internalPath="/care"   notionHref={NOTION_DB_LINKS.checkins} source="PEOPLE hub" />
+          <DataCountRow label="Well notes"   count={data.wellNotes.length}      emoji="💧" internalPath="/"       notionHref={NOTION_DB_LINKS.wellNotes} source="CONTENT hub" />
+          <DataCountRow label="Brain dumps"  count={data.brainDumps.length}     emoji="🧠" internalPath="/"       notionHref={NOTION_DB_LINKS.brainDumps} source="CONTENT hub" />
+          <DataCountRow label="Announcements" count={data.announcements.length} emoji="📢" internalPath="/"       notionHref={NOTION_DB_LINKS.announcements} source="CONTENT hub" />
+        </div>
+
+        {/* Public release verification (G-11 Consumer 1) */}
+        <SectionHeader title="Public release" />
+        <div style={{
+          background: 'var(--cr8w-card-bg, #F4F1ED)',
+          border: '1px solid var(--border-soft, rgba(196,164,132,0.15))',
+          borderRadius: 12, padding: '4px 16px',
+        }}>
+          <ReleaseVerificationPanel workingRows={data.forum} />
         </div>
 
         {/* Content channels */}

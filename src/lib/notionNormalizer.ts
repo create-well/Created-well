@@ -122,13 +122,13 @@ export function stableId(notionId: string): number {
 //   Now → actively being worked on → in_progress
 //   Next → queued, ready to pick up → todo
 //   Done → completed → done
-//   Dropped → cancelled/deprioritised → done (no separate client state)
+//   Dropped → its own client state, not done
 const TASK_STATUS_MAP: Record<string, Task['status']> = {
   // Create Well MOVES canonical values
   'now':          'in_progress',
   'next':         'todo',
   'done':         'done',
-  'dropped':      'done',
+  'dropped':      'dropped',
   // Legacy / generic fallbacks
   'todo':         'todo',
   'not started':  'todo',
@@ -259,6 +259,45 @@ export function normalizePerson(page: NotionPage): Station {
     owner:        ownerRaw.toLowerCase(),
     created_at:   page.created_time,
   };
+}
+
+/**
+ * PEOPLE care aggregate for Home's Needs care panel (design diff
+ * §4: "consent gaps (PEOPLE)" — counts only, never values).
+ * A person counts as captured when the Consent multi-select carries
+ * any option OR a Consent Captured date is set; otherwise the row is
+ * a consent gap. Reads the raw pages dashboard.ts already fetched;
+ * no per-person data leaves this function.
+ */
+export function peopleCareCounts(pages: NotionPage[]): { total: number; consentGaps: number } {
+  let consentGaps = 0;
+  for (const page of pages) {
+    const p = page.properties;
+    const captured =
+      getMultiSelect(pick(p, 'Consent')).length > 0 ||
+      getDate(pick(p, 'Consent Captured')) !== '';
+    if (!captured) consentGaps += 1;
+  }
+  return { total: pages.length, consentGaps };
+}
+
+/**
+ * OPEN ASKS care aggregate for Home's Needs care panel (design diff
+ * §4: "unanswered asks" — counts only, never values). The field of
+ * record is Status (select): a row counts as unanswered when Status
+ * is Open or Waiting. Held is a deliberate hold and Parked / Done /
+ * Closed / Answered are settled states; all are excluded (packet:
+ * open-asks-home-count-packet-2026-10-30, settled path 2026-10-30).
+ * Reads the raw pages the sync path already fetched; no per-ask
+ * data leaves this function.
+ */
+export function openAsksCareCounts(pages: NotionPage[]): { total: number; unanswered: number } {
+  let unanswered = 0;
+  for (const page of pages) {
+    const status = getSelect(pick(page.properties, 'Status'));
+    if (status === 'Open' || status === 'Waiting') unanswered += 1;
+  }
+  return { total: pages.length, unanswered };
 }
 
 // ── CONTENT → ForumPost ───────────────────────────────────────────────────────
@@ -396,9 +435,8 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
       getUrl(pick(p, 'Public URL', 'Public Url', 'Link')) ||
       'TBD',
     host:         hostRaw.toLowerCase() || undefined,
-    flowType,
     theme:        themeRaw || undefined,
-    flowType:     typeRaw || undefined,
+    flowType:     flowType,
     rsvp:         {},
     agendaItems:  [],
     agendaLocked: false,
@@ -407,6 +445,83 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
     sessionNotes: retro || undefined,
     attendees:    [],
     status:       FLOW_STATUS_MAP[rawStatus] ?? 'idea',
+    created_at:   page.created_time,
+  };
+}
+
+// ── EVENTS → EventRecord ──────────────────────────────────────────────────────
+// Canonical EVENTS schema (Create Well OS; wired 2026-10-30, Amendment 2):
+//   Event           : Title
+//   Date            : Date
+//   Location        : Text
+//   Status          : Select
+//   Visibility      : Select
+//   Source          : Select
+//   Partiful link   : URL
+//   (Flow and Related to PEOPLE are Relations — never projected, the
+//   standing rule; GCal ID is an internal identifier, not a display field.)
+export interface EventRecord {
+  id: number;
+  notionPageId: string;
+  name: string;
+  date: string;
+  status: string;
+  location: string;
+  visibility: string;
+  source: string;
+  link: string;
+  created_at: string;
+}
+
+export function normalizeEvent(page: NotionPage): EventRecord {
+  const p = page.properties;
+  return {
+    id:           stableId(page.id),
+    notionPageId: page.id,
+    name:         getText(pick(p, 'Event', 'Name', 'Title')) || 'Untitled',
+    date:         getDate(pick(p, 'Date')) || '',
+    status:       getSelect(pick(p, 'Status')) || '',
+    location:     getText(pick(p, 'Location')) || '',
+    visibility:   getSelect(pick(p, 'Visibility')) || '',
+    source:       getSelect(pick(p, 'Source')) || '',
+    link:         getUrl(pick(p, 'Partiful link', 'Link')) || '',
+    created_at:   page.created_time,
+  };
+}
+
+// ── FEEDBACK → FeedbackRecord ─────────────────────────────────────────────────
+// Canonical FEEDBACK schema (Create Well OS; wired 2026-10-30, Amendment 2):
+//   Name            : Title
+//   Date            : Date
+//   Type            : Select
+//   Status          : Select
+//   Source          : Select
+//   Body            : Text (rides this session-gated internal payload like
+//   every other source's text fields; Person and Flow are Relations —
+//   never projected.)
+export interface FeedbackRecord {
+  id: number;
+  notionPageId: string;
+  name: string;
+  date: string;
+  type: string;
+  status: string;
+  source: string;
+  body: string;
+  created_at: string;
+}
+
+export function normalizeFeedback(page: NotionPage): FeedbackRecord {
+  const p = page.properties;
+  return {
+    id:           stableId(page.id),
+    notionPageId: page.id,
+    name:         getText(pick(p, 'Name', 'Title')) || 'Untitled',
+    date:         getDate(pick(p, 'Date')) || '',
+    type:         getSelect(pick(p, 'Type')) || '',
+    status:       getSelect(pick(p, 'Status')) || '',
+    source:       getSelect(pick(p, 'Source')) || '',
+    body:         getText(pick(p, 'Body')) || '',
     created_at:   page.created_time,
   };
 }

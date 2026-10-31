@@ -5,18 +5,13 @@ import * as api from '../app/components/api';
 import type { Task, Station, ForumPost, Message, BrainDump, Announcement, ForumReply } from '../app/components/api';
 import type { Workshop, WorkshopProgram, WorkshopResource } from '../app/components/api';
 import type { CoFlowDate, CoFlowCheckin, WellNote } from '../app/components/api';
-import {
-  DEFAULT_ANNOUNCEMENTS, STATIONS_DEFAULT,
-} from '../app/components/data';
 import { getStoredProfile } from '../app/components/AuthGate';
 import { shouldShowOnboarding } from '../app/components/WelcomeModal';
 import type { DashboardContextValue, DashboardPayload, SyncStatus } from '../types/dashboard';
-
-const DEFAULT_STATIONS_MAPPED: Station[] = STATIONS_DEFAULT.map(s => ({
-  ...s,
-  id: s.id,
-  created_at: undefined,
-}));
+import { displayedDashboardStatus } from '../lib/dashboardStatus';
+import { careConsentGranted } from '../lib/homePanels';
+import { localDateString } from '../lib/dateLabel';
+import { MoveDeleteNotice } from '../app/components/MoveDeleteNotice';
 
 const DashboardCtx = createContext<DashboardContextValue | null>(null);
 
@@ -34,11 +29,11 @@ interface DashboardProviderProps {
 export function DashboardProvider({ children, onSignOut }: DashboardProviderProps) {
   // ── Data state ───────────────────────────────────────────────────────────────
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [stations, setStations] = useState<Station[]>(DEFAULT_STATIONS_MAPPED);
+  const [stations, setStations] = useState<Station[]>([]);
   const [forum, setForum] = useState<ForumPost[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [brainDumps, setBrainDumps] = useState<BrainDump[]>([]);
-  const [announcements, setAnnouncements] = useState<Announcement[]>(DEFAULT_ANNOUNCEMENTS);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [forumReplies, setForumReplies] = useState<ForumReply[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [workshopPrograms, setWorkshopPrograms] = useState<WorkshopProgram[]>([]);
@@ -49,11 +44,18 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
 
   // ── Sync metadata ────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
+  // Legacy field name: successful payload reception, not source-sync time.
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [syncFreshness, setSyncFreshness] = useState<import('../lib/syncFreshnessLine').SyncFreshnessBlock | null>(null);
+  const [peopleCare, setPeopleCare] = useState<{ total: number; consentGaps: number } | null>(null);
+  const [openAsksCare, setOpenAsksCare] = useState<{ total: number; unanswered: number } | null>(null);
+  const [statusClock, setStatusClock] = useState(Date.now);
   const dataLoadedRef = useRef(false);
   const silentFailCount = useRef(0);
   const fetchSyncRef = useRef<((silent?: boolean) => Promise<void>) | undefined>(undefined);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [failedMoveDelete, setFailedMoveDelete] = useState<number | null>(null);
 
   // ── UI state ─────────────────────────────────────────────────────────────────
   const initialProfile = getStoredProfile() ?? 'monny';
@@ -116,7 +118,14 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     // Use /api/dashboard (Notion-backed) as the primary sync source.
     // Fallback: on error keep the last-good payload visible (stale state).
     // Poll floor: 60s — respects the "no polling storms" constraint.
+    let active = true;
+    let inFlight = false;
+    const clock = setInterval(() => setStatusClock(Date.now()), 30_000);
+
     async function fetchSync(silent = false) {
+      if (!active || inFlight) return;
+      inFlight = true;
+      if (!silent && !dataLoadedRef.current) setSyncStatus('loading');
       try {
         // /api/dashboard (Notion-backed) only exists on Vercel. Skip the attempt
         // entirely when running against the Supabase Edge Function to avoid a
@@ -137,12 +146,21 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
           data = await api.sync();
           usedFallback = true;
         }
+        if (!active) return;
+        // Delivery-state block (FE-3): only the primary payload carries
+        // it; the fallback path may not claim delivery state, so a
+        // fallback load clears it rather than leaving a stale claim.
+        setSyncFreshness(usedFallback ? null : (data.syncFreshness ?? null));
+        // PEOPLE care aggregate: same rule — only the primary payload
+        // carries it; a fallback load clears it, never a stale count.
+        setPeopleCare(usedFallback ? null : (data.peopleCare ?? null));
+        setOpenAsksCare(usedFallback ? null : (data.openAsksCare ?? null));
         setTasks(data.tasks || []);
-        setStations(data.stations?.length ? data.stations : DEFAULT_STATIONS_MAPPED);
+        setStations(data.stations || []);
         setForum(data.forum || []);
         setMessages(deduplicateSystemMessages(data.messages || []));
         setBrainDumps(data.braindumps || []);
-        if (data.announcements?.length) setAnnouncements(data.announcements);
+        setAnnouncements(data.announcements || []);
         setForumReplies(data.forumReplies || []);
         setWorkshops(data.workshops || []);
         setWorkshopPrograms(data.workshopPrograms || []);
@@ -151,22 +169,19 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
         setSyncStatus(usedFallback ? 'stale' : 'fresh');
-        setLastSynced(new Date());
+        const receivedAt = Date.now();
+        setLastSynced(new Date(receivedAt));
+        setStatusClock(receivedAt);
         silentFailCount.current = 0;
         if (!dataLoadedRef.current) { dataLoadedRef.current = true; }
       } catch (e) {
+        if (!active) return;
         silentFailCount.current += 1;
         console.error('Dashboard sync error:', e);
-        // On first load: show empty data as stale rather than hard-failing.
-        // The UI stays usable; the status bar tells the team the backend is unreachable.
-        // On subsequent failures (≥2): degrade to failed so the persistent
-        // banner appears, but only after the team has seen real data at least once.
-        if (!dataLoadedRef.current) {
-          dataLoadedRef.current = true;
-          setSyncStatus('stale');
-        } else if (silentFailCount.current >= 2) {
-          setSyncStatus('failed');
-        }
+        // Preserve last-good data, but never keep a failed refresh green.
+        setSyncStatus(dataLoadedRef.current ? 'stale' : 'failed');
+      } finally {
+        inFlight = false;
       }
     }
 
@@ -178,6 +193,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     const MAX_INTERVAL = 300_000;
 
     function schedulePoll() {
+      if (!active) return;
       pollRef.current = setTimeout(async () => {
         await fetchSyncRef.current?.(true);
         pollInterval = silentFailCount.current > 0
@@ -188,16 +204,21 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     }
     schedulePoll();
 
-    return () => { if (pollRef.current) clearTimeout(pollRef.current as any); };
+    return () => {
+      active = false;
+      clearInterval(clock);
+      fetchSyncRef.current = undefined;
+      if (pollRef.current) clearTimeout(pollRef.current);
+    };
   }, []);
 
   // ── Wednesday reminder ───────────────────────────────────────────────────────
   const wednesdayReminderSent = useRef(false);
   useEffect(() => {
-    if (syncStatus === 'loading' || wednesdayReminderSent.current) return;
+    if (syncStatus !== 'fresh' || !dataLoadedRef.current || wednesdayReminderSent.current) return;
     const today = new Date();
     if (today.getDay() !== 3) return;
-    const key = `cr8w_wed_reminder_${today.toISOString().split('T')[0]}`;
+    const key = `cr8w_wed_reminder_${localDateString(today)}`;
     if (localStorage.getItem(key)) { wednesdayReminderSent.current = true; return; }
     const reminderContent = "[REMINDER] 📋 It's Wednesday! Time to drop your weekly check-in on PlayD8s before the next behind h0es doors. Head to PlayD8s → Check-In tab.";
     if (messages.some(m => m.author === 'system' && m.content?.trim() === reminderContent)) {
@@ -250,9 +271,13 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     },
     async deleteTask(id: number) {
       try {
-        setTasks(prev => prev.filter(t => t.id !== id));
         await api.deleteTask(id);
-      } catch (e) { console.error('Delete task error:', e); }
+        setTasks(prev => prev.filter(t => t.id !== id));
+        setFailedMoveDelete(prev => prev === id ? null : prev);
+      } catch (e) {
+        console.error('Delete task error:', e);
+        setFailedMoveDelete(id);
+      }
     },
 
     // Stations
@@ -467,11 +492,11 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         const prev = coFlowDates.find(d => d.id === id);
         setCoFlowDates(p => p.map(d => d.id === id ? { ...d, ...updates } : d));
         await api.updateCoFlowDate(id, updates);
-        if (prev && (updates.date || updates.startTime || updates.endTime || updates.location || updates.host || updates.theme) && updates.status !== 'archived') {
+        if (prev && (updates.date || updates.startTime || updates.endTime || updates.location || updates.host || updates.theme) && updates.status !== 'wrapped') {
           const dateLabel = new Date((updates.date || prev.date) + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
           sendSystemMessage(`[UPDATE] ✏️ behind h0es doors updated → ${dateLabel} · ${updates.location || prev.location || 'TBD'}`);
         }
-        if (updates.status === 'archived' && prev) {
+        if (updates.status === 'wrapped' && prev) {
           const dateLabel = new Date(prev.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           sendSystemMessage(`[UPDATE] 📚 behind h0es doors (${dateLabel}) has been archived.`);
         }
@@ -538,14 +563,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   };
 
   // ── Compute stale status ─────────────────────────────────────────────────────
-  const STALE_THRESHOLD = 5 * 60 * 1000;
-  const computedSyncStatus: SyncStatus = syncStatus === 'failed'
-    ? 'failed'
-    : syncStatus === 'loading'
-    ? 'loading'
-    : lastSynced && (Date.now() - lastSynced.getTime() > STALE_THRESHOLD)
-    ? 'stale'
-    : 'fresh';
+  const computedSyncStatus = displayedDashboardStatus(syncStatus, lastSynced, statusClock);
 
   const data: DashboardPayload = {
     tasks,
@@ -563,8 +581,13 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     wellNotes,
     syncStatus: computedSyncStatus,
     lastSynced,
+    syncFreshness,
+    peopleCare,
+    openAsksCare,
     permissions: {
-      careConsent: true,
+      // Derived from the PEOPLE census (lib/homePanels) — granted
+      // only at a complete census; never hard-coded.
+      careConsent: careConsentGranted(peopleCare),
     },
   };
 
@@ -582,6 +605,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   return (
     <DashboardCtx.Provider value={{ data, actions, ui }}>
       {children}
+      {failedMoveDelete !== null && <MoveDeleteNotice onDismiss={() => setFailedMoveDelete(null)} />}
     </DashboardCtx.Provider>
   );
 }

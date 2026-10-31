@@ -31,9 +31,33 @@ const BASE = resolveApiBase();
 // /api/dashboard only exists as a Vercel serverless function; not present on the Edge Function.
 export const isDashboardAvailable = BASE.endsWith('/server');
 
-// Default auth header for the Edge Function and non-report API calls.
-// Report endpoints replace it with the signed-in Supabase Auth access token.
-const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` };
+// API requests use the current Supabase user access token when present. The
+// publishable key remains a fallback for pre-auth flows and the Edge Function.
+const SESSION_STORAGE_KEY = 'cr8w_supabase_auth';
+
+export function sessionAccessToken(): string | null {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const session = parsed?.currentSession ?? parsed;
+    const token = session?.access_token;
+    if (!token || typeof token !== 'string') return null;
+    const expiresAt = session?.expires_at;
+    if (typeof expiresAt === 'number' && expiresAt * 1000 <= Date.now()) return null;
+    return token;
+  } catch {
+    return null;
+  }
+}
+
+function authHeaders(): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${sessionAccessToken() ?? API_KEY}`,
+  };
+}
 
 function getAuthStorage(): StorageReader | null {
   try {
@@ -56,7 +80,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     try {
       const res = await fetch(`${BASE}${path}`, {
         method,
-        headers: headersForApiRequest(path, headers, getAuthStorage()),
+        headers: headersForApiRequest(path, authHeaders(), getAuthStorage()),
         body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
@@ -210,7 +234,7 @@ export const downloadHistoryCsv = async (from?: string, to?: string) => {
   if (from) params.set('from', from);
   if (to) params.set('to', to);
   const path = `/reports/history.csv${params.toString() ? `?${params}` : ''}`;
-  const res = await fetch(`${BASE}${path}`, { headers: headersForApiRequest(path, headers, getAuthStorage()) });
+  const res = await fetch(`${BASE}${path}`, { headers: headersForApiRequest(path, authHeaders(), getAuthStorage()) });
   if (!res.ok) throw new Error(`GET /reports/history.csv → ${res.status}`);
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
@@ -239,7 +263,7 @@ export async function fetchDashboard(): Promise<SyncData> {
   const timeoutId = setTimeout(() => controller.abort(), 10_000);
   try {
     const res = await fetch(DASHBOARD_URL, {
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
+      headers: authHeaders(),
       signal: controller.signal,
     });
     if (!res.ok) {
@@ -380,11 +404,13 @@ export interface CoFlowDate {
   endTime?: string;
   location: string;
   host?: string;
-  /** Structured Type from FLOWS hub DB select (Podyap/Workshop/Book Club/…). Prefer over `theme` for filtering. */
+  /** Structured Type from FLOWS hub DB select (Podyap/Workshop/Book Club/…). Prefer over `theme` for filtering.
+      The normalizer writes the validated FlowType (the FLOW_TYPES lookup in notionNormalizer): a select
+      value inside the union lands in canonical casing; a value outside it writes undefined, and the raw
+      label survives on `theme`. */
   flowType?: FlowType;
   /** Free-text topic label; fallback when flowType is absent. */
   theme?: string;
-  flowType?: string;
   rsvp: Record<string, string>;
   agendaItems: { id: number; text: string; lead: string; timeEstimate: number; done: boolean }[];
   agendaLocked?: boolean;
@@ -429,6 +455,12 @@ export interface MoneyRecord {
 }
 
 export interface SyncData {
+  /** Delivery-state freshness block (PR #50); absent on the fallback sync path. */
+  syncFreshness?: import('../../lib/syncFreshnessLine').SyncFreshnessBlock;
+  /** PEOPLE consent-care aggregate (counts only, never values); absent when PEOPLE did not load. */
+  peopleCare?: { total: number; consentGaps: number };
+  /** OPEN ASKS care aggregate (counts only, never values); absent when OPEN ASKS did not load. */
+  openAsksCare?: { total: number; unanswered: number };
   tasks: Task[];
   stations: Station[];
   forum: ForumPost[];
@@ -444,6 +476,33 @@ export interface SyncData {
   wellNotes: WellNote[];
   calendarEvents: CalendarEventKV[];
   money?: MoneyRecord[];
+  events?: EventRecord[];
+  feedback?: FeedbackRecord[];
+}
+
+export interface EventRecord {
+  id: number;
+  notionPageId: string;
+  name: string;
+  date: string;
+  status: string;
+  location: string;
+  visibility: string;
+  source: string;
+  link: string;
+  created_at: string;
+}
+
+export interface FeedbackRecord {
+  id: number;
+  notionPageId: string;
+  name: string;
+  date: string;
+  type: string;
+  status: string;
+  source: string;
+  body: string;
+  created_at: string;
 }
 
 export interface CalendarEventKV {

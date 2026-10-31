@@ -5,7 +5,9 @@
  *   • Notion databases (MOVES → tasks, PEOPLE → stations, FLOWS → coflowDates, CONTENT → forum)
  *   • Supabase KV store (messages, braindumps, workshops, and all other non-Notion collections)
  *
- * Caching: CDN s-maxage=60 + in-process 55s cache so Notion is never hit more than ~once/min.
+ * Caching: none shared. The payload is per-user and session-gated, so the
+ * response is private/no-store and there is no in-process payload cache.
+ * Auth: a valid Supabase user session is required (see api/_auth.ts).
  * Secrets: NOTION_SECRET and all DB IDs live here only — never in the client bundle.
  *
  * Required env vars (set in Vercel dashboard):
@@ -21,14 +23,24 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { applyCors, requireSession } from './_auth.js';
+import { hasDashboardConfiguration } from './_dashboard-config.js';
+import { getSyncFreshness } from './_sync-engine.js';
+import { queryCanonicalNotionDatabase } from './_notion-sources.js';
 import {
   normalizeMove,
   normalizePerson,
+  peopleCareCounts,
+  openAsksCareCounts,
   normalizeContent,
   normalizeFlow,
   normalizeMoney,
+  normalizeEvent,
+  normalizeFeedback,
   type NotionPage,
   type MoneyRecord,
+  type EventRecord,
+  type FeedbackRecord,
 } from '../src/lib/notionNormalizer.js';
 import type { SyncData } from '../src/app/components/api';
 
@@ -100,31 +112,21 @@ async function queryNotionDatabase(databaseId: string, secret: string): Promise<
   return pages;
 }
 
-// ── In-process cache (warm-start optimisation; CDN cache is the primary gate) ─
-
-interface CacheEntry {
-  payload: SyncData;
-  ts: number;
-}
-
-let cache: CacheEntry | null = null;
-const PROCESS_CACHE_TTL = 55_000; // slightly under CDN 60s
-
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  applyCors(req, res);
 
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  // Serve from in-process cache if still fresh
-  if (cache && Date.now() - cache.ts < PROCESS_CACHE_TTL) {
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
-    res.setHeader('X-Cache', 'HIT');
-    res.json(cache.payload);
+  // The payload is internal data; a valid user session is required.
+  if (!(await requireSession(req, res))) return;
+
+  // An unconfigured source is unknown, never a successfully empty source.
+  if (!hasDashboardConfiguration(process.env)) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(503).json({ error: 'Dashboard sources are not configured' });
     return;
   }
 
@@ -134,6 +136,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const dbFlows    = process.env.NOTION_DB_FLOWS;
   const dbContent  = process.env.NOTION_DB_CONTENT;
   const dbMoney    = process.env.NOTION_DB_MONEY;
+  const dbOpenAsks = process.env.NOTION_DB_OPEN_ASKS;
+  const dbEvents   = process.env.NOTION_DB_EVENTS;
+  const dbFeedback = process.env.NOTION_DB_FEEDBACK;
 
   // KV keys for data not yet migrated to Notion
   const KV_KEYS = [
@@ -151,19 +156,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // Fan-out: all Notion DB queries + all KV reads in parallel.
-    // Missing env vars resolve to empty arrays — never a hard failure.
+    // Configuration was checked above; configured empty sources remain valid.
     const [notionResults, kvResults] = await Promise.all([
       Promise.all([
-        secret && dbMoves   ? queryNotionDatabase(dbMoves, secret)   : Promise.resolve([]),
-        secret && dbPeople  ? queryNotionDatabase(dbPeople, secret)  : Promise.resolve([]),
-        secret && dbFlows   ? queryNotionDatabase(dbFlows, secret)   : Promise.resolve([]),
-        secret && dbContent ? queryNotionDatabase(dbContent, secret) : Promise.resolve([]),
-        secret && dbMoney   ? queryNotionDatabase(dbMoney, secret)   : Promise.resolve([]),
+        secret && dbMoves   ? queryCanonicalNotionDatabase('moves', dbMoves, secret)   : Promise.resolve([]),
+        secret && dbPeople  ? queryCanonicalNotionDatabase('people', dbPeople, secret)  : Promise.resolve([]),
+        secret && dbFlows   ? queryCanonicalNotionDatabase('flows', dbFlows, secret)   : Promise.resolve([]),
+        secret && dbContent ? queryCanonicalNotionDatabase('content', dbContent, secret) : Promise.resolve([]),
+        secret && dbMoney   ? queryCanonicalNotionDatabase('money', dbMoney, secret)   : Promise.resolve([]),
+        // Optional sources retain their existing single-attempt query path.
+        secret && dbOpenAsks ? queryNotionDatabase(dbOpenAsks, secret) : Promise.resolve([]),
+        secret && dbEvents   ? queryNotionDatabase(dbEvents, secret)   : Promise.resolve([]),
+        secret && dbFeedback ? queryNotionDatabase(dbFeedback, secret) : Promise.resolve([]),
       ]),
       Promise.all(KV_KEYS.map(k => kvGetList(k))),
     ]);
 
-    const [movesPages, peoplePages, flowsPages, contentPages, moneyPages] = notionResults;
+    const [movesPages, peoplePages, flowsPages, contentPages, moneyPages, openAsksPages, eventsPages, feedbackPages] = notionResults;
     const [
       messages, braindumps, announcements, forumReplies,
       workshops, workshopPrograms, workshopResources,
@@ -174,9 +183,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Notion-backed
       tasks:             movesPages.map(normalizeMove),
       stations:          peoplePages.map(normalizePerson),
+      peopleCare:        peopleCareCounts(peoplePages),
+      openAsksCare:      openAsksCareCounts(openAsksPages),
       forum:             contentPages.map(normalizeContent),
       coflowDates:       flowsPages.map(normalizeFlow),
       money:             moneyPages.map(normalizeMoney) as MoneyRecord[],
+      events:            eventsPages.map(normalizeEvent) as EventRecord[],
+      feedback:          feedbackPages.map(normalizeFeedback) as FeedbackRecord[],
       // KV-backed (passed through; typed by trust — these were written by our own API)
       messages:          messages          as SyncData['messages'],
       braindumps:        braindumps        as SyncData['braindumps'],
@@ -190,16 +203,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       calendarEvents:    calendarEvents    as SyncData['calendarEvents'],
     };
 
-    cache = { payload, ts: Date.now() };
+    // Sync freshness from delivery state (reader decision, 2026-10-27):
+    // the same computed block /api/snapshot serves, attached here so the
+    // dashboard's freshness line derives from real sync state instead of
+    // self-reporting "not verified". getSyncFreshness is fail-soft per
+    // source (a store problem reads "unknown"), so this never fails the
+    // payload.
+    const syncFreshness = {
+      generatedAt: new Date().toISOString(),
+      sources: await getSyncFreshness(Date.now()),
+    };
 
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
-    res.setHeader('X-Cache', 'MISS');
-    res.json(payload);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.json({ ...payload, syncFreshness });
   } catch (err) {
     console.error('[/api/dashboard] Error building payload:', err);
     res.status(503).json({
       error: 'Failed to build dashboard payload',
-      detail: err instanceof Error ? err.message : String(err),
     });
   }
 }

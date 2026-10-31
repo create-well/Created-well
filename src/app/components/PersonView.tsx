@@ -5,6 +5,7 @@ import {
   getDaysToLaunch, formatDate, formatEventDate, formatTimestamp, getEventColor, truncate, capitalize, getDayOfYear,
   type ActionItem, type MomentumItem, type NoteItem, type Station
 } from './data';
+import { parseDateValue, DATE_NOT_SET, calendarDayDiff } from '../../lib/dateLabel';
 
 type PersonTab = 'flow' | 'work' | 'depth';
 
@@ -16,19 +17,19 @@ interface PersonViewProps {
   wellNotes: NoteItem[];
   stations: Station[];
   onAddTask: () => void;
-  onUpdateTaskStatus: (id: number, status: string) => void;
+  onUpdateTaskStatus: (id: number, status: ActionItem['status']) => void;
   onAddMomentum: (content: string, person: string) => void;
   onAddNote: (content: string, author: string) => void;
 }
 
-const STATUS_ORDER = ['todo', 'in_progress', 'done', 'blocked'];
+const STATUS_ORDER: ActionItem['status'][] = ['todo', 'in_progress', 'done', 'blocked'];
 
 // Due-soon / overdue helper
 function getDueClass(due_date?: string, status?: string): string {
   if (!due_date || status === 'done') return '';
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const due = new Date(due_date + 'T00:00:00');
-  const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = calendarDayDiff(today, due);
   if (diffDays < 0) return 'overdue';
   if (diffDays <= 3) return 'due-soon';
   return '';
@@ -99,7 +100,7 @@ export function PersonView({
   const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
   const personEvents = CALENDAR_EVENTS
     .filter(e => e.persons.includes(person) && new Date(e.date + 'T00:00:00') >= todayDate)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    .sort((a, b) => (parseDateValue(a.date)?.getTime() ?? 0) - (parseDateValue(b.date)?.getTime() ?? 0));
 
   const urgentItems = personItems.filter(i => i.status !== 'done').sort((a, b) => {
     if (a.priority === 'high' && b.priority !== 'high') return -1;
@@ -364,13 +365,19 @@ export function PersonView({
           <div className="upcoming-events">
             <h3 className="section-title" style={{ marginTop: '24px' }}>Upcoming Events</h3>
             {upcomingCal.map((e, i) => {
-              const d = new Date(e.date + 'T00:00:00');
+              const d = parseDateValue(e.date);
               return (
                 <div key={i} className="event-card">
-                  <div className="event-date-box">
-                    <div className="event-date-month">{d.toLocaleString('en-US', { month: 'short' })}</div>
-                    <div className="event-date-day">{d.getDate()}</div>
-                  </div>
+                  {d ? (
+                    <div className="event-date-box">
+                      <div className="event-date-month">{d.toLocaleString('en-US', { month: 'short' })}</div>
+                      <div className="event-date-day">{d.getDate()}</div>
+                    </div>
+                  ) : (
+                    <div className="event-date-box">
+                      <div className="event-date-month">{DATE_NOT_SET}</div>
+                    </div>
+                  )}
                   <div>
                     <div className="event-info-title">{e.title}</div>
                     <div className="event-info-detail">{e.time || ''}{e.location ? ' · ' + e.location : ''}</div>

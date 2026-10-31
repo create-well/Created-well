@@ -5,7 +5,7 @@ import { useCalendarSync } from '../../lib/useCalendarSync';
 // all <button> elements below are raw HTML with this justification applied globally.
 
 function formatSyncTime(date: Date | null): string {
-  if (!date) return 'never';
+  if (!date || !Number.isFinite(date.getTime())) return 'never';
   const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
   if (diffSec < 60) return 'just now';
   if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
@@ -382,7 +382,7 @@ export function CalendarConnectCard({ profileKey = 'monny' }: CalendarConnectCar
         </div>
       </div>
 
-      {/* Primary CTA — Sunshine #C25B38 */}
+      {/* Primary CTA — dark rust #A34C2F (white text 5.78:1, FE-7 pairing) */}
       <button
         onClick={() => connect(profileKey)}
         onMouseDown={() => setCtaDown(true)}
@@ -392,7 +392,7 @@ export function CalendarConnectCard({ profileKey = 'monny' }: CalendarConnectCar
           ...LABEL,
           fontSize: '0.82rem',
           color: '#fff',
-          background: ctaDown ? '#a8461e' : hovered ? '#d4643c' : '#C25B38',
+          background: ctaDown ? '#83391F' : hovered ? '#964226' : '#A34C2F',
           border: 'none',
           borderRadius: 8,
           padding: '12px 20px',

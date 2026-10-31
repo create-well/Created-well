@@ -9,6 +9,7 @@ import type { Task, Station, ForumPost, Announcement, CalendarEventKV } from './
 import type { ForumReply as ApiForumReply, InviteCounts } from './api';
 import * as api from './api';
 import { HowWeFlowReference } from './HowWeFlowReference';
+import { parseDateValue, DATE_NOT_SET, calendarDayDiff } from '../../lib/dateLabel';
 
 type GeyserTab = 'overview' | 'journey' | 'stations' | 'tasks' | 'forum';
 
@@ -29,7 +30,7 @@ interface GeyserViewProps {
   forumReplies?: ApiForumReply[];
   defaultTab?: GeyserTab;
   onAddTask: () => void;
-  onUpdateTaskStatus: (id: number, status: string) => void;
+  onUpdateTaskStatus: (id: number, status: Task['status']) => void;
   onUpdateTask: (id: number, updates: Partial<Task>) => void;
   onDeleteTask: (id: number) => void;
   onDismissAnnouncement: (id: number) => void;
@@ -61,7 +62,7 @@ function getDueClass(due_date?: string, status?: string): string {
   if (!due_date || status === 'done') return '';
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const due = new Date(due_date + 'T00:00:00');
-  const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = calendarDayDiff(today, due);
   if (diffDays < 0) return 'overdue';
   if (diffDays <= 3) return 'due-soon';
   return '';
@@ -102,10 +103,56 @@ function InlineEdit({ value, onSave, className, style, multiline }: {
       className={className}
       style={{ cursor: 'text', ...style }}
       onClick={() => { setDraft(value); setEditing(true); }}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDraft(value); setEditing(true); }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label="Edit"
       title="Click to edit"
     >
       {value}
     </span>
+  );
+}
+
+// Blocked By input with a controlled per-task draft.
+// The draft synchronizes with task.source when the input is not being
+// edited, so a refresh cannot leave stale text that later overwrites
+// refreshed data on blur. While editing, external updates are not
+// forced into the draft. On blur, only a genuine local change is saved:
+// the draft is compared with the focus-time baseline, not with the
+// latest value, so an untouched field adopts the refreshed value
+// instead of saving its old draft over it.
+// Copilot review 5645962245, Oct 25 2026 04:43 PM PDT, and Vercel bot
+// review 5645949232, Oct 25 2026 04:41 PM PDT, same Escape bug:
+// discussion r4372965864, Escape left the input focused with editing
+// false, so typing again without a new focus let a refresh replace the
+// draft; discussion r4372965885, an untouched focused field saved its
+// old draft over a refreshed value on blur.
+// Escape fix: reset draft and baseline to the latest value, and keep
+// editing active until the actual blur event, so a later refresh while
+// still focused does not replace the resumed draft. Cancellation alone
+// saves nothing, because draft equals baseline on blur.
+function BlockedByInput({ value, onSave }: {
+  value: string; onSave: (v: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  const [editing, setEditing] = useState(false);
+  const [baseline, setBaseline] = useState(value);
+  useEffect(() => { if (!editing) { setDraft(value); setBaseline(value); } }, [value, editing]);
+  return (
+    <input
+      type="text"
+      aria-label="Blocked By"
+      placeholder="Blocked By"
+      value={draft}
+      onFocus={() => { setEditing(true); setBaseline(value); setDraft(value); }}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={() => { setEditing(false); if (draft !== baseline) onSave(draft); }}
+      onKeyDown={e => { if (e.key === 'Escape') { setDraft(value); setBaseline(value); } }}
+      style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)' }}
+    />
   );
 }
 
@@ -120,6 +167,7 @@ export function GeyserView({
 }: GeyserViewProps) {
   const [activeTab, setActiveTab] = useState<GeyserTab>(defaultTab || 'overview');
   const [taskFilter, setTaskFilter] = useState<string>('all');
+  const [detailTaskId, setDetailTaskId] = useState<number | null>(null);
   const [forumAuthor, setForumAuthor] = useState<string>('sunshine');
   const [forumDraft, setForumDraft] = useState('');
   const [forumTag, setForumTag] = useState<string>('update');
@@ -237,10 +285,10 @@ export function GeyserView({
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 }}>
                 {upcoming.map(ev => {
-                  const startDate = new Date(ev.start);
-                  const isToday = startDate.toDateString() === new Date().toDateString();
-                  const dateLabel = startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                  const timeLabel = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+                  const startDate = parseDateValue(ev.start);
+                  const isToday = startDate !== null && startDate.toDateString() === new Date().toDateString();
+                  const dateLabel = startDate ? startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : DATE_NOT_SET;
+                  const timeLabel = startDate ? startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase() : '';
                   return (
                     <div key={ev.id.replace(/^kv-/, '')} style={{
                       display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
@@ -771,7 +819,8 @@ export function GeyserView({
               const role = TASK_ROLES[task.person];
               const dueClass = getDueClass(task.due_date, task.status);
               return (
-                <div key={task.id} className={`card ${dueClass}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
+                <React.Fragment key={task.id}>
+                <div className={`card ${dueClass}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
                   <div className="geyser-task-person-dot" style={{ background: role?.color || '#A89888' }} title={role ? `${role.name} — ${role.sub}` : task.person}>
                     {role?.emoji || '?'}
                   </div>
@@ -786,21 +835,87 @@ export function GeyserView({
                       {task.due_date && <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: dueClass === 'overdue' ? '#D45050' : 'var(--text-muted)' }}>Due {formatDate(task.due_date)}</span>}
                       {task.category && <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.6rem', color: 'var(--text-muted)', background: 'var(--sandstone)', padding: '1px 6px', borderRadius: 4 }}>{task.category}</span>}
                     </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <label style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Due</label>
+                      <input
+                        type="date"
+                        aria-label="Due date"
+                        value={task.due_date ? task.due_date.slice(0, 10) : ''}
+                        onChange={e => onUpdateTask(task.id, { due_date: e.target.value })}
+                        style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)' }}
+                      />
+                      <label style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Blocked By</label>
+                      <BlockedByInput
+                        value={task.source || ''}
+                        onSave={v => onUpdateTask(task.id, { source: v })}
+                      />
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                     <select
                       value={task.status}
-                      onChange={e => onUpdateTaskStatus(task.id, e.target.value)}
+                      onChange={e => onUpdateTaskStatus(task.id, e.target.value as Task['status'])}
                       style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
                     >
                       <option value="todo">To Do</option>
                       <option value="in_progress">In Progress</option>
                       <option value="done">Done</option>
                       <option value="blocked">Blocked</option>
+                      <option value="dropped">Dropped</option>
                     </select>
                     <button onClick={() => onDeleteTask(task.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.7rem', color: 'var(--text-muted)', padding: 4 }}>🗑</button>
+                    <button onClick={() => setDetailTaskId(detailTaskId === task.id ? null : task.id)} aria-expanded={detailTaskId === task.id} aria-label={detailTaskId === task.id ? "Close task detail" : "Open task detail"} style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Detail</button>
                   </div>
                 </div>
+                {detailTaskId === task.id && (
+                  <div className="card" aria-label={`Task detail for ${task.title}`} style={{ padding: '12px 16px', marginTop: -4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 700 }}>Task detail</span>
+                      <button onClick={() => setDetailTaskId(null)} aria-label="Close task detail" style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Close</button>
+                    </div>
+                    <div style={{ marginTop: 8 }}>
+                      <InlineEdit
+                        value={task.title}
+                        onSave={v => onUpdateTask(task.id, { title: v })}
+                        style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <label htmlFor={`detail-status-${task.id}`} style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Status</label>
+                      <select
+                        id={`detail-status-${task.id}`}
+                        aria-label="Status"
+                        value={task.status}
+                        onChange={e => onUpdateTaskStatus(task.id, e.target.value as Task['status'])}
+                        style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                      >
+                        <option value="todo">To Do</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="done">Done</option>
+                        <option value="blocked">Blocked</option>
+                        <option value="dropped">Dropped</option>
+                      </select>
+                      <label style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Due</label>
+                      <input
+                        type="date"
+                        aria-label="Due date"
+                        value={task.due_date ? task.due_date.slice(0, 10) : ''}
+                        onChange={e => onUpdateTask(task.id, { due_date: e.target.value })}
+                        style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)' }}
+                      />
+                      <button onClick={() => onUpdateTask(task.id, { due_date: '' })} aria-label="Clear due date" style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>Clear due date</button>
+                      <label style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Blocked By</label>
+                      <BlockedByInput
+                        value={task.source || ''}
+                        onSave={v => onUpdateTask(task.id, { source: v })}
+                      />
+                    </div>
+                    <div style={{ marginTop: 8, fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                      Priority: {task.priority} · Category: {task.category || 'none'} · Closing this detail does not discard a saved value, because detail saves already happened on blur or change.
+                    </div>
+                  </div>
+                )}
+                </React.Fragment>
               );
             })}
           </div>

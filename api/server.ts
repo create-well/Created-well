@@ -6,8 +6,8 @@
  *   • All 14 resource types are persisted in Supabase KV (primary, fast, always-on).
  *   • The 4 Notion-backed types (tasks, stations, forum, coflow-dates) are also
  *     written to Notion when NOTION_SECRET and the matching NOTION_DB_* env vars
- *     are present.  Notion writes are best-effort: a Notion failure logs the error
- *     but does not block the KV write or the HTTP response.
+ *     are present.  Notion writes are truthful: a Notion failure returns 502
+ *     and KV is unchanged, instead of returning success with KV changed.
  *   • notionPageId is stored on every KV item that was successfully written to
  *     Notion so subsequent PUT/DELETE can target the correct Notion page.
  */
@@ -16,6 +16,7 @@ import { createClient } from '@supabase/supabase-js';
 import { authorizeDashboardRequest, isProtectedReportRoute, isValidCronBearer, verifySupabaseUserToken } from './_dashboard-auth.js';
 import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './notionWriter.js';
 import { appendCheckinToWorkspace, appendWellNoteToWorkspace, canonicalCheckinHash, canonicalNoteHash, syncWorkspaceToDatabase, updateWellNoteInWorkspace } from './workspaceSync.js';
+import { applyCors, requireSession, requireSessionOrCron } from './_auth.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 function supabase() {
@@ -85,13 +86,6 @@ async function setList(key: string, list: any[]): Promise<void> {
   await kvSet(key, JSON.stringify(list));
 }
 
-// ── CORS headers ──────────────────────────────────────────────────────────────
-function cors(res: VercelResponse): void {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-}
-
 // ── Body parser ───────────────────────────────────────────────────────────────
 function body(req: VercelRequest): Promise<any> {
   return new Promise((resolve) => {
@@ -106,7 +100,7 @@ function body(req: VercelRequest): Promise<any> {
 
 // ── Route dispatcher ─────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  cors(res);
+  applyCors(req, res);
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
   // Resolve path: supports both /api/server/sync and /api/server?path=sync
@@ -119,6 +113,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const segments = rawPath.split('/').filter(Boolean);
   const [resource, id, sub, subId] = segments;
   const method = req.method ?? 'GET';
+
+  // ── Auth gate (Phase 1 security candidate, see api/_auth.ts) ──────────────
+  // Open by design (pre-auth flows): health, gcal-token-exchange,
+  // username-lookup, register-username. Session-or-cron: invite-counts POST
+  // (Apps Script pushes counts) and calendar-ical-sync (scheduled sync).
+  // Everything else — /sync, generic CRUD, settings, calendar-events,
+  // parking-lot, invite-counts GET — requires a valid user session.
+  const isOpenRoute =
+    resource === 'health' ||
+    (resource === 'gcal-token-exchange' && method === 'POST') ||
+    (resource === 'username-lookup' && method === 'POST') ||
+    (resource === 'register-username' && method === 'POST');
+  const isCronOrSessionRoute =
+    (resource === 'invite-counts' && method === 'POST') ||
+    resource === 'calendar-ical-sync' ||
+    resource === 'workspace-sync';
+
+  if (!isOpenRoute) {
+    const allowed = isCronOrSessionRoute
+      ? await requireSessionOrCron(req, res)
+      : await requireSession(req, res);
+    if (!allowed) return;
+  }
 
   try {
     // ── Health ────────────────────────────────────────────────────────────────
@@ -137,7 +154,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ];
       const sb = supabase();
       const { data, error } = await sb.from(TABLE).select('key,value').in('key', SYNC_KEYS);
-      if (error) { res.status(500).json({ error: error.message }); return; }
+      if (error) { res.status(500).json({ error: 'Sync failed' }); return; }
       const map: Record<string, any[]> = {};
       for (const row of data ?? []) map[row.key] = parseList(row.value);
       const [{ data: canonicalNotes }, { data: canonicalCheckins }] = await Promise.all([
@@ -429,7 +446,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.json({ ok: true, count: events.length, synced_at: new Date().toISOString() });
         return;
       } catch (err: any) {
-        res.status(500).json({ error: `iCal sync failed: ${err.message}` });
+        console.error('iCal sync failed:', err);
+        res.status(500).json({ error: 'iCal sync failed' });
         return;
       }
     }
@@ -472,26 +490,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ── Notion dual-write helper ───────────────────────────────────────────────
-    // Fires-and-forgets a Notion sync; never throws so KV writes always succeed.
-    async function syncToNotion(action: 'create' | 'update' | 'archive', item?: any): Promise<string | undefined> {
+    // Truthful Notion sync; see syncToNotion below.
+    // ── Notion dual-write helper ───────────────────────────────────────────────
+    // Truthful, not best-effort: a Notion failure is returned to the caller,
+    // so the caller can leave KV unchanged. A KV item without a notionPageId
+    // is KV-only and is reported as not_linked, never as a Notion success.
+    async function syncToNotion(action: 'create' | 'update' | 'archive', item?: any): Promise<{ ok: boolean; notionPageId?: string; error?: string; skipped?: string }> {
       const cfg = NOTION_RESOURCES[resource];
-      if (!cfg) return undefined;
+      if (!cfg) return { ok: true, skipped: 'not_notion_backed' };
       const dbId = process.env[cfg.dbIdEnvVar];
-      if (!dbId || !process.env.NOTION_SECRET) return undefined;
+      if (!dbId || !process.env.NOTION_SECRET) return { ok: false, error: 'notion_not_configured' };
       try {
         if (action === 'create' && item) {
-          return await notionCreate(dbId, cfg.toProperties(item));
+          const notionPageId = await notionCreate(dbId, cfg.toProperties(item));
+          return { ok: true, notionPageId };
         }
         if (action === 'update' && item?.notionPageId) {
           await notionUpdate(item.notionPageId, cfg.toProperties(item));
+          return { ok: true };
         }
         if (action === 'archive' && item?.notionPageId) {
           await notionArchive(item.notionPageId);
+          return { ok: true };
         }
-      } catch (err) {
+        return { ok: false, skipped: 'no_notion_page_id' };
+      } catch (err: any) {
         console.error(`[notionWriter] ${action} failed for ${resource}:`, err);
+        return { ok: false, error: err?.message || String(err) };
       }
-      return undefined;
     }
 
     // ── Generic list CRUD (GET all / POST new / PUT :id / DELETE :id) ─────────
@@ -504,9 +530,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const b = await body(req);
         const list = await getList(kvKey);
         const item: Record<string, any> = { ...b, id: Date.now(), created_at: new Date().toISOString() };
-        // Notion dual-write for the 4 CMS-backed types
-        const notionPageId = await syncToNotion('create', item);
-        if (notionPageId) item.notionPageId = notionPageId;
+        // Notion dual-write for the 4 CMS-backed types.
+        // Truthful outcome: a Notion failure returns 502 and KV is unchanged.
+        const sync = await syncToNotion('create', item);
+        if (!sync.ok && sync.error) { res.status(502).json({ error: 'Notion write failed, KV unchanged', notion_error: 'notion_write_failed' }); return; }
+        if (sync.notionPageId) item.notionPageId = sync.notionPageId;
         // Forum and messages prepend; others append
         if (resource === 'forum' || resource === 'braindumps' || resource === 'announcements') list.unshift(item);
         else if (resource === 'messages') { list.push(item); if (list.length > 500) list.splice(0, list.length - 500); }
@@ -520,16 +548,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const idx = list.findIndex((x: any) => String(x.id) === String(id));
         if (idx === -1) { res.status(404).json({ error: 'Not found' }); return; }
         list[idx] = { ...list[idx], ...b, id: list[idx].id, updated_at: new Date().toISOString() };
-        // Notion dual-write: update if item has a notionPageId
-        await syncToNotion('update', list[idx]);
+        // Notion dual-write: update if item has a notionPageId.
+        // Truthful outcome: a Notion failure returns 502 and KV is unchanged.
+        const sync = await syncToNotion('update', list[idx]);
+        if (!sync.ok && sync.error) { res.status(502).json({ error: 'Notion update failed, KV unchanged', notion_error: 'notion_write_failed' }); return; }
         await setList(kvKey, list);
-        res.json(list[idx]); return;
+        res.json({ ...list[idx], notion_sync: sync.ok ? 'ok' : 'not_linked' }); return;
       }
       if (method === 'DELETE' && id) {
         const list = await getList(kvKey);
         const target = list.find((x: any) => String(x.id) === String(id));
-        // Notion dual-write: archive if item has a notionPageId
-        if (target) await syncToNotion('archive', target);
+        // The dashboard can include Notion-only Moves without a KV shadow.
+        // Without a trusted stored target, do not report a canonical deletion.
+        if (resource === 'tasks' && !target) {
+          res.status(409).json({ error: 'Move has no stored canonical target; nothing was deleted', code: 'move_target_not_found', notion_sync: 'not_linked' });
+          return;
+        }
+        // Notion dual-write: archive if item has a notionPageId.
+        // Truthful outcome: a Notion failure returns 502 and KV is unchanged.
+        if (target) {
+          // MOVES is canonical in Notion. Never discard an unlinked KV copy
+          // or imply its canonical record was archived.
+          if (resource === 'tasks' && !target.notionPageId) {
+            res.status(409).json({ error: 'Move is not linked to Notion; nothing was deleted', code: 'notion_link_required', notion_sync: 'not_linked' });
+            return;
+          }
+          const sync = await syncToNotion('archive', target);
+          if (!sync.ok && sync.error) { res.status(502).json({ error: 'Notion archive failed, KV unchanged', notion_error: 'notion_write_failed' }); return; }
+        }
         await setList(kvKey, list.filter((x: any) => String(x.id) !== String(id)));
         res.json({ ok: true }); return;
       }
@@ -574,6 +620,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(404).json({ error: `Unknown route: ${method} /${rawPath}` });
   } catch (e: any) {
     console.error('API error:', e);
-    res.status(500).json({ error: e?.message ?? String(e) });
+    res.status(500).json({ error: 'Internal error' });
   }
 }

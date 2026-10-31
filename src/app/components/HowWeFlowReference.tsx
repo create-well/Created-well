@@ -248,7 +248,7 @@ export function HowWeFlowReference() {
                   fontSize: '0.71rem',
                   fontWeight: 600,
                   letterSpacing: '0.02em',
-                  background: section === tab.key ? '#C25B38' : 'rgba(194,91,56,0.09)',
+                  background: section === tab.key ? '#A34C2F' : 'rgba(194,91,56,0.09)',
                   color: section === tab.key ? '#fff' : '#C25B38',
                   transition: 'background 0.15s, color 0.15s',
                 }}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
+import { shortDateLabel } from '../../lib/dateLabel';
 
 interface Decision {
   id: string;
@@ -65,7 +66,7 @@ function DecisionCard({
           fontFamily: 'var(--font-label)', fontSize: '0.62rem',
           color: '#30D158', marginTop: 4,
         }}>
-          ✓ Decided {decision.decidedAt ? new Date(decision.decidedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
+          ✓ Decided {shortDateLabel(decision.decidedAt, '')}
         </div>
       </div>
     );

@@ -5,6 +5,8 @@ import { ViewShell } from '../components/ViewShell';
 import type { CoFlowDate } from '../components/api';
 import { FlowCommandCenter } from '../components/FlowCommandCenter';
 import { isPodyap } from '../../lib/flows';
+import { eventDateLabel, parseDateValue, calendarDayDiff } from '../../lib/dateLabel';
+import { ReleaseStatusStrip } from '../components/ReleaseStatusStrip';
 
 const PODCAST_PLATFORMS = [
   { label: 'Spotify',        emoji: '🎵', href: 'https://open.spotify.com/show/0Tj253e1ZAE7vsKd4Tffvi',                                                                                color: '#1DB954' },
@@ -18,13 +20,11 @@ const PODCAST_PLATFORMS = [
 function daysUntil(dateStr: string): number {
   const target = new Date(dateStr + 'T00:00:00');
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  return calendarDayDiff(today, target);
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric',
-  });
+  return eventDateLabel(dateStr);
 }
 
 function StatusPill({ status }: { status: string }) {
@@ -54,6 +54,7 @@ function PodyapCard({ p, expanded, onToggle }: { p: CoFlowDate; expanded: boolea
   const isPast = days < 0;
   const isToday = days === 0;
   const themeLabel = p.flowType ?? (p.theme || 'Podyap');
+  const pDate = parseDateValue(p.date);
 
   return (
     <div
@@ -77,9 +78,9 @@ function PodyapCard({ p, expanded, onToggle }: { p: CoFlowDate; expanded: boolea
           fontFamily: 'var(--font-label)', fontSize: '0.62rem', fontWeight: 700,
           textAlign: 'center', minWidth: 52,
         }}>
-          <div>{new Date(p.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short' })}</div>
+          <div>{pDate ? pDate.toLocaleDateString('en-US', { month: 'short' }) : 'No date'}</div>
           <div style={{ fontSize: '1rem', lineHeight: 1.1 }}>
-            {new Date(p.date + 'T00:00:00').getDate()}
+            {pDate ? pDate.getDate() : '—'}
           </div>
         </div>
 
@@ -256,6 +257,9 @@ export function PodyapsPage() {
             Create Well's recorded gatherings — Podyaps, Book Clubs & more
           </p>
         </div>
+
+        {/* Release status (G-11 Consumer 2) */}
+        <ReleaseStatusStrip />
 
         {/* Podyap Preflight (Omar's Operations Room) */}
         <div style={{ marginBottom: 24 }}>

@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 import { PERSONS } from './data';
 import type { Message } from './api';
 import { showToast } from './Toast';
@@ -93,6 +92,7 @@ type AnyMsg = (Message | SyncMsg) & { isSync?: boolean };
 function formatMsgTime(ts?: string) {
   if (!ts) return '';
   const d = new Date(ts);
+  if (!Number.isFinite(d.getTime())) return '';
   const diffMs = Date.now() - d.getTime();
   const m = Math.floor(diffMs / 60000);
   if (m < 1)  return 'just now';
@@ -692,7 +692,7 @@ export function MessageDrawer({
 
     const tagBorder = msgTag && TAG_META[msgTag] ? `2px solid ${TAG_META[msgTag].color}44` : undefined;
 
-    const TYPE_BADGE: Partial<Record<ParsedPrefix, { icon: string; label: string; color: string }>> = {
+    const TYPE_BADGE: Partial<Record<Exclude<ParsedPrefix, null>, { icon: string; label: string; color: string }>> = {
       UPDATE:   { icon: '\u{1F4CC}', label: 'Update',   color: '#E8A090' },
       REMINDER: { icon: '\u{1F550}', label: 'Reminder', color: '#FF9F0A' },
       IDEA:     { icon: '\u{1F4A1}', label: 'Idea',      color: '#FFD60A' },
@@ -946,7 +946,7 @@ export function MessageDrawer({
         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(123,168,157,0.4), 0 2px 8px rgba(0,0,0,0.12)'; }}
         title="Open CR8W Chat"
       >
-        <img src={cwLogoImg} alt="CR8W" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover' }} />
+        <img src="/logo.svg" alt="CR8W" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'contain', padding: 3, boxSizing: 'border-box' }} />
         {unreadCount > 0 && (
           <span style={{
             position: 'absolute', top: -3, right: -3,
@@ -991,7 +991,7 @@ export function MessageDrawer({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src={cwLogoImg} alt="CW" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+          <img src="/logo.svg" alt="CW" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'contain', padding: 3, boxSizing: 'border-box' }} />
           <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', fontWeight: 600, color: '#fff' }}>CR8W Chat</span>
           {unreadCount > 0 && (
             <span style={{

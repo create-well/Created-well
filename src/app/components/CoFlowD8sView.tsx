@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, X, MapPin, Clock, Users, ChevronDown, ChevronUp, Lock, Unlock, Edit3, ExternalLink, Archive, Calendar } from 'lucide-react';
 import { PERSONS, capitalize, formatTimestamp } from './data';
+import { parseDateValue, dateLabel, shortDateLabel, DATE_NOT_SET, calendarDayDiff, localDateString } from '../../lib/dateLabel';
 import type { CoFlowDate, CoFlowCheckin, CalendarEventKV } from './api';
 import * as api from './api';
 
@@ -45,28 +46,26 @@ function getNextFriday(): string {
   const day = d.getDay();
   const diff = (5 - day + 7) % 7 || 7;
   d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
+  return localDateString(d);
 }
 
 function formatD8(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  return dateLabel(dateStr, { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
 function formatD8Short(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return shortDateLabel(dateStr);
 }
 
 function getDayOfWeekLabel(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  return dateLabel(dateStr, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 }
 
 function getCountdown(dateStr: string): { label: string; urgent: boolean } {
+  const d = parseDateValue(dateStr);
+  if (!d) return { label: DATE_NOT_SET, urgent: false };
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const d = new Date(dateStr + 'T00:00:00');
-  const diffDays = Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = calendarDayDiff(today, d);
   if (diffDays === 0) return { label: 'TODAY!', urgent: true };
   if (diffDays === 1) return { label: 'TOMORROW', urgent: true };
   if (diffDays < 0) return { label: `${Math.abs(diffDays)} days ago`, urgent: false };
@@ -75,7 +74,8 @@ function getCountdown(dateStr: string): { label: string; urgent: boolean } {
 
 function isUpcoming(dateStr: string): boolean {
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  return new Date(dateStr + 'T00:00:00') >= today;
+  const d = parseDateValue(dateStr);
+  return d !== null && d >= today;
 }
 
 function getTimeDisplay(d8: CoFlowDate): string {
@@ -147,10 +147,10 @@ export function CoFlowD8sView({
 
   // Wednesday check-in stats
   const isWednesday = new Date().getDay() === 3;
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = localDateString();
   const thisWeekStart = (() => {
     const d = new Date(); d.setDate(d.getDate() - d.getDay());
-    return d.toISOString().split('T')[0];
+    return localDateString(d);
   })();
   const weekCheckins = coflowCheckins.filter(c => c.created_at && c.created_at >= thisWeekStart);
   const checkedInPersons = new Set(weekCheckins.map(c => c.author));
@@ -313,10 +313,10 @@ export function CoFlowD8sView({
                   >Open Calendar ↗</a>
                 </div>
                 {upcoming.map(ev => {
-                  const startDate = new Date(ev.start);
-                  const isToday = startDate.toDateString() === new Date().toDateString();
-                  const dateLabel = startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                  const timeLabel = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+                  const startDate = parseDateValue(ev.start);
+                  const isToday = startDate !== null && startDate.toDateString() === new Date().toDateString();
+                  const dateLabel = startDate ? startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : DATE_NOT_SET;
+                  const timeLabel = startDate ? startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase() : '';
                   return (
                     <div key={ev.id} style={{
                       ...cardStyle, marginBottom: 8, padding: '10px 14px',
@@ -984,7 +984,7 @@ function CheckinForm({ onSubmit, nextD8 }: {
   const [agendaText, setAgendaText] = useState('');
   const [notes, setNotes] = useState('');
 
-  const weekOf = new Date().toISOString().split('T')[0];
+  const weekOf = localDateString();
 
   return (
     <div style={{ ...cardStyle, marginBottom: 20, animation: 'cw-fadeInUp 0.3s ease' }}>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
+import { dateLabel, localDateString } from '../../lib/dateLabel';
 
 interface MoneyEntry {
   id: string;
@@ -41,13 +42,13 @@ function MoneySection({
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState('');
   const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(localDateString());
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!label.trim() || !amount) return;
     onAdd({ label: label.trim(), amount: parseFloat(amount), date, category });
-    setLabel(''); setAmount(''); setDate(new Date().toISOString().split('T')[0]);
+    setLabel(''); setAmount(''); setDate(localDateString());
     setAdding(false);
   }
 
@@ -104,7 +105,7 @@ function MoneySection({
                   {entry.label}
                 </div>
                 <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted, #6B5F7A)', marginTop: 1 }}>
-                  {new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {dateLabel(entry.date, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </div>
               </div>
               <span style={{

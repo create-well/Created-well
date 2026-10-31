@@ -17,7 +17,10 @@ export const MOCK_PAYLOAD: DashboardPayload = {
   wellNotes: [],
   syncStatus: 'fresh',
   lastSynced: new Date(),
+  syncFreshness: null,
+  peopleCare: null,
+  openAsksCare: null,
   permissions: {
-    careConsent: true,
+    careConsent: false,
   },
 };

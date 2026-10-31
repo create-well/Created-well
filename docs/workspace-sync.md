@@ -8,7 +8,7 @@ The migration backfills the existing Well Notes JSON-string payload and preserve
 
 ## Live mirror
 
-Vercel runs `GET /api/server/workspace-sync` every five minutes. The adapter maintains two Google Sheets tabs:
+The checked-in `vercel.json` declares `/api/server/workspace-sync` at `0 9 * * *` (daily at 09:00 UTC). Verify the deployed schedule and environment bindings in Vercel; static configuration alone does not confirm live execution. The adapter maintains two Google Sheets tabs:
 
 - `Well Notes`: `id`, `content`, `landed`, `created_at`, `updated_at`, `source_hash`
 - `Care Loop Check-ins`: `id`, `week_of`, `author`, `confirm_time`, `location_suggestion`, `agenda_items`, `mood`, `time_preference`, `notes`, `created_at`, `updated_at`, `source_hash`

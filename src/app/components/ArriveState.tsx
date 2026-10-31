@@ -72,6 +72,7 @@ export function ArriveState({ onDismiss }: { onDismiss: () => void }) {
           return (
             <button
               key={m.key}
+              aria-pressed={isActive}
               onClick={() => !selected && handleSelect(m.key)}
               style={{
                 padding: '8px 18px',

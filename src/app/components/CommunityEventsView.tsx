@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useDashboard } from '../../contexts/DashboardContext';
+import { localDateString } from '../../lib/dateLabel';
 import {
   PERSONS, TASK_ROLES, HD_PROFILES,
   getDaysToNextEvent, formatDate,
@@ -47,7 +48,7 @@ function statusPill(status: string) {
 }
 
 function FlowCard({ flow }: { flow: CoFlowDate }) {
-  const dateStr = flow.date ? formatDate(flow.date) : 'Date TBD';
+  const dateStr = flow.date ? formatDate(flow.date) : 'Date not set yet.';
   const hostPerson = flow.host ? PERSONS[flow.host] : null;
   return (
     <div style={{
@@ -106,7 +107,7 @@ function EmptyState({ emoji, title, body }: { emoji: string; title: string; body
 // ── Upcoming tab ──────────────────────────────────────────────────────────────
 
 function UpcomingTab({ flows }: { flows: CoFlowDate[] }) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateString();
   const upcoming = flows.filter(f => f.date >= today && !FLOW_ARCHIVED.has(f.status)).sort((a, b) => a.date.localeCompare(b.date));
   const past     = flows.filter(f => !f.date || f.date < today || FLOW_ARCHIVED.has(f.status)).sort((a, b) => b.date.localeCompare(a.date));
   const daysToNext = getDaysToNextEvent(upcoming);
@@ -191,7 +192,7 @@ function PodyapsTab({ flows }: { flows: CoFlowDate[] }) {
     <EmptyState emoji="🎙️" title="No Podyaps yet" body="Yapcasts and Playdates from FLOWS will appear here. Add a FLOW in Notion with Type = Yapcast or Playdate." />
   );
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateString();
   const upcoming = flows.filter(f => f.date >= today && !FLOW_ARCHIVED.has(f.status)).sort((a, b) => a.date.localeCompare(b.date));
   const past     = flows.filter(f => !f.date || f.date < today || FLOW_ARCHIVED.has(f.status)).sort((a, b) => b.date.localeCompare(a.date));
 

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 import { PERSONS } from './data';
 
 interface WelcomeModalProps {
@@ -222,13 +221,15 @@ export function WelcomeModal({ activeUser, onDismiss }: WelcomeModalProps) {
           }}
         >
           <img
-            src={cwLogoImg}
+            src="/logo.svg"
             alt="CR8W"
             style={{
               width: 48,
               height: 48,
               borderRadius: '50%',
-              objectFit: 'cover',
+              objectFit: 'contain',
+              padding: 3,
+              boxSizing: 'border-box',
               marginBottom: 10,
               border: '2px solid rgba(123,168,157,0.2)',
             }}

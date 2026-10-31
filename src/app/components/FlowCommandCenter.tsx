@@ -13,6 +13,9 @@ import {
 } from "lucide-react";
 import { useDashboard } from "../../contexts/DashboardContext";
 import type { CoFlowDate } from "./api";
+import { flowsProvenanceText } from "../../lib/freshnessLabel";
+import { localDateString } from "../../lib/dateLabel";
+import type { SyncStatus } from "../../types/dashboard";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -50,7 +53,7 @@ function weekDays(anchor: Date) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
     return {
-      iso:     d.toISOString().slice(0, 10),
+      iso:     localDateString(d),
       short:   d.toLocaleDateString("en-US", { weekday: "short" }),
       num:     d.getDate(),
       isToday: d.toDateString() === anchor.toDateString(),
@@ -69,11 +72,11 @@ function nextFriday(): string {
   const d = new Date();
   const delta = (5 - d.getDay() + 7) % 7 || 7;
   d.setDate(d.getDate() + delta);
-  return d.toISOString().slice(0, 10);
+  return localDateString(d);
 }
 
 function pickNextFlow(flows: CoFlowDate[]): CoFlowDate | undefined {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString();
   return flows
     .filter((f) => UPCOMING.has(f.status) && (!f.date || f.date >= today))
     .sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"))[0];
@@ -94,23 +97,18 @@ function getRecoveryHours(flows: CoFlowDate[]): number | null {
   return null;
 }
 
-function syncTime(lastSynced: Date | null): string {
-  if (!lastSynced) return "never";
-  return lastSynced.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-}
-
 // ── Section 7: Sync Provenance Chip ───────────────────────────────────────────
-function SyncProvenanceChip({ lastSynced, syncStatus }: { lastSynced: Date | null; syncStatus: string }) {
+// Wording derives from the sync status at render (G-25): no state claims
+// "Synced" — a dashboard load is transport recency only. See
+// src/lib/freshnessLabel.ts (flowsProvenanceText).
+function SyncProvenanceChip({ lastSynced, syncStatus }: { lastSynced: Date | null; syncStatus: SyncStatus }) {
   const fresh = syncStatus === "fresh";
   const dotColor = fresh ? "var(--color-success, #437a22)" : "var(--color-warning, #964219)";
   return (
     <div className="flex items-center gap-1.5 self-start rounded-lg border border-border bg-card px-3 py-1.5 md:self-auto">
       <span className="size-2 shrink-0 rounded-full" style={{ background: dotColor }} aria-hidden="true" />
       <span className="font-['Blinker'] text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground">
-        Synced from Notion FLOWS
-      </span>
-      <span className="hidden font-['Montserrat'] text-[11px] text-muted-foreground sm:inline">
-        · {syncTime(lastSynced)}
+        {flowsProvenanceText(syncStatus, lastSynced)}
       </span>
     </div>
   );
@@ -542,7 +540,7 @@ export function FlowCommandCenter() {
               {[
                 { Icon: Volume2, label: "Rodecaster Pro", detail: "Noise Gate OFF · Compressor ON · Limiter ON −3 dB" },
                 { Icon: Mic2,    label: "Mics",           detail: "Boom stands + pop filters · calibrated −16 dB to −12 dB" },
-                { Icon: Video,   label: "DJI Osmo",       detail: "Synced · battery 100% · backup audio rolling" },
+                { Icon: Video,   label: "DJI Osmo",       detail: "battery 100% · backup audio rolling" },
               ].map(({ Icon, label, detail }) => (
                 <div key={label} className="flex gap-3 rounded-lg bg-muted/55 p-3">
                   <Icon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />

@@ -12,16 +12,13 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId } from '/utils/supabase/info';
 import { lookupUsername, registerUsername } from './api';
-import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 
 // ── Supabase browser client ───────────────────────────────────────────────────
 // SUPABASE_ANON_JWT: JWT anon key required by Supabase Auth (signIn, signUp, etc.)
-// publicAnonKey from info.tsx is the sb_publishable key used for Edge Function calls.
 const SUPABASE_URL = `https://${projectId}.supabase.co`;
 const SUPABASE_ANON_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlydHFjeWdyaWVkdmRpanBwbnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjMwOTEsImV4cCI6MjEwNDczOTA5MX0.tmItTHhTcsV7yLNUv7XiECJ4wY6_sA87PUIcD4hYU5Y";
-const BASE = `https://${projectId}.supabase.co/functions/v1/make-server-dabe1c74`;
 
 // Persist on window so HMR module re-evaluations reuse the same GoTrueClient
 // and avoid the "Multiple GoTrueClient instances" warning.
@@ -73,6 +70,22 @@ export function isAuthenticated(): boolean {
   } catch { return false; }
 }
 
+// Client startup is not an authentication decision. Expired stored sessions
+// still need Supabase to validate them and attempt a refresh when possible.
+function hasStoredSessionForRefresh(): boolean {
+  try {
+    const raw = localStorage.getItem('cr8w_supabase_auth');
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    const session = parsed?.currentSession ?? parsed;
+    if (!session || typeof session !== 'object' || Array.isArray(session)) return false;
+    return (
+      (typeof session.expires_at === 'number' && Number.isFinite(session.expires_at)) ||
+      (typeof session.refresh_token === 'string' && session.refresh_token.trim().length > 0)
+    );
+  } catch { return false; }
+}
+
 export function getStoredProfile(): string | null {
   try { return localStorage.getItem('cr8w_user_profile'); } catch { return null; }
 }
@@ -102,20 +115,20 @@ type Mode = 'signin' | 'register' | 'reset' | 'newpassword';
 
 function Screen({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg,#FAF6F2 0%,#F4EDE6 40%,#EDE4DA 100%)', padding: '24px 16px', fontFamily: 'var(--font-body,"Montserrat",sans-serif)' }}>
+    <main className="cr8w-auth" style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg,#FAF6F2 0%,#F4EDE6 40%,#EDE4DA 100%)', padding: '24px 16px', fontFamily: 'var(--font-body,"Montserrat",sans-serif)' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
         <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '50vw', height: '50vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(194,91,56,0.12) 0%,transparent 70%)' }} />
         <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '40vw', height: '40vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(123,168,157,0.14) 0%,transparent 70%)' }} />
       </div>
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 420 }}>{children}</div>
-    </div>
+    </main>
   );
 }
 
 const inputStyle: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 10,
   border: '1.5px solid rgba(212,167,113,0.4)', background: 'rgba(255,255,255,0.92)',
-  fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.95rem', color: '#2D2438', outline: 'none',
+  fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '1rem', color: '#2D2438',
 };
 const labelStyle: React.CSSProperties = {
   display: 'block', fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.72rem',
@@ -145,6 +158,25 @@ export function AuthGate({ onAuthenticated }: Props) {
 
   useEffect(() => {
     let active = true;
+
+    // Lazy init: do NOT create the browser Supabase client on a signed-out
+    // root. Creating it on mount acquires the Navigator LockManager lock
+    // (lock:cr8w_supabase_auth) even when no session exists, and that
+    // acquisition can fail immediately in a single tab.
+    // Only create the client on mount when a session may already exist:
+    // a stored session in localStorage, including expired access data so
+    // Supabase can validate or refresh it, or a
+    // password-recovery arrival (URL hash carries a recovery token, which
+    // needs a client to handle). A plain signed-out root renders
+    // Sign In/Register with no client. Sign-in, register, reset, and
+    // set-new-password handlers create the client on user interaction,
+    // via client().
+    const hasStoredSession = hasStoredSessionForRefresh();
+    const isRecoveryArrival = typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
+    if (!hasStoredSession && !isRecoveryArrival) {
+      setCheckingSession(false);
+      return;
+    }
 
     // Listen for PASSWORD_RECOVERY: fires when user arrives via a reset-password email link.
     // SIGNED_OUT fires when GoTrueClient's internal token refresh fails (e.g. stale/revoked
@@ -203,16 +235,15 @@ export function AuthGate({ onAuthenticated }: Props) {
     if (!email.trim() || !password) return;
     setBusy(true); setError(''); setNotice('');
 
-    // Resolve username → email via Edge Function before Supabase auth
+    // Resolve username → email via the app server (username-lookup route)
+    // before Supabase auth. lookupUsername throws on an unknown username.
     let resolvedEmail = email.trim().toLowerCase();
     if (!resolvedEmail.includes('@')) {
-      const res = await fetch(`${BASE}/resolve-username`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
-        body: JSON.stringify({ username: resolvedEmail }),
-      });
-      if (!res.ok) { setError('Sign in failed'); triggerShake(); setBusy(false); return; }
-      resolvedEmail = (await res.json()).email;
+      try {
+        resolvedEmail = await lookupUsername(resolvedEmail);
+      } catch {
+        setError('Sign in failed'); triggerShake(); setBusy(false); return;
+      }
     }
 
     const { data, error: err } = await client().auth.signInWithPassword({
@@ -303,7 +334,7 @@ export function AuthGate({ onAuthenticated }: Props) {
     return (
       <Screen>
         <div style={{ textAlign: 'center', color: '#A07060', fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.85rem' }}>
-          <img src={cwLogoImg} alt="Create Well" style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', marginBottom: 14, opacity: 0.85 }} />
+          <img src="/logo.svg" alt="" onError={e => { e.currentTarget.hidden = true; }} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'contain', padding: 3, boxSizing: 'border-box', marginBottom: 14, opacity: 0.85 }} />
           <div>loading…</div>
         </div>
       </Screen>
@@ -316,8 +347,8 @@ export function AuthGate({ onAuthenticated }: Props) {
 
         {/* Brand */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <img src={cwLogoImg} alt="Create Well" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', marginBottom: 10, boxShadow: '0 4px 16px rgba(194,91,56,0.2)' }} />
-          <div style={{ fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1.8rem', fontWeight: 700, color: '#C25B38', lineHeight: 1 }}>Create Well</div>
+          <img src="/logo.svg" alt="" onError={e => { e.currentTarget.hidden = true; }} style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'contain', padding: 3, boxSizing: 'border-box', marginBottom: 10, boxShadow: '0 4px 16px rgba(194,91,56,0.2)' }} />
+          <h1 style={{ margin: 0, fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1.8rem', fontWeight: 700, color: '#C25B38', lineHeight: 1 }}>Create Well</h1>
           <div style={{ fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.7rem', color: '#A07060', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 4 }}>CR8W Dashboard</div>
         </div>
 
@@ -326,7 +357,8 @@ export function AuthGate({ onAuthenticated }: Props) {
           <div style={{ display: 'flex', gap: 4, padding: 4, background: 'rgba(194,91,56,0.06)', borderRadius: 12, marginBottom: 22 }}>
             {(['signin', 'register'] as Mode[]).map(m => (
               <button key={m} type="button" onClick={() => { setMode(m); setError(''); setNotice(''); }}
-                style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.03em', background: mode === m ? '#C25B38' : 'transparent', color: mode === m ? '#fff' : '#A07060', transition: 'all 0.15s' }}>
+                aria-pressed={mode === m}
+                style={{ flex: 1, minHeight: 44, padding: '9px', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.03em', background: mode === m ? '#A34C2F' : 'transparent', color: mode === m ? '#fff' : '#A07060', transition: 'background-color 0.15s, color 0.15s, border-color 0.15s' }}>
                 {m === 'signin' ? 'Sign In' : 'Register'}
               </button>
             ))}
@@ -357,26 +389,26 @@ export function AuthGate({ onAuthenticated }: Props) {
         {mode === 'newpassword' && (
           <form onSubmit={handleSetNewPassword} noValidate>
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>New Password</label>
+              <label htmlFor="cr8w-new-password" style={labelStyle}>New Password</label>
               <div style={{ position: 'relative' }}>
-                <input type={showNewPw ? 'text' : 'password'} value={newPw} onChange={e => { setNewPw(e.target.value); setError(''); }}
+                <input id="cr8w-new-password" name="newPassword" type={showNewPw ? 'text' : 'password'} value={newPw} onChange={e => { setNewPw(e.target.value); setError(''); }}
                   placeholder="at least 6 characters" autoComplete="new-password" autoFocus
-                  style={{ ...inputStyle, paddingRight: 44, border: `1.5px solid ${error ? '#E05040' : 'rgba(212,167,113,0.4)'}` }}
+                  style={{ ...inputStyle, paddingRight: 58, border: `1.5px solid ${error ? '#E05040' : 'rgba(212,167,113,0.4)'}` }}
                   onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = error ? '#E05040' : 'rgba(212,167,113,0.4)'} />
-                <button type="button" onClick={() => setShowNewPw(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: '#A07060', padding: 4 }}>
-                  {showNewPw ? '🙈' : '👁'}
+                <button type="button" aria-label={showNewPw ? 'Hide password' : 'Show password'} aria-pressed={showNewPw} onClick={() => setShowNewPw(v => !v)} style={{ position: 'absolute', minWidth: 44, minHeight: 44, right: 4, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: '#A07060', padding: 4 }}>
+                  <span aria-hidden="true">{showNewPw ? '🙈' : '👁'}</span>
                 </button>
               </div>
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={labelStyle}>Confirm Password</label>
-              <input type={showNewPw ? 'text' : 'password'} value={newPwConfirm} onChange={e => { setNewPwConfirm(e.target.value); setError(''); }}
+              <label htmlFor="cr8w-confirm-password" style={labelStyle}>Confirm Password</label>
+              <input id="cr8w-confirm-password" name="confirmPassword" type={showNewPw ? 'text' : 'password'} value={newPwConfirm} onChange={e => { setNewPwConfirm(e.target.value); setError(''); }}
                 placeholder="same password again" autoComplete="new-password"
                 style={{ ...inputStyle, border: `1.5px solid ${error ? '#E05040' : 'rgba(212,167,113,0.4)'}` }}
                 onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = error ? '#E05040' : 'rgba(212,167,113,0.4)'} />
             </div>
-            {error && <div style={{ marginBottom: 16, fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.76rem', color: '#C03020', lineHeight: 1.4 }}>{error}</div>}
-            <button type="submit" disabled={busy} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: busy ? 'rgba(194,91,56,0.4)' : '#C25B38', color: '#fff', fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1rem', fontWeight: 600, cursor: busy ? 'default' : 'pointer', boxShadow: busy ? 'none' : '0 4px 16px rgba(194,91,56,0.3)', transition: 'background 0.15s' }}>
+            {error && <div role="alert" style={{ marginBottom: 16, fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.76rem', color: '#C03020', lineHeight: 1.4 }}>{error}</div>}
+            <button type="submit" disabled={busy} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: '#A34C2F', color: '#fff', fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1rem', fontWeight: 600, cursor: busy ? 'default' : 'pointer', boxShadow: busy ? 'none' : '0 4px 16px rgba(194,91,56,0.3)', transition: 'background 0.15s' }}>
               {busy ? 'Saving…' : 'Set Password →'}
             </button>
           </form>
@@ -389,13 +421,13 @@ export function AuthGate({ onAuthenticated }: Props) {
             {mode === 'register' && (
               <>
                 <div style={{ marginBottom: 14 }}>
-                  <label style={labelStyle}>Your Name</label>
-                  <input value={displayName} onChange={e => { setDisplayName(e.target.value); setError(''); }} placeholder="e.g. Monica" autoFocus style={inputStyle}
+                  <label htmlFor="cr8w-display-name" style={labelStyle}>Your Name</label>
+                  <input id="cr8w-display-name" name="name" autoComplete="name" value={displayName} onChange={e => { setDisplayName(e.target.value); setError(''); }} placeholder="e.g. Monica" autoFocus style={inputStyle}
                     onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = 'rgba(212,167,113,0.4)'} />
                 </div>
                 <div style={{ marginBottom: 14 }}>
-                  <label style={labelStyle}>Username <span style={{ fontWeight: 400, opacity: 0.65, textTransform: 'none', letterSpacing: 0 }}>(optional — lets you sign in without email)</span></label>
-                  <input value={username} onChange={e => { setUsername(e.target.value); setError(''); }} placeholder="e.g. sunnyray" autoComplete="username" style={inputStyle}
+                  <label htmlFor="cr8w-username" style={labelStyle}>Username <span style={{ fontWeight: 400, opacity: 0.65, textTransform: 'none', letterSpacing: 0 }}>(optional — lets you sign in without email)</span></label>
+                  <input id="cr8w-username" name="username" value={username} onChange={e => { setUsername(e.target.value); setError(''); }} placeholder="e.g. sunnyray" autoComplete="username" style={inputStyle}
                     onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = 'rgba(212,167,113,0.4)'} />
                 </div>
               </>
@@ -403,8 +435,10 @@ export function AuthGate({ onAuthenticated }: Props) {
 
             {/* Email / Username */}
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>{mode === 'signin' ? 'Email or Username' : 'Email'}</label>
+              <label htmlFor="cr8w-email" style={labelStyle}>{mode === 'signin' ? 'Email or Username' : 'Email'}</label>
               <input
+                id="cr8w-email"
+                name="email"
                 type={mode === 'signin' ? 'text' : 'email'}
                 value={email}
                 onChange={e => { setEmail(e.target.value); setError(''); }}
@@ -420,14 +454,14 @@ export function AuthGate({ onAuthenticated }: Props) {
             {/* Password — hidden in reset mode */}
             {mode !== 'reset' && (
               <div style={{ marginBottom: mode === 'register' ? 16 : 20 }}>
-                <label style={labelStyle}>Password</label>
+                <label htmlFor="cr8w-password" style={labelStyle}>Password</label>
                 <div style={{ position: 'relative' }}>
-                  <input type={showPw ? 'text' : 'password'} value={password} onChange={e => { setPassword(e.target.value); setError(''); }}
+                  <input id="cr8w-password" name="password" type={showPw ? 'text' : 'password'} value={password} onChange={e => { setPassword(e.target.value); setError(''); }}
                     placeholder={mode === 'register' ? 'at least 6 characters' : '••••••••'} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-                    style={{ ...inputStyle, paddingRight: 44, border: `1.5px solid ${error ? '#E05040' : 'rgba(212,167,113,0.4)'}` }}
+                    style={{ ...inputStyle, paddingRight: 58, border: `1.5px solid ${error ? '#E05040' : 'rgba(212,167,113,0.4)'}` }}
                     onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = error ? '#E05040' : 'rgba(212,167,113,0.4)'} />
-                  <button type="button" onClick={() => setShowPw(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: '#A07060', padding: 4 }}>
-                    {showPw ? '🙈' : '👁'}
+                  <button type="button" aria-label={showPw ? 'Hide password' : 'Show password'} aria-pressed={showPw} onClick={() => setShowPw(v => !v)} style={{ position: 'absolute', minWidth: 44, minHeight: 44, right: 4, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: '#A07060', padding: 4 }}>
+                    <span aria-hidden="true">{showPw ? '🙈' : '👁'}</span>
                   </button>
                 </div>
               </div>
@@ -436,13 +470,13 @@ export function AuthGate({ onAuthenticated }: Props) {
             {/* Register-only: profile picker */}
             {mode === 'register' && (
               <div style={{ marginBottom: 20 }}>
-                <label style={labelStyle}>Choose your profile</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <div id="cr8w-profile-label" style={labelStyle}>Choose your profile</div>
+                <div role="group" aria-labelledby="cr8w-profile-label" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {PROFILES.map(p => {
                     const active = profile === p.key;
                     return (
-                      <button key={p.key} type="button" onClick={() => setProfile(p.key)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, cursor: 'pointer', border: `1.5px solid ${active ? p.border : 'var(--border-soft,#D6D1CA)'}`, background: active ? `${p.border}25` : 'transparent', transition: 'all 0.15s' }}>
+                      <button key={p.key} type="button" aria-pressed={active} onClick={() => setProfile(p.key)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 44, padding: '8px 12px', borderRadius: 10, cursor: 'pointer', border: `1.5px solid ${active ? p.border : 'var(--border-soft,#D6D1CA)'}`, background: active ? `${p.border}25` : 'transparent', transition: 'background-color 0.15s, color 0.15s, border-color 0.15s' }}>
                         <span style={{ fontSize: '0.95rem' }}>{p.emoji}</span>
                         <span style={{ fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.74rem', fontWeight: 700, color: active ? p.color : '#8A7060' }}>{p.display}</span>
                       </button>
@@ -452,9 +486,9 @@ export function AuthGate({ onAuthenticated }: Props) {
               </div>
             )}
 
-            {error && <div style={{ marginBottom: 16, fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.76rem', color: '#C03020', lineHeight: 1.4 }}>{error}</div>}
+            {error && <div role="alert" style={{ marginBottom: 16, fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.76rem', color: '#C03020', lineHeight: 1.4 }}>{error}</div>}
 
-            <button type="submit" disabled={busy} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: busy ? 'rgba(194,91,56,0.4)' : '#C25B38', color: '#fff', fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1rem', fontWeight: 600, cursor: busy ? 'default' : 'pointer', boxShadow: busy ? 'none' : '0 4px 16px rgba(194,91,56,0.3)', transition: 'background 0.15s' }}>
+            <button type="submit" disabled={busy} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: '#A34C2F', color: '#fff', fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1rem', fontWeight: 600, cursor: busy ? 'default' : 'pointer', boxShadow: busy ? 'none' : '0 4px 16px rgba(194,91,56,0.3)', transition: 'background 0.15s' }}>
               {busy
                 ? (mode === 'signin' ? 'Signing in…' : mode === 'reset' ? 'Sending…' : 'Creating account…')
                 : (mode === 'signin' ? 'Sign In →' : mode === 'reset' ? 'Send Reset Link →' : 'Create Account →')}
@@ -463,7 +497,7 @@ export function AuthGate({ onAuthenticated }: Props) {
             {mode === 'signin' && (
               <div style={{ textAlign: 'center', marginTop: 12 }}>
                 <button type="button" onClick={() => { setMode('reset'); setError(''); setNotice(''); }}
-                  style={{ background: 'none', border: 'none', color: '#A07060', cursor: 'pointer', fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.72rem', textDecoration: 'underline', padding: 0 }}>
+                  style={{ background: 'none', border: 'none', color: '#A07060', cursor: 'pointer', fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.72rem', textDecoration: 'underline', minHeight: 44, padding: '8px 4px' }}>
                   Forgot password?
                 </button>
               </div>
@@ -472,7 +506,7 @@ export function AuthGate({ onAuthenticated }: Props) {
             {mode === 'reset' && (
               <div style={{ textAlign: 'center', marginTop: 12 }}>
                 <button type="button" onClick={() => { setMode('signin'); setError(''); setNotice(''); }}
-                  style={{ background: 'none', border: 'none', color: '#A07060', cursor: 'pointer', fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.72rem', textDecoration: 'underline', padding: 0 }}>
+                  style={{ background: 'none', border: 'none', color: '#A07060', cursor: 'pointer', fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.72rem', textDecoration: 'underline', minHeight: 44, padding: '8px 4px' }}>
                   ← Back to sign in
                 </button>
               </div>
@@ -483,13 +517,13 @@ export function AuthGate({ onAuthenticated }: Props) {
         {!isSubMode && (
           <p style={{ textAlign: 'center', marginTop: 18, fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.72rem', color: '#B09080', lineHeight: 1.5 }}>
             {mode === 'signin'
-              ? <>New to the Well? <button type="button" onClick={() => { setMode('register'); setError(''); }} style={{ background: 'none', border: 'none', color: '#C25B38', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline', padding: 0 }}>Create an account</button></>
-              : <>Already have an account? <button type="button" onClick={() => { setMode('signin'); setError(''); }} style={{ background: 'none', border: 'none', color: '#C25B38', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline', padding: 0 }}>Sign in</button></>}
+              ? <>New to the Well? <button type="button" onClick={() => { setMode('register'); setError(''); }} style={{ background: 'none', border: 'none', color: '#C25B38', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline', minHeight: 44, padding: '8px 4px' }}>Create an account</button></>
+              : <>Already have an account? <button type="button" onClick={() => { setMode('signin'); setError(''); }} style={{ background: 'none', border: 'none', color: '#C25B38', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline', minHeight: 44, padding: '8px 4px' }}>Sign in</button></>}
           </p>
         )}
       </div>
 
-      <style>{`@keyframes cr8w-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-7px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(3px)} }`}</style>
+      <style>{`.cr8w-auth :is(input,button):focus-visible { outline: 2px solid #2D2438; outline-offset: 3px; } @media (prefers-reduced-motion: reduce) { .cr8w-auth * { animation: none !important; } } @keyframes cr8w-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-7px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(3px)} }`}</style>
     </Screen>
   );
 }

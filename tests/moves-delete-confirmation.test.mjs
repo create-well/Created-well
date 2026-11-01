@@ -15,6 +15,12 @@ const hooks = registerHooks({ resolve(specifier, context, next) {
   if (context.parentURL?.endsWith('/api/server.ts') && specifier === './_auth.js') return {
     shortCircuit:true, url:moduleURL('export function applyCors(){}; export async function requireSession(){return true}; export async function requireSessionOrCron(){return true};')
   };
+  if (context.parentURL?.endsWith('/api/server.ts') && specifier === './_dashboard-auth.js') return {
+    shortCircuit:true, url:new URL('../api/_dashboard-auth.ts',import.meta.url).href
+  };
+  if (context.parentURL?.endsWith('/api/server.ts') && specifier === './workspaceSync.js') return {
+    shortCircuit:true, url:moduleURL('export function appendCheckinToWorkspace(){}; export function appendWellNoteToWorkspace(){}; export function canonicalCheckinHash(){return "synthetic"}; export function canonicalNoteHash(){return "synthetic"}; export async function syncWorkspaceToDatabase(){return {status:"ok"}}; export function updateWellNoteInWorkspace(){};')
+  };
   if (context.parentURL?.endsWith('/api/server.ts') && specifier === './notionWriter.js') return {
     shortCircuit:true, url:new URL('../api/notionWriter.ts',import.meta.url).href
   };

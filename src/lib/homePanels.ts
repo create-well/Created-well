@@ -30,6 +30,25 @@ export interface HomeForumPost {
   content: string;
 }
 
+/** Select the latest valid created_at; preserve order and fall back to last. */
+export function latestWellNote<T extends { created_at?: string | null }>(
+  notes: readonly T[],
+): T | undefined {
+  let latest: T | undefined;
+  let latestTimestamp = Number.NEGATIVE_INFINITY;
+
+  for (const note of notes) {
+    const timestamp = Date.parse(note.created_at ?? '');
+    if (!Number.isFinite(timestamp)) continue;
+    if (latest === undefined || timestamp >= latestTimestamp) {
+      latest = note;
+      latestTimestamp = timestamp;
+    }
+  }
+
+  return latest ?? notes[notes.length - 1];
+}
+
 const CLOSED_FLOW_STATUSES = new Set(['happened', 'wrapped', 'cancelled']);
 
 function startOfDay(d: Date): Date {

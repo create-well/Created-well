@@ -155,5 +155,3 @@ test('release clears only the holder\u2019s own lease; the epoch survives', asyn
   assert.equal(row.lease_expires_at, null);
   assert.equal(row.lease_epoch, 1);
 });
-
-

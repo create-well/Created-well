@@ -11,6 +11,7 @@ import {
   initialMoveFormState,
   canSubmitMoveForm,
   moveFormCloseIntent,
+  buildMovePayload,
   type MoveFormValues,
   type MoveFormErrors,
 } from '../../lib/moveForm';
@@ -139,15 +140,7 @@ export function AddTaskModal({ currentPerson, onAdd, onReconcile, onClose }: Add
     }
     dispatch({ type: 'submit' });
     try {
-      await onAdd({
-        person: currentPerson || values.person,
-        title: values.title.trim(),
-        status: 'todo',
-        priority: values.priority,
-        due_date: values.dueDate,
-        source: values.source,
-        category: values.category,
-      });
+      await onAdd(buildMovePayload(values));
       dispatch({ type: 'resolved' });
       showToast('Move added to the board.', 'well');
       onClose();

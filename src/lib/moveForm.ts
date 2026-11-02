@@ -116,3 +116,31 @@ export function moveFormCloseIntent(state: MoveFormState, dirty: boolean): Close
   if (state.phase === 'done') return 'close';
   return dirty ? 'confirm-discard' : 'close';
 }
+
+// The create payload is built from the form values ONLY (ruling
+// follow-through, QA fast-score catch 2026-11-02): the acting-person
+// context seeds the initial values but must never override an
+// explicit assignee choice at submit — a deliberate Unassigned
+// submits an empty person. There is deliberately no context
+// parameter here, so the override class cannot return.
+export interface MoveCreatePayload {
+  person: string;
+  title: string;
+  status: 'todo';
+  priority: MoveFormValues['priority'];
+  due_date: string;
+  source: string;
+  category: string;
+}
+
+export function buildMovePayload(values: MoveFormValues): MoveCreatePayload {
+  return {
+    person: values.person,
+    title: values.title.trim(),
+    status: 'todo',
+    priority: values.priority,
+    due_date: values.dueDate,
+    source: values.source,
+    category: values.category,
+  };
+}

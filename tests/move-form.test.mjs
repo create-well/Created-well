@@ -13,6 +13,16 @@ import {
 
 const base = initialMoveFormValues('monny');
 
+test('assignee ruling: empty start is clean, optional, and valid', () => {
+  const empty = initialMoveFormValues('');
+  assert.equal(empty.person, '');
+  assert.equal(isMoveFormDirty(empty, empty), false);
+  // Picking a person later is an ordinary edit (dirty); the empty
+  // assignee never fails validation — the field is optional.
+  assert.equal(isMoveFormDirty({ ...empty, person: 'bingle' }, empty), true);
+  assert.deepEqual(validateMoveForm({ ...empty, title: 'A move' }), {});
+});
+
 test('validation: empty and whitespace-only titles are rejected in place', () => {
   assert.equal(validateMoveForm(base).title, 'Give the Move a title.');
   assert.equal(validateMoveForm({ ...base, title: '   ' }).title, 'Give the Move a title.');

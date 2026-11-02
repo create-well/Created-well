@@ -4,8 +4,16 @@
 // panel, PR #64's Unanswered asks count must render beside the FE-5
 // Consent gaps count. The expected strings are the landing receipt's armed
 // expectations; counts are live data, so they are parameters, not truths:
-//   CW_EXPECT_ASKS     default "9 of 65"   (OPEN ASKS census, 2026-10-30)
+//   CW_EXPECT_ASKS     default "5 of 65"   (OPEN ASKS census, 2026-11-01;
+//                                           settled at 5 since the 2026-10-30
+//                                           10:46 census — the original
+//                                           "9 of 65" default was the armed
+//                                           expectation from that morning's
+//                                           03:16 census and went stale the
+//                                           same day; re-based 2026-11-01)
 //   CW_EXPECT_CONSENT  default "28 of 28"  (PEOPLE census, 2026-10-30)
+// Defaults are dated parameters, not truths: re-base each one against a
+// same-day census before treating a mismatch as a finding.
 // Before PR #64 lands, the asks leg FAILs on production by design: the
 // count does not exist yet. That is the probe working, not a defect in it.
 //
@@ -51,7 +59,7 @@ export async function run() {
     }
     await page.waitForTimeout(1500);
     const text = await page.locator("body").innerText();
-    const asks = process.env.CW_EXPECT_ASKS || "9 of 65";
+    const asks = process.env.CW_EXPECT_ASKS || "5 of 65";
     const consent = process.env.CW_EXPECT_CONSENT || "28 of 28";
     legs.push(
       text.includes("Needs care")

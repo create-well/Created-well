@@ -61,7 +61,7 @@ NOT VERIFIED, naming the missing env, when credentials are not set.
 | CW_QA_PASSWORD | home-counts, fe13-drawer | sign-in password |
 | CW_QA_BASE_URL | home-counts | default https://createdwell.vercel.app |
 | CW_FE13_BASE_URL | fe13-drawer | the FE-13 preview origin, or production after landing |
-| CW_EXPECT_ASKS | home-counts | default "9 of 65" (census 2026-10-30) |
+| CW_EXPECT_ASKS | home-counts | default "5 of 65" (census 2026-11-01; settled since 2026-10-30 10:46) |
 | CW_EXPECT_CONSENT | home-counts | default "28 of 28" (census 2026-10-30) |
 
 ## Rules the pack keeps

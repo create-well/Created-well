@@ -296,18 +296,39 @@ export async function releaseLease(
 }
 
 export async function listSnapshot(source: string): Promise<SnapshotRow[]> {
-  const raw = await rest(
-    `sync_snapshots?source=eq.${encodeURIComponent(source)}&select=page_id,row,last_edited,sync_version&limit=2000`,
+  // F-SWEEP2-4: this read previously stopped at a silent limit=2000
+  // ceiling, so a source past 2000 rows would assemble from a partial
+  // snapshot without any trace. Page by offset in page_id order; a
+  // page failure or the safety cap refuses loudly instead of
+  // truncating silently.
+  const PAGE_SIZE = 1000;
+  const MAX_PAGES = 50;
+  const rows: SnapshotRow[] = [];
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const raw = await rest(
+      `sync_snapshots?source=eq.${encodeURIComponent(source)}&select=page_id,row,last_edited,sync_version&order=page_id&limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`,
+    );
+    if (!Array.isArray(raw)) {
+      if (page === 0) return [];
+      throw new Error(
+        `listSnapshot(${source}) page ${page} returned a non-array response; refusing a partial snapshot`,
+      );
+    }
+    rows.push(
+      ...raw.filter(isRecord).map((entry) => ({
+        page_id: String(entry.page_id),
+        row: isRecord(entry.row) ? entry.row : {},
+        last_edited:
+          typeof entry.last_edited === "string" ? entry.last_edited : null,
+        sync_version:
+          typeof entry.sync_version === "number" ? entry.sync_version : 0,
+      })),
+    );
+    if (raw.length < PAGE_SIZE) return rows;
+  }
+  throw new Error(
+    `listSnapshot(${source}) exceeded the ${MAX_PAGES * PAGE_SIZE}-row safety cap; refusing a partial snapshot`,
   );
-  if (!Array.isArray(raw)) return [];
-  return raw.filter(isRecord).map((entry) => ({
-    page_id: String(entry.page_id),
-    row: isRecord(entry.row) ? entry.row : {},
-    last_edited:
-      typeof entry.last_edited === "string" ? entry.last_edited : null,
-    sync_version:
-      typeof entry.sync_version === "number" ? entry.sync_version : 0,
-  }));
 }
 
 export async function upsertSnapshotRows(

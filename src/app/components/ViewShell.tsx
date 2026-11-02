@@ -175,7 +175,7 @@ export function ViewShell({
           letterSpacing: '0.02em',
         }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF9F0A', flexShrink: 0 }} />
-          Data may be stale — last sync was a while ago
+          Data may be stale or incomplete.
         </div>
       )}
       {children}

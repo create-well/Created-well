@@ -1,0 +1,19 @@
+> Historical standalone checkpoint: this original proposal is preserved below. The later local integration candidate and its remaining gates are described in `docs/content-flow-local-integration.md`.
+
+# Internal CONTENT → FLOWS snapshot: local integration proposal
+
+Status: standalone candidate, not wired. Base `8f60768e738dbced7a513d278397ab1a17637f27`, itself based on `b8616249c34e5f777f7256944df8bfe1973a42f2`. The current `ContentFlowPanel` remains wired to mutable forum state and is not repaired by these files. This proposal neither changes nor claims another writer's files.
+
+## Boundary
+
+- The independently supplied snapshot must be created from a validated, authorized primary CONTENT response *before* optimistic forum state is derived. Do not derive it from `data.forum` in a component, a numeric ID, Events, the public CMS feed, a fallback store, or an unrelated source. A frozen UI projection is not a second durable source of truth.
+- On initial load use `makeContentFlowSnapshot({ status: 'loading' })`. On primary transport failure, unconfigured/unauthorized source, unavailable fallback, or `sourceErrors.content` present, use `{ status: 'error' }`, not an empty success. The owner must carry `sourceErrors` through the actual typed payload, avoid logging or displaying raw provider errors, and make CONTENT failure visible without claiming it fresh. Treat a missing or malformed error/source-status contract as unknown, not success.
+- Only a fully validated, completed source query may call `{ status: 'success', rows, complete: true }`. Supply a separate immutable capture of the full Notion IDs, source text and the normalizer's `flowRelation`; every returned source row must have a full canonical page ID. A verified incomplete response is `complete: false`, never an empty success. Missing, wrong-type, invalid and truncated relation values stay unknown/partial; no reverse assignment inference. The helper defensively copies its input and marks invalid or duplicate IDs partial.
+- Render `ContentFlowSnapshotPanel` with that snapshot and the existing `retrySync` callback. A retry re-runs the existing read, not a new scheduler or provider call; distinguish attempt time from confirmed source freshness. Never show previously held data as fresh during an error. No Events join is required: two CONTENT IDs stay two, regardless of how many Events link the same Flow.
+- `api/_notion-sources.ts` at this base ends pagination when `has_more` is true but `next_cursor` is absent. It currently provides no explicit end-to-end completeness proof for that malformed response. A shared API owner must resolve or explicitly represent this before asserting `complete: true`; merely seeing a 200 and no `sourceErrors.content` is insufficient for malformed pagination. Do not repair the shared API from this proposal.
+
+## Composition and gates
+
+- Coordinate current ownership and compose with the exact head of open PR #27 before changing `src/contexts/DashboardContext.tsx` or `src/app/components/api.ts`. Any `src/types/dashboard.ts` or server changes require an explicit owner. Compare all relevant current candidate changes, not only clean Git applicability.
+- Preserve separate unconnected candidate files and run synthetic tests before and after integration. Then test source failure vs empty, partial pagination, unknown/truncated relations, optimistic edit/delete with colliding numeric IDs, distinct full IDs, many-to-one Events, retry, keyboard/mobile rendering and authenticated access. Existing red integrity tests remain red against current wiring.
+- Server-side membership/authorization and per-record access remain unverified release blockers. No live data, provider settings, production records, public feed, schedule, merge, deployment or permission changes are authorized here. Independent review and exact release authorization remain required.

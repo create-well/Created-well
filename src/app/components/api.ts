@@ -398,6 +398,10 @@ export interface MoneyRecord {
 }
 
 export interface SyncData {
+  /** Source-specific failures from the primary dashboard route; absent on fallback. */
+  sourceErrors?: Record<string, string>;
+  /** True only when the primary CONTENT query completed validated pagination. */
+  contentQueryComplete?: boolean;
   /** Delivery-state freshness block (PR #50); absent on the fallback sync path. */
   syncFreshness?: import('../../lib/syncFreshnessLine').SyncFreshnessBlock;
   /** PEOPLE consent-care aggregate (counts only, never values); absent when PEOPLE did not load. */

@@ -5,6 +5,8 @@ export const MOCK_PAYLOAD: DashboardPayload = {
   tasks: [],
   stations: [],
   forum: [],
+  contentFlowSnapshot: { status: 'error' },
+  canonicalSourceStatuses: { moves: 'unknown', people: 'unknown', flows: 'unknown', content: 'unknown', money: 'unknown' },
   messages: [],
   brainDumps: [],
   announcements: [],

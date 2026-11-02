@@ -243,7 +243,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     res.setHeader('Cache-Control', 'private, no-store');
-    res.json({ ...payload, syncFreshness, sourceErrors });
+    // Only this primary, configured source with validated pagination can assert completion.
+    const contentQueryComplete = Boolean(secret && dbContent && !notionSettled[3].error);
+    res.json({ ...payload, syncFreshness, sourceErrors, contentQueryComplete });
   } catch (err) {
     console.error('[/api/dashboard] Error building payload:', err);
     res.status(503).json({

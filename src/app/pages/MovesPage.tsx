@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { GeyserView } from '../components/GeyserView';
+import { ContentFlowSnapshotPanel } from '../components/ContentFlowSnapshotPanel';
 import { AddTaskModal } from '../components/AddTaskModal';
 
 const VIEW_ROUTE_MAP: Record<string, string> = {
@@ -37,6 +38,7 @@ export function MovesPage() {
       emptyBody="Tasks and stations will surface here. A clear board is a healthy board."
       onRetry={actions.retrySync}
     >
+      <ContentFlowSnapshotPanel snapshot={data.contentFlowSnapshot} onRetry={actions.retrySync} />
       <GeyserView
         onNavigate={handleNavigate}
         actionItems={data.tasks}

@@ -29,6 +29,7 @@ import { getSyncFreshness } from './_sync-engine.js';
 import { queryCanonicalNotionDatabase, resolveDataSourceId, NOTION_API_VERSION } from './_notion-sources.js';
 import {
   normalizeMove,
+  buildOwnerSlugIndex,
   normalizePerson,
   peopleCareCounts,
   openAsksCareCounts,
@@ -205,6 +206,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const [movesPages, peoplePages, flowsPages, contentPages, moneyPages, openAsksPages, eventsPages, feedbackPages] =
       notionSettled.map((s) => s.values);
+    const ownerSlugIndex = buildOwnerSlugIndex(peoplePages);
     const [
       messages, braindumps, announcements, forumReplies,
       workshops, workshopPrograms, workshopResources,
@@ -213,7 +215,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const payload: SyncData = {
       // Notion-backed
-      tasks:             movesPages.map(normalizeMove),
+      // MOVES Owner is a Relation → PEOPLE: resolve the first target
+      // through the PEOPLE pages loaded alongside (multi-owner rule and
+      // fallback semantics live with buildOwnerSlugIndex).
+      tasks:             movesPages.map((pg) => normalizeMove(pg, ownerSlugIndex)),
       stations:          peoplePages.map(normalizePerson),
       peopleCare:        peopleCareCounts(peoplePages),
       openAsksCare:      openAsksCareCounts(openAsksPages),

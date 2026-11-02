@@ -64,12 +64,16 @@ async function kvGetList(key: string): Promise<unknown[]> {
   if (error) throw new Error(`KV read error for "${key}": ${error.message}`);
   const raw = data?.value;
   if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
   try {
-    if (Array.isArray(raw)) return raw;
-    return JSON.parse(typeof raw === 'string' ? raw : JSON.stringify(raw));
-  } catch {
-    return [];
-  }
+    const parsed = JSON.parse(typeof raw === 'string' ? raw : JSON.stringify(raw));
+    if (Array.isArray(parsed)) return parsed;
+  } catch { /* fall through to the corrupt refusal */ }
+  // F-SWEEP2-1: a corrupt KV value must not read as an empty list. The
+  // fan-out settle wrapper catches this throw, degrades only this
+  // collection's slice, and names kv:<key> in sourceErrors; the error
+  // message carries the collection and the failure class to the log.
+  throw new Error(`KV list "${key}" is corrupt (unparseable); not treating it as empty`);
 }
 
 // ── Notion query ──────────────────────────────────────────────────────────────

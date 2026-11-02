@@ -15,8 +15,8 @@ const hooks = registerHooks({ resolve(specifier, context, next) {
   if (context.parentURL?.endsWith('/api/server.ts') && specifier === './_auth.js') return {
     shortCircuit:true, url:moduleURL('export function applyCors(){}; export async function requireSession(){return true}; export async function requireSessionOrCron(){return true};')
   };
-  if (context.parentURL?.endsWith('/api/server.ts') && specifier === './notionWriter.js') return {
-    shortCircuit:true, url:new URL('../api/notionWriter.ts',import.meta.url).href
+  if (context.parentURL?.endsWith('/api/server.ts') && specifier === './_notionWriter.js') return {
+    shortCircuit:true, url:new URL('../api/_notionWriter.ts',import.meta.url).href
   };
   return next(specifier,context);
 }});

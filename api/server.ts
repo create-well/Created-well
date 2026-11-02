@@ -13,7 +13,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './notionWriter.js';
+import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './_notionWriter.js';
 import { applyCors, requireSession, requireSessionOrCron } from './_auth.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
@@ -362,7 +362,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         return { ok: false, skipped: 'no_notion_page_id' };
       } catch (err: any) {
-        console.error(`[notionWriter] ${action} failed for ${resource}:`, err);
+        console.error(`[_notionWriter] ${action} failed for ${resource}:`, err);
         return { ok: false, error: err?.message || String(err) };
       }
     }

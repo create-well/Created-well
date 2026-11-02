@@ -101,7 +101,7 @@ export function HomePanels({
         title="Tasks"
         tag="MOVES"
         action={
-          <Link className="home-action-link" to="/moves">
+          <Link className="home-action-link" to="/moves" state={{ focusHeading: true }}>
             Open Tasks →
           </Link>
         }

@@ -22,3 +22,15 @@ declare module "react-dom/client" {
     options?: { identifierPrefix?: string },
   ): Root;
 }
+
+/* Same situation for the bare react-dom module: AddTaskModal (Phase B)
+   consumes only createPortal, so the declaration mirrors exactly that
+   surface, nothing more. */
+declare module "react-dom" {
+  import type { ReactNode } from "react";
+  export function createPortal(
+    children: ReactNode,
+    container: Element | DocumentFragment,
+    key?: string | null,
+  ): ReactNode;
+}

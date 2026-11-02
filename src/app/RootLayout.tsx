@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { useDashboard } from '../contexts/DashboardContext';
 import { TopNav } from './components/TopNav';
@@ -28,6 +28,29 @@ export function RootLayout() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [location.pathname]);
 
+  // Contract C1 (equivalent orientation): announce the destination view
+  // on route change for assistive tech; the initial load stays silent.
+  const VIEW_NAMES: Record<string, string> = {
+    '/': 'This Week',
+    '/moves': 'Next Moves',
+    '/care': 'Care',
+    '/flows': 'Flows',
+    '/podyaps': 'Podyaps',
+    '/workshops': 'Workshops',
+    '/money': 'Money',
+    '/decisions': 'Decisions',
+    '/system': 'System',
+  };
+  const [announcedView, setAnnouncedView] = useState('');
+  const firstRoute = useRef(true);
+  useEffect(() => {
+    if (firstRoute.current) {
+      firstRoute.current = false;
+      return;
+    }
+    setAnnouncedView(VIEW_NAMES[location.pathname] ?? '');
+  }, [location.pathname]);
+
   // Scroll-to-top button visibility
   useEffect(() => {
     const handler = () => setShowScrollTop(window.scrollY > 400);
@@ -37,6 +60,9 @@ export function RootLayout() {
 
   return (
     <div className="cr8w-app" style={{ paddingBottom: '20px' }}>
+      <div className="visually-hidden" aria-live="polite" role="status">
+        {announcedView ? `${announcedView} view` : ''}
+      </div>
       <TopNav onSignOut={actions.signOut} />
       <SyncStatusBar />
 
@@ -128,6 +154,7 @@ export function RootLayout() {
         <AddTaskModal
           currentPerson={ui.activePerson}
           onAdd={actions.addTask}
+          onReconcile={actions.retrySync}
           onClose={() => setShowAddTask(false)}
         />
       )}

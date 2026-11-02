@@ -1,11 +1,12 @@
 // Run-history read model for the SystemPage "Run history" row.
 //
 // The durable store is public.sync_runs (G-35 / Q-42 Option B, landed
-// PR #66): GET /api/sync-runs answers { runs, store } newest first, and
-// answers 200 with an empty list when the store is unconfigured or
-// unreadable, so an empty list here means "no runs recorded yet", never
-// an error. This module is the one client-side mapping from that wire
-// shape; every field degrades gracefully and nothing throws.
+// PR #66): GET /api/sync-runs answers { runs, store } newest first. It
+// also answers 200 with an empty list when the store is unconfigured or
+// unreadable — the store marker is what tells those apart from a real
+// empty read, and runHistoryDisplay below is the one place that reads
+// it. This module is the one client-side mapping from that wire shape;
+// every field degrades gracefully and nothing throws.
 
 export interface SyncRunSource {
   source: string;
@@ -87,6 +88,29 @@ export function parseSyncRunsPayload(payload: unknown): SyncRunsRead | null {
       .filter((r): r is SyncRunSummary => r !== null),
     store: typeof payload.store === "string" ? payload.store : "unknown",
   };
+}
+
+export type RunHistoryDisplay =
+  | { kind: "rows"; runs: SyncRunSummary[] }
+  | { kind: "empty" }
+  | { kind: "failed" };
+
+// The state-honesty decision: the endpoint answers 200 with an empty
+// list for three different realities, told apart only by the store
+// marker. Runs and the empty wording are honest ONLY on a real store
+// read ("sync_runs"). "unconfigured" (no store bound), "unavailable"
+// (the store read failed — runs may exist and simply could not be
+// read), any unknown marker, and a malformed payload (null) all render
+// the failure state. An empty-list failure must never wear the
+// honest-empty wording.
+export function runHistoryDisplay(
+  read: SyncRunsRead | null,
+): RunHistoryDisplay {
+  if (read === null) return { kind: "failed" };
+  if (read.store !== "sync_runs") return { kind: "failed" };
+  return read.runs.length > 0
+    ? { kind: "rows", runs: read.runs }
+    : { kind: "empty" };
 }
 
 export function runStatusTone(

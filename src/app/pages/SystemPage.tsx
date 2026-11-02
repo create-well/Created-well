@@ -9,9 +9,10 @@ import { sessionAccessToken } from '../components/api';
 import {
   parseSyncRunsPayload,
   runDetailLine,
+  runHistoryDisplay,
   runStartedDate,
   runStatusTone,
-  type SyncRunSummary,
+  type RunHistoryDisplay,
 } from '../../lib/runHistory';
 
 // Hub CMS database URLs — these are the four DBs the dashboard reads/writes.
@@ -280,8 +281,7 @@ function relativeTime(date: Date): string {
 
 type RunHistoryState =
   | { kind: 'loading' }
-  | { kind: 'unavailable' }
-  | { kind: 'ready'; runs: SyncRunSummary[] };
+  | { kind: 'display'; display: RunHistoryDisplay };
 
 export function SystemPage() {
   const { data, actions } = useDashboard();
@@ -289,7 +289,9 @@ export function SystemPage() {
   // Run history reads the durable sync_runs store through the
   // session-gated reader (G-35 Option B, PR #66): the route takes the
   // app session token as a Bearer header, the HubView fetch pattern.
-  // An empty list is the store's honest state, not an error.
+  // The display state comes from runHistoryDisplay, which reads the
+  // endpoint's store marker: only a real store read may render runs
+  // or the empty wording; every other 200 renders the failure state.
   const [runHistory, setRunHistory] = React.useState<RunHistoryState>({ kind: 'loading' });
   React.useEffect(() => {
     let cancelled = false;
@@ -301,22 +303,26 @@ export function SystemPage() {
         if (!res.ok) throw new Error('run history read failed');
         const read = parseSyncRunsPayload(await res.json());
         if (cancelled) return;
-        setRunHistory(read ? { kind: 'ready', runs: read.runs } : { kind: 'unavailable' });
+        setRunHistory({ kind: 'display', display: runHistoryDisplay(read) });
       } catch {
-        if (!cancelled) setRunHistory({ kind: 'unavailable' });
+        if (!cancelled) {
+          setRunHistory({ kind: 'display', display: runHistoryDisplay(null) });
+        }
       }
     })();
     return () => { cancelled = true; };
   }, []);
 
-  const latestRun = runHistory.kind === 'ready' ? runHistory.runs[0] : undefined;
+  const display = runHistory.kind === 'display' ? runHistory.display : null;
+  const displayRuns = display?.kind === 'rows' ? display.runs : [];
+  const latestRun = displayRuns[0];
   const latestRunDate = latestRun ? runStartedDate(latestRun) : null;
   const runRow: { value: string; status: 'ok' | 'warn' | 'error' | 'neutral' } =
-    runHistory.kind === 'loading'
+    runHistory.kind === 'loading' || display === null
       ? { value: 'Loading…', status: 'neutral' }
-      : runHistory.kind === 'unavailable'
+      : display.kind === 'failed'
         ? { value: 'Could not load', status: 'neutral' }
-        : runHistory.runs.length === 0 || !latestRun
+        : display.kind === 'empty'
           ? { value: 'No runs recorded yet', status: 'neutral' }
           : {
               value: `${latestRun.status}${latestRunDate ? ` · ${relativeTime(latestRunDate)}` : ''}`,
@@ -386,9 +392,9 @@ export function SystemPage() {
             value={runRow.value}
             status={runRow.status}
           />
-          {runHistory.kind === 'ready' && runHistory.runs.length > 0 && (
+          {displayRuns.length > 0 && (
             <div style={{ padding: '4px 0 8px' }}>
-              {runHistory.runs.map((run, i) => {
+              {displayRuns.map((run, i) => {
                 const started = runStartedDate(run);
                 return (
                   <div

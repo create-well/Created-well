@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   parseSyncRunsPayload,
+  runHistoryDisplay,
   runStatusTone,
   runStartedDate,
   formatDurationMs,
@@ -71,6 +72,34 @@ test("parse: missing optional fields degrade, never throw", () => {
   assert.equal(run.durationMs, null);
   assert.deepEqual(run.sources, []);
   assert.equal(read.store, "unknown");
+});
+
+test("display: a real store read with rows renders the rows", () => {
+  const read = parseSyncRunsPayload({ runs: [RUN], store: "sync_runs" });
+  const display = runHistoryDisplay(read);
+  assert.equal(display.kind, "rows");
+  assert.equal(display.runs.length, 1);
+});
+
+test("display: a real store read with no rows renders the empty state", () => {
+  const read = parseSyncRunsPayload({ runs: [], store: "sync_runs" });
+  assert.deepEqual(runHistoryDisplay(read), { kind: "empty" });
+});
+
+test("display: store failures never wear the empty wording", () => {
+  // The endpoint answers 200 + [] for all three of these; only the
+  // marker tells them apart from a real empty store, and runs may
+  // exist behind "unavailable" that simply could not be read.
+  for (const store of ["unavailable", "unconfigured", "anything-else"]) {
+    const read = parseSyncRunsPayload({ runs: [], store });
+    assert.deepEqual(runHistoryDisplay(read), { kind: "failed" }, store);
+  }
+  assert.deepEqual(runHistoryDisplay(null), { kind: "failed" });
+});
+
+test("display: an unknown marker fails even when rows ride along", () => {
+  const read = parseSyncRunsPayload({ runs: [RUN], store: "sync_runs_v2" });
+  assert.deepEqual(runHistoryDisplay(read), { kind: "failed" });
 });
 
 test("tone: engine statuses map to the HealthRow vocabulary", () => {

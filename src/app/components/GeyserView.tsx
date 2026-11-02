@@ -11,6 +11,7 @@ import * as api from './api';
 import { HowWeFlowReference } from './HowWeFlowReference';
 import { parseDateValue, DATE_NOT_SET, calendarDayDiff } from '../../lib/dateLabel';
 import { resolveTabKey } from '../../lib/tabList';
+import { assigneeDescription } from '../../lib/assigneeLabel';
 
 type GeyserTab = 'overview' | 'journey' | 'stations' | 'tasks' | 'forum';
 
@@ -823,7 +824,7 @@ export function GeyserView({
               return (
                 <React.Fragment key={task.id}>
                 <div className={`card ${dueClass}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
-                  <div className="geyser-task-person-dot" style={{ background: role?.color || '#A89888' }} title={role ? `${role.name} — ${role.sub}` : task.person}>
+                  <div className="geyser-task-person-dot" role="img" aria-label={assigneeDescription(task.person, role?.name, role?.sub)} style={{ background: role?.color || '#A89888' }} title={assigneeDescription(task.person, role?.name, role?.sub)}>
                     {role?.emoji || '?'}
                   </div>
                   <div style={{ flex: 1 }}>

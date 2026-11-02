@@ -148,9 +148,28 @@ function pick(
   return undefined;
 }
 
-// Deterministic integer ID from Notion UUID (first 7 hex chars → ≤268 M).
+// Deterministic integer ID from a Notion UUID: a 53-bit hash (cyrb53)
+// over the FULL id string. The previous implementation parsed only the
+// first 7 hex characters; pages created in the same batch share long
+// UUID prefixes, so those ids collided (11 of 15 live MOVES rows shared
+// just two values). Every list keyed by these ids reconciled against
+// duplicate React keys, and filter round-trips in the Moves list
+// accumulated duplicate rows in-session. Hashing the whole id keeps the
+// mapping deterministic across requests and deploys while making
+// collisions negligible at this scale.
 export function stableId(notionId: string): number {
-  return parseInt(notionId.replace(/-/g, '').slice(0, 7), 16) || 0;
+  const str = String(notionId ?? '');
+  if (!str) return 0;
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 }
 
 // ── Status / priority maps ────────────────────────────────────────────────────

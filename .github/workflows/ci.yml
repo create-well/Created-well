@@ -40,7 +40,7 @@ jobs:
           set -e
           for f in tests/*.test.mjs; do
             echo "== $f (TZ=$TZ)"
-            node --test "$f"
+            node --experimental-strip-types --test "$f"
           done
 
   checks:
@@ -54,8 +54,8 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Lease engine driver
-        run: node tests/sync-lease-engine.driver.mjs
+        run: node --experimental-strip-types tests/sync-lease-engine.driver.mjs
       - name: Lease ledger driver
-        run: node tests/sync-lease-ledger.driver.mjs
+        run: node --experimental-strip-types tests/sync-lease-ledger.driver.mjs
       - run: npx tsc --noEmit
       - run: npm run build

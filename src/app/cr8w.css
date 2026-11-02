@@ -537,6 +537,7 @@ a.gcc-pill-link:hover { background: var(--cr8w-card-bg, #F4F1ED); transform: tra
 .geyser-tab { font-family: var(--font-label); font-size: 0.78rem; font-weight: 600; color: #4A3020; padding: 10px 18px; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.5px; background: none; border-left: none; border-right: none; border-top: none; cursor: pointer; margin-bottom: -2px; }
 .geyser-tab:hover { color: #2D2438; background: rgba(123,168,157,0.05); }
 .geyser-tab.active { color: #2D2438; border-bottom-color: #7BA89D; font-weight: 700; }
+.geyser-tab:focus-visible { outline: 2px solid var(--cr8w-primary-text, #466F64); outline-offset: 2px; }
 .geyser-tab-content { animation: cw-fadeInUp 0.35s ease; }
 .geyser-section { margin-bottom: 32px; }
 .geyser-section-title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 600; color: #2C1C10; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }

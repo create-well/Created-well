@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   PERSONS, MILESTONES, GUEST_JOURNEY, PLACEHOLDER_GUESTS,
   formatDate, capitalize, formatTimestamp,
@@ -10,6 +10,7 @@ import type { ForumReply as ApiForumReply, InviteCounts } from './api';
 import * as api from './api';
 import { HowWeFlowReference } from './HowWeFlowReference';
 import { parseDateValue, DATE_NOT_SET, calendarDayDiff } from '../../lib/dateLabel';
+import { resolveTabKey } from '../../lib/tabList';
 
 type GeyserTab = 'overview' | 'journey' | 'stations' | 'tasks' | 'forum';
 
@@ -166,6 +167,7 @@ export function GeyserView({
   onAddStation, onDeleteStation,
 }: GeyserViewProps) {
   const [activeTab, setActiveTab] = useState<GeyserTab>(defaultTab || 'overview');
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [taskFilter, setTaskFilter] = useState<string>('all');
   const [detailTaskId, setDetailTaskId] = useState<number | null>(null);
   const [forumAuthor, setForumAuthor] = useState<string>('sunshine');
@@ -1111,11 +1113,35 @@ export function GeyserView({
         <div className="geyser-header-subtitle">the launchpad</div>
       </div>
 
-      {/* Tabs */}
-      <div className="geyser-tabs">
-        {tabs.map(t => (
+      {/* Tabs — ARIA tablist pattern (QA finding 2026-11-02): roving
+          tabindex, arrows move and activate, Enter/Space activate the
+          focused tab explicitly via src/lib/tabList; click unchanged. */}
+      <div
+        className="geyser-tabs"
+        role="tablist"
+        aria-label="Geyser views"
+        onKeyDown={e => {
+          const el = (e.target as HTMLElement).closest('[role="tab"]');
+          if (!el) return;
+          const idx = tabs.findIndex(t => `geyser-tab-${t.key}` === el.id);
+          const result = resolveTabKey(e.key, idx, tabs.length);
+          if (!result) return;
+          e.preventDefault();
+          setActiveTab(tabs[result.activateIndex].key);
+          tabRefs.current[result.focusIndex]?.focus();
+        }}
+      >
+        {tabs.map((t, i) => (
           <button
             key={t.key}
+            ref={el => {
+              tabRefs.current[i] = el;
+            }}
+            role="tab"
+            id={`geyser-tab-${t.key}`}
+            aria-selected={activeTab === t.key}
+            aria-controls={`geyser-panel-${t.key}`}
+            tabIndex={activeTab === t.key ? 0 : -1}
             className={`geyser-tab${activeTab === t.key ? ' active' : ''}`}
             onClick={() => setActiveTab(t.key)}
           >
@@ -1124,11 +1150,31 @@ export function GeyserView({
         ))}
       </div>
 
-      {activeTab === 'overview' && renderOverview()}
-      {activeTab === 'journey' && renderJourney()}
-      {activeTab === 'stations' && renderStations()}
-      {activeTab === 'tasks' && renderTasks()}
-      {activeTab === 'forum' && renderForum()}
+      {activeTab === 'overview' && (
+        <div role="tabpanel" id="geyser-panel-overview" aria-labelledby="geyser-tab-overview">
+          {renderOverview()}
+        </div>
+      )}
+      {activeTab === 'journey' && (
+        <div role="tabpanel" id="geyser-panel-journey" aria-labelledby="geyser-tab-journey">
+          {renderJourney()}
+        </div>
+      )}
+      {activeTab === 'stations' && (
+        <div role="tabpanel" id="geyser-panel-stations" aria-labelledby="geyser-tab-stations">
+          {renderStations()}
+        </div>
+      )}
+      {activeTab === 'tasks' && (
+        <div role="tabpanel" id="geyser-panel-tasks" aria-labelledby="geyser-tab-tasks">
+          {renderTasks()}
+        </div>
+      )}
+      {activeTab === 'forum' && (
+        <div role="tabpanel" id="geyser-panel-forum" aria-labelledby="geyser-tab-forum">
+          {renderForum()}
+        </div>
+      )}
     </div>
   );
 }

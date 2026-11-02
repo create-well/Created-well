@@ -243,7 +243,30 @@ const FLOW_STATUS_MAP: Record<string, CoFlowDate['status']> = {
 //   Person      : Relation → PEOPLE (relationship follow-up, secondary)
 //   Touchpoint  : Select
 
-export function normalizeMove(page: NotionPage): Task {
+// ── MOVES owner resolution ────────────────────────────────────────────────────
+// MOVES carries Owner as a Relation → PEOPLE. A bare page cannot resolve
+// that relation, so normalizeMove alone stores the relation ID as a last
+// resort and the assignee composer renders "Assignee not listed" for it.
+// buildOwnerSlugIndex builds the id → slug map from the PEOPLE pages the
+// dashboard already loads (slug = the person's Name, lowercased: the key
+// space the role table uses). Callers that hold both collections pass the
+// index to normalizeMove; callers without it keep the legacy fallback.
+//
+// MULTI-OWNER RULE (named 2026-11-02, not inherited silently): when a
+// Move carries several Owner relations, the FIRST target wins. If that
+// target resolves in the index, its slug is the Move's person; if it
+// does not resolve, the stored fallback (the lowercased relation ID)
+// stands, so genuinely unresolvable values keep rendering unlisted.
+export function buildOwnerSlugIndex(peoplePages: NotionPage[]): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const page of peoplePages) {
+    const name = getText(pick(page.properties, 'Name')).trim().toLowerCase();
+    if (name) index.set(page.id.toLowerCase(), name);
+  }
+  return index;
+}
+
+export function normalizeMove(page: NotionPage, ownerSlugs?: ReadonlyMap<string, string>): Task {
   const p = page.properties;
 
   const rawStatus   = getSelect(pick(p, 'Status', 'Task Status')).toLowerCase();
@@ -257,6 +280,14 @@ export function normalizeMove(page: NotionPage): Task {
     getPeople(pick(p, 'Person', 'Assigned To', 'Assignee', 'Owner'));
   // Prefer text if present (it's already a name), else store relation ID
   const personRaw = ownerText || ownerRelationId;
+  // Owner-resolution: only the relation-ID fallback resolves (a text or
+  // people-property value is already a name). First target wins per the
+  // multi-owner rule above; an unresolvable target keeps the fallback.
+  let person = personRaw.toLowerCase();
+  if (!ownerText && ownerRelationId && ownerSlugs) {
+    const slug = ownerSlugs.get(ownerRelationId.toLowerCase());
+    if (slug) person = slug;
+  }
 
   // Blocked By is the CR8W canonical name for what blocks this Move
   const blockedBy = getText(pick(p, 'Blocked By', 'Source', 'Notes', 'Description'));
@@ -264,7 +295,7 @@ export function normalizeMove(page: NotionPage): Task {
   return {
     id:           stableId(page.id),
     notionPageId: page.id,
-    person:       personRaw.toLowerCase(),
+    person:       person,
     title:        getText(pick(p, 'Name', 'Task', 'Title')) || 'Untitled',
     status:       TASK_STATUS_MAP[rawStatus]    ?? 'todo',
     priority:     TASK_PRIORITY_MAP[rawPriority] ?? 'medium',

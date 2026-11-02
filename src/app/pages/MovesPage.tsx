@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { GeyserView } from '../components/GeyserView';
@@ -16,7 +16,18 @@ const VIEW_ROUTE_MAP: Record<string, string> = {
 export function MovesPage() {
   const { data, actions, ui } = useDashboard();
   const navigate = useNavigate();
+  const location = useLocation();
+  const mainRef = useRef<HTMLDivElement>(null);
   const [showAddTask, setShowAddTask] = useState(false);
+
+  // Contract C1: arriving from Home's "Open Tasks" assigns focus to the
+  // destination region so keyboard users land oriented, not at the top
+  // of the tab order.
+  useEffect(() => {
+    if ((location.state as { focusHeading?: boolean } | null)?.focusHeading) {
+      mainRef.current?.focus();
+    }
+  }, [location.state]);
 
   const state =
     data.syncStatus === 'loading' ? 'loading' :
@@ -32,6 +43,7 @@ export function MovesPage() {
   }
 
   return (
+    <div ref={mainRef} tabIndex={-1} aria-label="Next Moves" className="route-focus-target">
     <ViewShell
       state={state}
       emptyTitle="No active moves"
@@ -70,9 +82,11 @@ export function MovesPage() {
         <AddTaskModal
           currentPerson={null}
           onAdd={actions.addTask}
+          onReconcile={actions.retrySync}
           onClose={() => setShowAddTask(false)}
         />
       )}
     </ViewShell>
+    </div>
   );
 }

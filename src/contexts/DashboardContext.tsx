@@ -272,7 +272,12 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setTasks(prev => [...prev, created]);
         const personLabel = item.person ? item.person.charAt(0).toUpperCase() + item.person.slice(1) : 'Someone';
         sendSystemMessage(`[UPDATE] ⛲️ New Geyser task: "${item.title}" assigned to ${personLabel} (${item.priority} priority)`);
-      } catch (e) { console.error('Add task error:', e); }
+      } catch (e) {
+        console.error('Add task error:', e);
+        // The Move form owns the failure surface now (Phase B contract):
+        // it must see the rejection instead of a swallowed success.
+        throw e;
+      }
     },
     async updateTask(id: number, updates: Partial<Task>) {
       try {

@@ -73,6 +73,7 @@ export function ThisWeekPage() {
         <AddTaskModal
           currentPerson={null}
           onAdd={actions.addTask}
+          onReconcile={actions.retrySync}
           onClose={() => setShowAddTask(false)}
         />
       )}

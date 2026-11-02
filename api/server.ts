@@ -38,14 +38,26 @@ async function kvSet(key: string, value: any): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-function parseList(raw: any): any[] {
+function parseList(raw: any, key: string): any[] {
   if (!raw) return [];
-  try { return typeof raw === 'string' ? JSON.parse(raw) : Array.isArray(raw) ? raw : []; }
-  catch { return []; }
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    } catch { /* fall through to the corrupt refusal */ }
+  }
+  // F-SWEEP2-1: a stored value that is not a parseable list is corrupt.
+  // Returning [] here silently emptied the collection, and the next
+  // read-modify-write made the loss permanent. Refuse loudly instead:
+  // the log names the collection and the failure class, read paths
+  // surface the error, and write paths never reach their write.
+  console.error(`[kv] corrupt list value for "${key}": stored value is not a parseable list; refusing to treat it as empty`);
+  throw new Error(`KV list "${key}" is corrupt (unparseable); refusing to read or overwrite it`);
 }
 
 async function getList(key: string): Promise<any[]> {
-  return parseList(await kvGet(key));
+  return parseList(await kvGet(key), key);
 }
 
 async function setList(key: string, list: any[]): Promise<void> {
@@ -121,7 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { data, error } = await sb.from(TABLE).select('key,value').in('key', SYNC_KEYS);
       if (error) { res.status(500).json({ error: 'Sync failed' }); return; }
       const map: Record<string, any[]> = {};
-      for (const row of data ?? []) map[row.key] = parseList(row.value);
+      for (const row of data ?? []) map[row.key] = parseList(row.value, row.key);
       res.json({
         tasks: map['cr8w_tasks'] ?? [],
         stations: map['cr8w_stations'] ?? [],

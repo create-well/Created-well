@@ -185,7 +185,7 @@ html.cw-no-motion *::after {
   display: flex; align-items: center; gap: 5px;
   padding: 7px 12px; border-radius: var(--cr-radius-lg);
   font-family: var(--font-label); font-size: 0.78rem; font-weight: 500;
-  color: var(--text-muted, #6B5F7A);
+  color: var(--text-secondary, #443855);
   text-transform: uppercase; letter-spacing: 0.5px;
   transition: all 0.25s ease; cursor: pointer; border: none; background: none;
 }
@@ -211,7 +211,7 @@ html.cw-no-motion *::after {
   border-color: var(--border-soft);
 }
 .nav-link-workdocs {
-  color: var(--text-muted, #6B5F7A) !important; font-weight: 600;
+  color: var(--text-secondary, #443855) !important; font-weight: 600;
   background: var(--sandstone); border: 1px solid var(--border-soft);
 }
 .nav-link-workdocs:hover { background: var(--cr8w-card-bg, #F4F1ED); border-color: var(--border-soft); color: var(--cr8w-text, #2D2438) !important; }
@@ -405,10 +405,10 @@ html.cw-no-motion *::after {
 }
 .launch-banner-content { display: flex; align-items: center; justify-content: space-between; padding: 24px 32px; }
 .launch-banner-title { font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; color: var(--cr8w-text, #2D2438); }
-.launch-banner-subtitle { font-family: var(--font-label); font-size: 0.85rem; color: var(--text-muted, #6B5F7A); letter-spacing: 0.03em; margin-top: 2px; }
+.launch-banner-subtitle { font-family: var(--font-label); font-size: 0.85rem; color: var(--text-secondary, #443855); letter-spacing: 0.03em; margin-top: 2px; }
 .launch-banner-right { display: flex; align-items: baseline; gap: 8px; }
 .launch-days { font-family: var(--font-display); font-size: 2.8rem; font-weight: 700; color: var(--cr8w-text, #2D2438); line-height: 1; }
-.launch-days-label { font-family: var(--font-label); font-size: 0.82rem; color: var(--text-muted, #6B5F7A); letter-spacing: 0.04em; }
+.launch-days-label { font-family: var(--font-label); font-size: 0.82rem; color: var(--text-secondary, #443855); letter-spacing: 0.04em; }
 
 /* Geyser Command Center */
 .geyser-command-center {
@@ -435,12 +435,12 @@ html.cw-no-motion *::after {
 a.gcc-pill-link { text-decoration: none; cursor: pointer; transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease; }
 a.gcc-pill-link:hover { background: var(--cr8w-card-bg, #F4F1ED); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
 .gcc-urgent-list { background: var(--sandstone); padding: 18px 28px 22px; border-top: 1px solid var(--border-soft); }
-.gcc-urgent-label { font-family: var(--font-label); font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted, #6B5F7A); margin-bottom: 10px; }
+.gcc-urgent-label { font-family: var(--font-label); font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary, #443855); margin-bottom: 10px; }
 .gcc-urgent-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border-soft); }
 .gcc-urgent-item:last-child { border-bottom: none; }
 .gcc-urgent-text { font-size: 0.88rem; color: var(--cr8w-text, #2D2438); flex: 1; line-height: 1.4; }
 .gcc-priority-badge { font-family: var(--font-label); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; padding: 4px 10px; border-radius: 8px; flex-shrink: 0; text-transform: uppercase; line-height: 1; display: inline-flex; align-items: center; }
-.gcc-priority-badge.high { background: var(--sandstone); color: var(--cr8w-primary-text, #466F64); border: 1px solid var(--border-soft); }
+.gcc-priority-badge.high { background: rgba(255,255,255,0.9); color: var(--cr8w-primary-text, #466F64); }
 .gcc-priority-badge.medium { background: var(--sandstone); color: #5A3A1A; border: 1px solid var(--border-soft); }
 
 /* Hub Sections */

@@ -349,6 +349,55 @@ export async function deleteSnapshotRow(
 // One-time setup stash (webhook verification token). Written by the
 // webhook handshake, read once by the operator from the Supabase table
 // editor, then cleared by hand. Never logged anywhere.
+// Durable run history (G-35 / Q-42 Option B): one row per recorded
+// engine run in public.sync_runs. The table lands by schema escalation
+// (docs/sync-runs-supabase.sql); every function here fails as an ordinary
+// store error and every caller treats history as fail-soft bookkeeping.
+
+export interface SyncRunStoreRow {
+  started_at: string;
+  finished_at: string;
+  trigger: string;
+  status: string;
+  sources: unknown;
+  total_rows: number;
+  duration_ms: number;
+  deferred_sources: string[];
+}
+
+export async function insertSyncRun(row: SyncRunStoreRow): Promise<void> {
+  await rest("sync_runs", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify(row),
+  });
+}
+
+export async function listSyncRuns(limit: number): Promise<unknown[]> {
+  const rows = await rest(
+    `sync_runs?select=id,started_at,finished_at,trigger,status,sources,total_rows,duration_ms,deferred_sources&order=started_at.desc&limit=${limit}`,
+  );
+  return Array.isArray(rows) ? rows : [];
+}
+
+export async function pruneSyncRuns(cutoffIso: string): Promise<void> {
+  await rest(`sync_runs?started_at=lt.${encodeURIComponent(cutoffIso)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" },
+  });
+}
+
+export async function getSetupValue(
+  key: string,
+): Promise<Record<string, unknown> | null> {
+  const row = await rest(
+    `sync_setup?key=eq.${encodeURIComponent(key)}&select=value`,
+    { expectObject: true },
+  );
+  if (!isRecord(row) || !isRecord(row.value)) return null;
+  return row.value;
+}
+
 export async function setSetupValue(
   key: string,
   value: Record<string, unknown>,

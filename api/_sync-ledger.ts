@@ -24,6 +24,42 @@ export interface SyncRunRecord {
   status: "ok" | "partial" | "failed";
   sources: LedgerSourceEntry[];
   totalRows: number;
+  trigger: string;
+  deferredSources: string[];
+}
+
+// The durable store row for public.sync_runs (G-35 / Q-42 Option B; DDL of
+// record in docs/sync-runs-supabase.sql). Column names are the table's;
+// buildSyncRunRow is the one mapping from the engine's record shape.
+export interface SyncRunRow {
+  started_at: string;
+  finished_at: string;
+  trigger: string;
+  status: string;
+  sources: LedgerSourceEntry[];
+  total_rows: number;
+  duration_ms: number;
+  deferred_sources: string[];
+}
+
+export function buildSyncRunRow(record: SyncRunRecord): SyncRunRow {
+  return {
+    started_at: record.startedAt,
+    finished_at: record.finishedAt,
+    trigger: record.trigger,
+    status: record.status,
+    sources: record.sources,
+    total_rows: record.totalRows,
+    duration_ms: record.durationMs,
+    deferred_sources: record.deferredSources,
+  };
+}
+
+// Read-route limit: default 50, clamped to [1, 200].
+export function clampSyncRunLimit(value: unknown): number {
+  const parsed = typeof value === "string" ? Number.parseInt(value, 10) : NaN;
+  if (!Number.isFinite(parsed)) return 50;
+  return Math.min(200, Math.max(1, parsed));
 }
 
 export async function recordSyncRun(record: SyncRunRecord): Promise<void> {

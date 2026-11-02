@@ -11,6 +11,7 @@ import {
   initialMoveFormState,
   canSubmitMoveForm,
   moveFormCloseIntent,
+  buildMovePayload,
   type MoveFormValues,
   type MoveFormErrors,
 } from '../../lib/moveForm';
@@ -34,7 +35,10 @@ const FOCUSABLE_SELECTOR =
 // All decidable logic lives in src/lib/moveForm.ts.
 export function AddTaskModal({ currentPerson, onAdd, onReconcile, onClose }: AddTaskModalProps) {
   const uid = React.useId().replace(/[^A-Za-z0-9_-]/g, '');
-  const initial = useMemo(() => initialMoveFormValues(currentPerson || 'monny'), [currentPerson]);
+  // Assignee ruling (Monny, 2026-11-02): no silent default. With no
+  // acting-person context the assignee starts EMPTY and stays optional;
+  // unassigned Moves surface in triage.
+  const initial = useMemo(() => initialMoveFormValues(currentPerson ?? ''), [currentPerson]);
   const [values, setValues] = useState<MoveFormValues>(initial);
   const [errors, setErrors] = useState<MoveFormErrors>({});
   const [formState, dispatch] = useReducer(moveFormReducer, initialMoveFormState);
@@ -136,15 +140,7 @@ export function AddTaskModal({ currentPerson, onAdd, onReconcile, onClose }: Add
     }
     dispatch({ type: 'submit' });
     try {
-      await onAdd({
-        person: currentPerson || values.person,
-        title: values.title.trim(),
-        status: 'todo',
-        priority: values.priority,
-        due_date: values.dueDate,
-        source: values.source,
-        category: values.category,
-      });
+      await onAdd(buildMovePayload(values));
       dispatch({ type: 'resolved' });
       showToast('Move added to the board.', 'well');
       onClose();
@@ -206,6 +202,7 @@ export function AddTaskModal({ currentPerson, onAdd, onReconcile, onClose }: Add
                 onChange={e => updateField('person', e.target.value)}
                 disabled={submitting}
               >
+                <option value="">Unassigned</option>
                 <option value="sunshine">☀️ Sunshine</option>
                 <option value="monny">🌊 Monny</option>
                 <option value="bingle">✨ Bingle</option>

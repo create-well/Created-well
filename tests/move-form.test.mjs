@@ -9,9 +9,29 @@ import {
   moveFormReducer,
   canSubmitMoveForm,
   moveFormCloseIntent,
+  buildMovePayload,
 } from '../src/lib/moveForm.ts';
 
 const base = initialMoveFormValues('monny');
+
+test('payload: built from form values only — an explicit Unassigned submits empty', () => {
+  const payload = buildMovePayload({ ...base, person: '', title: '  Ship it  ' });
+  assert.equal(payload.person, '');
+  assert.equal(payload.title, 'Ship it');
+  assert.equal(payload.status, 'todo');
+  assert.equal(payload.due_date, base.dueDate);
+  assert.equal(buildMovePayload({ ...base, person: 'bingle' }).person, 'bingle');
+});
+
+test('assignee ruling: empty start is clean, optional, and valid', () => {
+  const empty = initialMoveFormValues('');
+  assert.equal(empty.person, '');
+  assert.equal(isMoveFormDirty(empty, empty), false);
+  // Picking a person later is an ordinary edit (dirty); the empty
+  // assignee never fails validation — the field is optional.
+  assert.equal(isMoveFormDirty({ ...empty, person: 'bingle' }, empty), true);
+  assert.deepEqual(validateMoveForm({ ...empty, title: 'A move' }), {});
+});
 
 test('validation: empty and whitespace-only titles are rejected in place', () => {
   assert.equal(validateMoveForm(base).title, 'Give the Move a title.');

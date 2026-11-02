@@ -5,6 +5,14 @@ import { ViewShell } from '../components/ViewShell';
 import { CalendarConnectCard } from '../components/CalendarConnectCard';
 import { freshnessBand } from '../../lib/freshnessLabel';
 import { ReleaseVerificationPanel } from '../components/ReleaseVerificationPanel';
+import { sessionAccessToken } from '../components/api';
+import {
+  parseSyncRunsPayload,
+  runDetailLine,
+  runStartedDate,
+  runStatusTone,
+  type SyncRunSummary,
+} from '../../lib/runHistory';
 
 // Hub CMS database URLs — these are the four DBs the dashboard reads/writes.
 // Distinct from the operational five (PEOPLE/FLOWS/MOVES/MONEY/CONTENT) which
@@ -270,8 +278,50 @@ function relativeTime(date: Date): string {
   return `${Math.floor(diffSec / 3600)}h ago`;
 }
 
+type RunHistoryState =
+  | { kind: 'loading' }
+  | { kind: 'unavailable' }
+  | { kind: 'ready'; runs: SyncRunSummary[] };
+
 export function SystemPage() {
   const { data, actions } = useDashboard();
+
+  // Run history reads the durable sync_runs store through the
+  // session-gated reader (G-35 Option B, PR #66): the route takes the
+  // app session token as a Bearer header, the HubView fetch pattern.
+  // An empty list is the store's honest state, not an error.
+  const [runHistory, setRunHistory] = React.useState<RunHistoryState>({ kind: 'loading' });
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/sync-runs?limit=5', {
+          headers: { Authorization: `Bearer ${sessionAccessToken() ?? ''}` },
+        });
+        if (!res.ok) throw new Error('run history read failed');
+        const read = parseSyncRunsPayload(await res.json());
+        if (cancelled) return;
+        setRunHistory(read ? { kind: 'ready', runs: read.runs } : { kind: 'unavailable' });
+      } catch {
+        if (!cancelled) setRunHistory({ kind: 'unavailable' });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const latestRun = runHistory.kind === 'ready' ? runHistory.runs[0] : undefined;
+  const latestRunDate = latestRun ? runStartedDate(latestRun) : null;
+  const runRow: { value: string; status: 'ok' | 'warn' | 'error' | 'neutral' } =
+    runHistory.kind === 'loading'
+      ? { value: 'Loading…', status: 'neutral' }
+      : runHistory.kind === 'unavailable'
+        ? { value: 'Could not load', status: 'neutral' }
+        : runHistory.runs.length === 0 || !latestRun
+          ? { value: 'No runs recorded yet', status: 'neutral' }
+          : {
+              value: `${latestRun.status}${latestRunDate ? ` · ${relativeTime(latestRunDate)}` : ''}`,
+              status: runStatusTone(latestRun.status),
+            };
 
   // Freshness wording derives from the load timestamp's age at render
   // (G-26: the Fresh/Aging/Stale family, CMS §4 thresholds), never from a
@@ -331,13 +381,37 @@ export function SystemPage() {
             value={data.lastSynced ? data.lastSynced.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' }) : 'Never'}
             status={data.lastSynced ? 'neutral' : 'warn'}
           />
-          {/* Run history has no store until the G-35 decision lands;
-              the placeholder standard marks the absence, never invents it. */}
           <HealthRow
             label="Run history"
-            value="[ ] run history"
-            status="neutral"
+            value={runRow.value}
+            status={runRow.status}
           />
+          {runHistory.kind === 'ready' && runHistory.runs.length > 0 && (
+            <div style={{ padding: '4px 0 8px' }}>
+              {runHistory.runs.map((run, i) => {
+                const started = runStartedDate(run);
+                return (
+                  <div
+                    key={`${run.startedAt}-${i}`}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', gap: 12,
+                      padding: '3px 0',
+                      fontFamily: 'var(--font-label)', fontSize: '0.72rem',
+                      color: 'var(--text-muted)',
+                    }}
+                  >
+                    <span>
+                      {started
+                        ? `${started.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${started.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                        : 'Time not recorded'}
+                      {' · '}{run.trigger}
+                    </span>
+                    <span style={{ textAlign: 'right' }}>{runDetailLine(run)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <HealthRow
             label="Permissions: Care consent"
             value={data.permissions.careConsent ? 'Granted' : 'Not granted'}

@@ -20,6 +20,10 @@ export interface DashboardPayload {
   tasks: Task[];
   stations: Station[];
   forum: ForumPost[];
+  /** Independent read-only CONTENT source projection, separate from optimistic forum state. */
+  contentFlowSnapshot: import('../lib/contentFlowSnapshot').ContentFlowSnapshot;
+  /** Per-source request outcomes; reported-success is not a freshness/completeness guarantee. */
+  canonicalSourceStatuses: import('../lib/canonicalSourceStatus').CanonicalSourceStatuses;
   messages: Message[];
   brainDumps: BrainDump[];
   announcements: Announcement[];

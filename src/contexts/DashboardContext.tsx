@@ -12,6 +12,8 @@ import { displayedDashboardStatus } from '../lib/dashboardStatus';
 import { careConsentGranted } from '../lib/homePanels';
 import { localDateString } from '../lib/dateLabel';
 import { MoveDeleteNotice } from '../app/components/MoveDeleteNotice';
+import { makeContentFlowSnapshot, snapshotFromDashboard } from '../lib/contentFlowSnapshot';
+import { dashboardStatusForSnapshot, sourceStatusesFromDashboard, uniformCanonicalStatus } from '../lib/canonicalSourceStatus';
 
 const DashboardCtx = createContext<DashboardContextValue | null>(null);
 
@@ -31,6 +33,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
   const [forum, setForum] = useState<ForumPost[]>([]);
+  const [contentFlowSnapshot, setContentFlowSnapshot] = useState(() => makeContentFlowSnapshot({ status: 'loading' }));
+  const [canonicalSourceStatuses, setCanonicalSourceStatuses] = useState(() => uniformCanonicalStatus('loading'));
   const [messages, setMessages] = useState<Message[]>([]);
   const [brainDumps, setBrainDumps] = useState<BrainDump[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -125,7 +129,11 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     async function fetchSync(silent = false) {
       if (!active || inFlight) return;
       inFlight = true;
-      if (!silent && !dataLoadedRef.current) setSyncStatus('loading');
+      if (!silent) {
+        setContentFlowSnapshot(makeContentFlowSnapshot({ status: 'loading' }));
+        setCanonicalSourceStatuses(uniformCanonicalStatus('loading'));
+        if (!dataLoadedRef.current) setSyncStatus('loading');
+      }
       try {
         // /api/dashboard (Notion-backed) only exists on Vercel. Skip the attempt
         // entirely when running against the Supabase Edge Function to avoid a
@@ -157,7 +165,14 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setOpenAsksCare(usedFallback ? null : (data.openAsksCare ?? null));
         setTasks(data.tasks || []);
         setStations(data.stations || []);
-        setForum(data.forum || []);
+        // Capture from the primary response, before mutable optimistic forum state.
+        const contentSnapshot = snapshotFromDashboard(data, usedFallback);
+        const sourceStatuses = sourceStatusesFromDashboard(data, usedFallback);
+        setContentFlowSnapshot(contentSnapshot);
+        setCanonicalSourceStatuses(sourceStatuses);
+        // A named CONTENT failure must not replace the last forum payload with []
+        // (the error snapshot remains unavailable, and the overall status is stale).
+        if (usedFallback || contentSnapshot.status !== 'error') setForum(data.forum || []);
         setMessages(deduplicateSystemMessages(data.messages || []));
         setBrainDumps(data.braindumps || []);
         setAnnouncements(data.announcements || []);
@@ -168,7 +183,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowDates(data.coflowDates || []);
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
-        setSyncStatus(usedFallback ? 'stale' : 'fresh');
+        setSyncStatus(dashboardStatusForSnapshot(sourceStatuses, contentSnapshot.status));
         const receivedAt = Date.now();
         setLastSynced(new Date(receivedAt));
         setStatusClock(receivedAt);
@@ -178,6 +193,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         if (!active) return;
         silentFailCount.current += 1;
         console.error('Dashboard sync error:', e);
+        setContentFlowSnapshot(makeContentFlowSnapshot({ status: 'error' }));
+        setCanonicalSourceStatuses(uniformCanonicalStatus('unknown'));
         // Preserve last-good data, but never keep a failed refresh green.
         setSyncStatus(dataLoadedRef.current ? 'stale' : 'failed');
       } finally {
@@ -566,6 +583,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     tasks,
     stations,
     forum,
+    contentFlowSnapshot,
+    canonicalSourceStatuses,
     messages,
     brainDumps,
     announcements,

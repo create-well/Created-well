@@ -13,6 +13,7 @@
 //             Status, Final?, Publish Date, URL, Where
 
 import type { Task, Station, ForumPost, CoFlowDate, FlowType } from '../app/components/api';
+import { readContentFlowRelation } from './contentFlowRelation.ts';
 
 // ── Notion property value types ───────────────────────────────────────────────
 
@@ -315,7 +316,7 @@ export function openAsksCareCounts(pages: NotionPage[]): { total: number; unansw
 // ForumPost is an imperfect mapping. content = Name, tag = Content Type.
 // author is empty for CONTENT (no author field); falls back to 'team'.
 
-export function normalizeContent(page: NotionPage): ForumPost {
+export function normalizeContent(page: NotionPage): ForumPost & { flowRelation: ReturnType<typeof readContentFlowRelation> } {
   const p = page.properties;
 
   // CONTENT has no author field; use Audience as a rough proxy
@@ -331,6 +332,7 @@ export function normalizeContent(page: NotionPage): ForumPost {
   return {
     id:           stableId(page.id),
     notionPageId: page.id,
+    flowRelation: readContentFlowRelation(p['Flow']),
     author:       audienceRaw.toLowerCase() || 'team',
     content:      (name || 'Untitled') + extra,
     tag:          getSelect(pick(p, 'Content Type', 'Type', 'Tag', 'Category')) || undefined,

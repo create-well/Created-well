@@ -73,7 +73,8 @@ function resp(ok, status, body) {
   };
 }
 
-function installFetch({ failing = new Set(), failingKv = new Set(), movesRow = null } = {}) {
+function installFetch({ failing = new Set(), failingKv = new Set(), movesRow = null, contentPages = null } = {}) {
+  let contentCall = 0;
   const originalFetch = globalThis.fetch;
   const originalEnv = { ...process.env };
   Object.assign(process.env, ENV_KEYS);
@@ -83,6 +84,11 @@ function installFetch({ failing = new Set(), failingKv = new Set(), movesRow = n
       const id = u.split('/databases/')[1].split('/')[0];
       if (failing.has(id)) {
         return resp(false, 500, 'upstream boom');
+      }
+      if (id === DB.content && contentPages) {
+        const body = contentPages[contentCall++];
+        if (!body) throw new Error('unexpected CONTENT page request');
+        return resp(true, 200, body);
       }
       const results = id === DB.moves && movesRow ? [movesRow] : [];
       return resp(true, 200, { results, has_more: false, next_cursor: null });
@@ -114,6 +120,7 @@ test('happy path: 200, all slices present, sourceErrors empty', async () => {
     const res = await callHandler();
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body.sourceErrors, {});
+    assert.equal(res.body.contentQueryComplete, true);
     for (const key of ['tasks', 'stations', 'forum', 'coflowDates', 'money', 'events', 'feedback']) {
       assert.ok(Array.isArray(res.body[key]), key);
     }
@@ -157,4 +164,28 @@ test('one KV read failing: 200, only its slice empty, failure named', async () =
     assert.ok(res.body.sourceErrors['kv:cr8w_messages'], 'kv failure named');
     assert.equal(Object.keys(res.body.sourceErrors).length, 1);
   } finally { restore(); }
+});
+
+
+test('malformed CONTENT pagination is named failed, not a successful empty source', async () => {
+  const restore = installFetch({contentPages:[{results:[],has_more:true,next_cursor:null}]});
+  try {
+    const res=await callHandler();
+    assert.equal(res.statusCode,200); assert.ok(res.body.sourceErrors.content);
+    assert.equal(res.body.contentQueryComplete,false); assert.deepEqual(res.body.forum,[]);
+    assert.ok(Array.isArray(res.body.tasks));
+  } finally {restore();}
+});
+
+test('valid paginated CONTENT retains both full IDs and asserts completed query', async () => {
+  const flow='11111111-1111-4111-8111-111111111111';
+  const page=(id,name)=>({id,created_time:'2026-01-01T00:00:00Z',properties:{Name:{type:'title',title:[{plain_text:name}]},Flow:{type:'relation',relation:[{id:flow}],has_more:false}}});
+  const ids=['12345670-0000-4000-8000-000000000001','12345670-0000-4000-8000-000000000002'];
+  const restore=installFetch({contentPages:[{results:[page(ids[0],'A')],has_more:true,next_cursor:'synthetic-cursor'},{results:[page(ids[1],'B')],has_more:false,next_cursor:null}]});
+  try {
+    const res=await callHandler(); assert.equal(res.statusCode,200);
+    assert.equal(res.body.contentQueryComplete,true); assert.deepEqual(res.body.sourceErrors,{});
+    assert.deepEqual(res.body.forum.map(x=>x.notionPageId),ids);
+    assert.deepEqual(res.body.forum.map(x=>x.flowRelation.ids),[[flow],[flow]]);
+  } finally {restore();}
 });

@@ -231,6 +231,7 @@ async function queryNotionDatabasePages(
 ): Promise<NotionQueryPage[]> {
   const pages: NotionQueryPage[] = [];
   let cursor: string | undefined;
+  const contentCursors = new Set<string>();
 
   do {
     const body: Record<string, unknown> = { page_size: 100 };
@@ -242,6 +243,16 @@ async function queryNotionDatabasePages(
       body,
       maxAttempts,
     );
+    // The dashboard may claim CONTENT completeness only after a coherent
+    // page chain. Fail the CONTENT source closed on malformed pagination.
+    if (source === "content") {
+      if (!Array.isArray(payload.results) || typeof payload.has_more !== "boolean" ||
+          (payload.has_more && (typeof payload.next_cursor !== "string" || !payload.next_cursor.trim() || contentCursors.has(payload.next_cursor))) ||
+          (!payload.has_more && payload.next_cursor !== null)) {
+        throw new Error("Notion query for content returned incomplete pagination");
+      }
+      if (payload.has_more && payload.next_cursor) contentCursors.add(payload.next_cursor);
+    }
     pages.push(...payload.results);
     cursor =
       payload.has_more && payload.next_cursor ? payload.next_cursor : undefined;

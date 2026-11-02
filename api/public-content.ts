@@ -74,10 +74,16 @@ async function queryContent(
       next_cursor?: string | null;
     };
     pages.push(...(data.results ?? []));
-    if (!data.has_more || !data.next_cursor) break;
+    if (!data.has_more || !data.next_cursor) return pages;
     cursor = data.next_cursor;
   }
-  return pages;
+  // F-SWEEP2-4: the loop fell out at the 10-page cap with more pages
+  // outstanding. The partial result must not install as the release:
+  // refuse it, so the handler serves last-good (or 503) and logs the
+  // truncation class, per the CMS connector contract.
+  throw new Error(
+    "CMS content query truncated at the 10-page cap (1000+ rows); partial result refused",
+  );
 }
 
 function sendManifest(
@@ -127,7 +133,15 @@ export default async function handler(
       console.log("[cms] readiness holds", JSON.stringify(held));
     }
     sendManifest(res, cache.replace(items, now), "notion", now);
-  } catch {
+  } catch (err) {
+    // F-SWEEP2-3: revalidation failures (a mis-rotated NOTION_SECRET,
+    // a Notion outage, a truncated query) previously left no log
+    // trace while last-good served on. Name the failure class;
+    // behavior is otherwise unchanged.
+    console.error(
+      "[cms] revalidation failed:",
+      err instanceof Error ? err.message : "unknown error",
+    );
     const lastGood = cache.current();
     if (lastGood) {
       sendManifest(res, lastGood, "last-good", now);

@@ -223,6 +223,46 @@ async function queryNotionPage(
   throw new Error(`Notion query for ${source} exhausted its retry budget`);
 }
 
+// Fail-closed pagination discipline (RR-001 Leg A, 2026-11-02; was
+// CONTENT-only, now universal): a read may be treated as complete only
+// after a coherent page chain — results is an array, has_more is a
+// boolean, a continuing chain carries a fresh non-empty cursor, and a
+// finished chain carries a null cursor. Anything else means the read
+// is partial or malformed, and a partial set must never reach a diff.
+function assertCompletePagination(
+  source: string,
+  payload: NotionQueryResponse,
+  seenCursors: Set<string>,
+): void {
+  if (
+    !Array.isArray(payload.results) ||
+    typeof payload.has_more !== "boolean" ||
+    (payload.has_more &&
+      (typeof payload.next_cursor !== "string" ||
+        !payload.next_cursor.trim() ||
+        seenCursors.has(payload.next_cursor))) ||
+    (!payload.has_more && payload.next_cursor !== null)
+  ) {
+    throw new Error(
+      `Notion query for ${source} returned incomplete pagination`,
+    );
+  }
+  if (payload.has_more && payload.next_cursor) {
+    seenCursors.add(payload.next_cursor);
+  }
+}
+
+// A page the diff cannot key is not a row to skip; it is a malformed
+// read. Skipping it would compute deletes against a set the source
+// never confirmed (RR-001 Leg A).
+function assertPageShape(source: string, page: NotionQueryPage): void {
+  if (typeof page.id !== "string" || page.id === "") {
+    throw new Error(
+      `Notion query for ${source} returned a page without a valid id`,
+    );
+  }
+}
+
 async function queryNotionDatabasePages(
   source: string,
   databaseId: string,
@@ -231,7 +271,7 @@ async function queryNotionDatabasePages(
 ): Promise<NotionQueryPage[]> {
   const pages: NotionQueryPage[] = [];
   let cursor: string | undefined;
-  const contentCursors = new Set<string>();
+  const seenCursors = new Set<string>();
 
   do {
     const body: Record<string, unknown> = { page_size: 100 };
@@ -243,16 +283,8 @@ async function queryNotionDatabasePages(
       body,
       maxAttempts,
     );
-    // The dashboard may claim CONTENT completeness only after a coherent
-    // page chain. Fail the CONTENT source closed on malformed pagination.
-    if (source === "content") {
-      if (!Array.isArray(payload.results) || typeof payload.has_more !== "boolean" ||
-          (payload.has_more && (typeof payload.next_cursor !== "string" || !payload.next_cursor.trim() || contentCursors.has(payload.next_cursor))) ||
-          (!payload.has_more && payload.next_cursor !== null)) {
-        throw new Error("Notion query for content returned incomplete pagination");
-      }
-      if (payload.has_more && payload.next_cursor) contentCursors.add(payload.next_cursor);
-    }
+    assertCompletePagination(source, payload, seenCursors);
+    for (const page of payload.results) assertPageShape(source, page);
     pages.push(...payload.results);
     cursor =
       payload.has_more && payload.next_cursor ? payload.next_cursor : undefined;
@@ -294,6 +326,7 @@ export async function fetchSourceRows(
     : 1;
   const rows: SourceRow[] = [];
   let cursor: string | undefined;
+  const seenCursors = new Set<string>();
 
   do {
     const body: Record<string, unknown> = { page_size: 100 };
@@ -306,18 +339,28 @@ export async function fetchSourceRows(
       body,
       maxAttempts,
     );
+    assertCompletePagination(source, payload, seenCursors);
     for (const page of payload.results) {
-      if (typeof page.id !== "string" || page.id === "") continue;
+      assertPageShape(source, page);
+      // Properties feed the normalizers as a record. Null, an array,
+      // or any non-record is a malformed page, not an empty one:
+      // coercing it would store a row the source never sent.
+      if (
+        !page.properties ||
+        typeof page.properties !== "object" ||
+        Array.isArray(page.properties)
+      ) {
+        throw new Error(
+          `Notion query for ${source} returned a page with invalid properties`,
+        );
+      }
       rows.push({
-        _id: page.id,
+        _id: page.id as string,
         _last_edited:
           typeof page.last_edited_time === "string"
             ? page.last_edited_time
             : null,
-        properties:
-          page.properties && typeof page.properties === "object"
-            ? (page.properties as Record<string, unknown>)
-            : {},
+        properties: page.properties as Record<string, unknown>,
       });
     }
     cursor =

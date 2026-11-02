@@ -17,16 +17,17 @@ import {
   acquireLease,
   deleteSnapshotRow,
   emptyDeliveryState,
+  fencedPatchDeliveryState,
   getDeliveryState,
   LEASE_TTL_MS,
   supabaseConfigured,
   listSnapshot,
+  patchDeliveryState,
   releaseLease,
   insertSyncRun,
   renewLease,
   upsertDeliveryState,
   upsertSnapshotRows,
-  verifyLease,
   type DeliveryState,
 } from "./_supabase.js";
 import {
@@ -231,11 +232,33 @@ export async function syncSource(
       : null;
   (renewTimer as unknown as { unref?: () => void } | null)?.unref?.();
 
+  // The pending ids this run started with. The commit write clears
+  // exactly these; anything markEvent appends while the run works is
+  // not this run's to clear (RR-001 Leg A).
+  const startingPending = new Set(state.pending_entity_ids);
+  const startedAtIso = new Date().toISOString();
+
   try {
-    state.last_sync_started_at = new Date().toISOString();
-    state.dirty = false;
-    state.pending_entity_ids = [];
-    await upsertDeliveryState(state);
+    // Started-state write, column-scoped on purpose: pending is never
+    // written here. (The pre-Leg-A shape upserted the whole stale
+    // state object with pending cleared, erasing events appended
+    // after the run's initial read.)
+    if (epoch !== null) {
+      const landed = await fencedPatchDeliveryState(
+        source,
+        { last_sync_started_at: startedAtIso, dirty: false },
+        owner,
+        epoch,
+        Date.now(),
+      );
+      if (!landed) throw new Error(`sync lease lost for ${source}`);
+    } else {
+      // Bootstrap (no delivery row yet, nothing to lease): create the
+      // row from the state read at run start, pending intact.
+      state.last_sync_started_at = startedAtIso;
+      state.dirty = false;
+      await upsertDeliveryState(state);
+    }
 
     const rows = await fetchSourceRows(source, notionSecret);
     const existing = await listSnapshot(source);
@@ -276,6 +299,19 @@ export async function syncSource(
     const version = changed > 0 ? nextVersion : state.sync_version;
 
     if (changed > 0) {
+      if (epoch !== null) {
+        // Fenced checkpoint BEFORE any snapshot mutation: a run that
+        // lost its lease during the read + diff stops here, having
+        // written nothing outside its own started-state mark.
+        const landed = await fencedPatchDeliveryState(
+          source,
+          {},
+          owner,
+          epoch,
+          Date.now(),
+        );
+        if (!landed) throw new Error(`sync lease lost for ${source}`);
+      }
       await upsertSnapshotRows(
         source,
         upserts.map((entry) => ({ ...entry, sync_version: version })),
@@ -285,24 +321,58 @@ export async function syncSource(
       }
     }
 
-    // Standard fencing (Option A): re-verify ownership immediately
-    // before the commit write. Snapshot rows already applied carry the
-    // run's sync_version and converge on the next sync; the delivery
-    // state is never committed by a run that lost its lease.
-    if (epoch !== null && !(await verifyLease(source, owner, epoch))) {
-      throw new Error(`sync lease lost for ${source}`);
+    // Commit. Pending is recomputed against the freshest row: only
+    // the ids this run started with are cleared, so events appended
+    // during the run survive. Under a lease the commit write is
+    // itself fenced (owner + epoch + unexpired, inside the PATCH):
+    // a takeover or expiry since the checkpoint makes it match zero
+    // rows, and the run reports lease-lost instead of success.
+    // Snapshot rows already applied carry the run's sync_version and
+    // converge on the next sync; delivery state is never committed
+    // by a run that lost its lease.
+    const freshest = await getDeliveryState(source);
+    const commitFields: Partial<DeliveryState> = {
+      sync_version: version,
+      last_sync_ok_at: new Date().toISOString(),
+      last_error: null,
+      pending_entity_ids: (freshest?.pending_entity_ids ?? []).filter(
+        (id) => !startingPending.has(id),
+      ),
+    };
+    if (epoch !== null) {
+      const landed = await fencedPatchDeliveryState(
+        source,
+        commitFields,
+        owner,
+        epoch,
+        Date.now(),
+      );
+      if (!landed) throw new Error(`sync lease lost for ${source}`);
+    } else {
+      await upsertDeliveryState({ ...(freshest ?? state), ...commitFields });
     }
-
-    state.sync_version = version;
-    state.last_sync_ok_at = new Date().toISOString();
-    state.last_error = null;
-    await upsertDeliveryState(state);
     return { source, count: rows.length, changed, version, deferred: false };
   } catch (error) {
-    state.last_error =
-      error instanceof Error ? error.message : "sync failed";
-    state.dirty = true;
-    await upsertDeliveryState(state).catch(() => undefined);
+    // Failure write: last_error + dirty only. It never writes pending,
+    // the version, or the ok clock; under a lease it is fenced like
+    // every other state write, so a stale owner cannot overwrite the
+    // current holder's row with its own stale view. Best-effort: a
+    // failed failure-write never masks the run's real error.
+    const failureFields: Partial<DeliveryState> = {
+      last_error: error instanceof Error ? error.message : "sync failed",
+      dirty: true,
+    };
+    if (epoch !== null) {
+      await fencedPatchDeliveryState(
+        source,
+        failureFields,
+        owner,
+        epoch,
+        Date.now(),
+      ).catch(() => undefined);
+    } else {
+      await patchDeliveryState(source, failureFields).catch(() => undefined);
+    }
     throw error;
   } finally {
     if (renewTimer) clearInterval(renewTimer);

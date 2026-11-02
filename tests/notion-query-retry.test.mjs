@@ -249,11 +249,7 @@ test('fetchSourceRows retries canonical pages and follows the cursor', async () 
         });
       }
       return response(200, {
-        results: [
-          page('synthetic-money-two'),
-          { id: 'synthetic-empty-properties', last_edited_time: 42, properties: null },
-          { id: null, last_edited_time: '2026-10-01T00:00:00.000Z', properties: {} },
-        ],
+        results: [page('synthetic-money-two')],
         has_more: false,
         next_cursor: null,
       });
@@ -267,10 +263,7 @@ test('fetchSourceRows retries canonical pages and follows the cursor', async () 
     assert.deepEqual(rows.map((row) => row._id), [
       'synthetic-money-one',
       'synthetic-money-two',
-      'synthetic-empty-properties',
     ]);
-    assert.equal(rows[2]._last_edited, null);
-    assert.deepEqual(rows[2].properties, {});
   } finally {
     if (previous === undefined) delete process.env.NOTION_DB_MONEY;
     else process.env.NOTION_DB_MONEY = previous;

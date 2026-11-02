@@ -165,6 +165,57 @@ export async function upsertDeliveryState(
   });
 }
 
+// Column-scoped PATCH of one delivery-state row: only the named fields
+// are written, so a writer never overwrites columns it did not mean to
+// touch (pending_entity_ids above all — RR-001 Leg A). Returns the
+// number of rows the PATCH matched.
+export async function patchDeliveryState(
+  source: string,
+  fields: Partial<DeliveryState>,
+): Promise<number> {
+  const result = await rest(
+    `sync_delivery_state?source=eq.${encodeURIComponent(source)}`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({
+        ...fields,
+        updated_at: new Date().toISOString(),
+      }),
+    },
+  );
+  return Array.isArray(result) ? result.length : 0;
+}
+
+// A delivery-state write fenced by the lease itself (RR-001 Leg A):
+// the PATCH lands only while the row still names this owner + epoch
+// AND the lease is unexpired at write time, evaluated inside the one
+// statement. A takeover or an expiry between any earlier check and
+// this write makes it match zero rows instead of committing — the
+// check and the write are the same act, so there is no window between
+// them. True when the write landed (exactly one row).
+export async function fencedPatchDeliveryState(
+  source: string,
+  fields: Partial<DeliveryState>,
+  owner: string,
+  epoch: number,
+  nowMs: number,
+): Promise<boolean> {
+  const nowIso = new Date(nowMs).toISOString();
+  const result = await rest(
+    `sync_delivery_state?source=eq.${encodeURIComponent(source)}&lease_owner=eq.${encodeURIComponent(owner)}&lease_epoch=eq.${epoch}&lease_expires_at=gt.${encodeURIComponent(nowIso)}`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({
+        ...fields,
+        updated_at: nowIso,
+      }),
+    },
+  );
+  return Array.isArray(result) && result.length === 1;
+}
+
 // ── Per-source sync leases (G-02 Option A; DDL: docs/live-sync-lease-supabase.sql) ──
 //
 // The lease columns live on the delivery-state row itself. Acquire is a
@@ -258,8 +309,12 @@ export async function renewLease(
   return Array.isArray(result) && result.length === 1;
 }
 
-// True when owner + epoch still hold the source's lease (the standard
-// fencing check before a run commits its delivery-state write).
+// True when owner + epoch still hold the source's lease. Retained for
+// compatibility; the sync engine no longer fences with it — a separate
+// check-then-write pair leaves a takeover window between the two acts,
+// so the engine commits through fencedPatchDeliveryState instead,
+// whose predicates (owner + epoch + unexpired, inside the write) are
+// the fencing of record (RR-001 Leg A).
 export async function verifyLease(
   source: string,
   owner: string,

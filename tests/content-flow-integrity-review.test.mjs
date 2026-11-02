@@ -24,8 +24,8 @@ const page=(id,name)=>({id,created_time:'2026-01-01T00:00:00Z',last_edited_time:
 const source=[normalizeContent(page(a,'[ ] original A')),normalizeContent(page(b,'[ ] original B'))];
 const payload=(rows=source,errors={},complete=true)=>({forum:rows,sourceErrors:errors,contentQueryComplete:complete});
 
-test('fixture control: full IDs differ although legacy numeric IDs collide',()=>{
- assert.notEqual(a,b); assert.equal(source[0].id,source[1].id);
+test('fixture control: full IDs differ and numeric IDs are distinct (stableId hashes the full UUID; the legacy 7-hex-prefix collision is fixed)',()=>{
+ assert.notEqual(a,b); assert.notEqual(source[0].id,source[1].id);
 });
 test('CONTENT failure is visibly different from a successfully empty source',()=>{
  const failed=render(snapshotFromDashboard(payload([],{content:'redacted'}),false));
@@ -45,15 +45,17 @@ test('CONTENT failure exposes an accessible retry action',()=>{
  const html=render(snapshotFromDashboard(payload([],{content:'redacted'}),false));
  assert.match(html,/<button[^>]*>Retry<\/button>/); assert.match(html,/role="alert"/); assert.match(html,/<details[^>]*open/);
 });
-test('optimistic edits to colliding numeric IDs do not alter source-authority panel',()=>{
+test('optimistic edits by numeric ID do not alter source-authority panel',()=>{
  const snapshot=snapshotFromDashboard(payload(),false);
  const optimistic=source.map(p=>p.id===source[0].id?{...p,content:'[ ] optimistic edit'}:p);
  assert.equal(optimistic.length,2); const html=render(snapshot);
  assert.match(html,/\[ \] original A/); assert.match(html,/\[ \] original B/); assert.doesNotMatch(html,/optimistic edit/);
 });
-test('optimistic deletion of a colliding numeric ID does not remove source-authority rows',()=>{
+test('optimistic deletion by numeric ID does not remove source-authority rows',()=>{
  const snapshot=snapshotFromDashboard(payload(),false);
- const optimistic=source.filter(p=>p.id!==source[0].id); assert.equal(optimistic.length,0);
+ // Unique numeric IDs: the filter removes exactly the targeted row from
+ // the optimistic copy (under the legacy collision it removed both).
+ const optimistic=source.filter(p=>p.id!==source[0].id); assert.equal(optimistic.length,1);
  const html=render(snapshot); assert.match(html,/\[ \] original A/); assert.match(html,/\[ \] original B/);
 });
 test('consumer and context use the separate snapshot and shared retry, not mutable forum',async()=>{

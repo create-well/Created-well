@@ -9,7 +9,7 @@
     "test:dashboard-status": "node --experimental-strip-types --test tests/dashboard-status.test.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.49.8",
+    "@supabase/supabase-js": "2.118.0",
     "@vercel/node": "5.1.11",
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",
@@ -71,7 +71,7 @@
     "@vitejs/plugin-react": "4.7.0",
     "tailwindcss": "4.1.12",
     "typescript": "5.9.3",
-    "vite": "6.4.4"
+    "vite": "6.4.5"
   },
   "peerDependencies": {
     "react": "18.3.1",
@@ -87,7 +87,7 @@
   },
   "pnpm": {
     "overrides": {
-      "vite": "6.4.4"
+      "vite": "6.4.5"
     }
   }
 }

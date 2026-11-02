@@ -20,7 +20,19 @@ const page = (id) => ({
 async function withFetch(mock, run) {
   const originalFetch = globalThis.fetch;
   const originalRandom = Math.random;
-  globalThis.fetch = mock;
+  // Reader migration seam: data-source resolution GETs are answered
+  // here so the mocks below keep seeing exactly the query call
+  // sequences they were written for. Resolution behavior itself is
+  // scored in tests/reader-data-sources.test.mjs.
+  const { resetDataSourceIdCache } = await import('../api/_notion-sources.ts');
+  resetDataSourceIdCache();
+  globalThis.fetch = async (url, init) => {
+    const u = String(url);
+    if (u.includes('/v1/databases/') && (!init || init.method !== 'POST')) {
+      return response(200, { data_sources: [{ id: 'ds-under-test' }] });
+    }
+    return mock(url, init);
+  };
   Math.random = () => 0;
   try {
     return await run();

@@ -80,8 +80,17 @@ function installFetch({ failing = new Set(), failingKv = new Set(), movesRow = n
   Object.assign(process.env, ENV_KEYS);
   globalThis.fetch = async (url, init) => {
     const u = String(url);
-    if (u.startsWith('https://api.notion.com/v1/databases/')) {
+    // Reader migration: a GET on the database resolves its data source;
+    // queries arrive on the data_sources route with the ds- prefix.
+    if (u.startsWith('https://api.notion.com/v1/databases/') && (!init || !init.method || init.method === 'GET')) {
       const id = u.split('/databases/')[1].split('/')[0];
+      if (failing.has(id)) {
+        return resp(false, 500, 'upstream boom');
+      }
+      return resp(true, 200, { data_sources: [{ id: `ds-${id}` }] });
+    }
+    if (u.startsWith('https://api.notion.com/v1/data_sources/')) {
+      const id = u.split('/data_sources/')[1].split('/')[0].replace(/^ds-/, '');
       if (failing.has(id)) {
         return resp(false, 500, 'upstream boom');
       }

@@ -58,6 +58,17 @@ function page(id, name) {
 function notionResponse(results, hasMore, cursor) {
   return { ok: true, status: 200, json: async () => ({ results, has_more: hasMore, next_cursor: cursor }), text: async () => '' };
 }
+
+// Reader migration seam: resolution GETs resolve to a fixture data
+// source so each stub below keeps modeling only the query route.
+const withResolution = (impl) => async (url, init) => {
+  const u = String(url);
+  if (u.includes('api.notion.com/v1/databases/') && (!init || init.method !== 'POST')) {
+    return { ok: true, status: 200, json: async () => ({ data_sources: [{ id: 'ds-fixture' }] }), text: async () => '' };
+  }
+  return impl(url, init);
+};
+
 async function invoke() {
   process.env.NOTION_SECRET = 'synthetic'; process.env.NOTION_DB_CONTENT = 'db-fixture';
   const logs = [];
@@ -75,14 +86,14 @@ test('cold cache + provider failure: 503, and the failure class is logged (F-SWE
 });
 
 test('cold cache + endless has_more: the truncated partial is refused, 503, truncation logged (F-SWEEP2-4)', async () => {
-  globalThis.fetch = async () => notionResponse([page('p1', '[ ] fixture one')], true, 'cursor-x');
+  globalThis.fetch = withResolution(async () => notionResponse([page('p1', '[ ] fixture one')], true, 'cursor-x'));
   const r = await invoke();
   assert.equal(r.code, 503);
   assert.ok(r.logs.some(l => l.includes('truncated at the 10-page cap')), 'log names the truncation class');
 });
 
 test('success warms the cache: 200 from notion with the projected items', async () => {
-  globalThis.fetch = async () => notionResponse([page('p1', '[ ] fixture one'), page('p2', '[ ] fixture two')], false, null);
+  globalThis.fetch = withResolution(async () => notionResponse([page('p1', '[ ] fixture one'), page('p2', '[ ] fixture two')], false, null));
   const r = await invoke();
   assert.equal(r.code, 200);
   assert.equal(r.body.source, 'notion');
@@ -92,7 +103,7 @@ test('success warms the cache: 200 from notion with the projected items', async 
 
 test('warm cache + provider failure: last-good serves (behavior unchanged) and the failure is logged', async () => {
   clockOffsetMs = 61_000; // past the 60s TTL: the next reads revalidate
-  globalThis.fetch = async () => ({ ok: false, status: 500, json: async () => ({}), text: async () => '' });
+  globalThis.fetch = withResolution(async () => ({ ok: false, status: 500, json: async () => ({}), text: async () => '' }));
   const r = await invoke();
   assert.equal(r.code, 200);
   assert.equal(r.body.source, 'last-good');
@@ -101,7 +112,7 @@ test('warm cache + provider failure: last-good serves (behavior unchanged) and t
 });
 
 test('warm cache + truncation attempt: the partial never replaces last-good', async () => {
-  globalThis.fetch = async () => notionResponse([page('p9', '[ ] partial row')], true, 'cursor-y');
+  globalThis.fetch = withResolution(async () => notionResponse([page('p9', '[ ] partial row')], true, 'cursor-y'));
   const r = await invoke();
   assert.equal(r.code, 200);
   assert.equal(r.body.source, 'last-good');

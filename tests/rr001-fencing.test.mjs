@@ -117,6 +117,12 @@ function matchesFilters(u, target) {
 globalThis.fetch = async (url, init = {}) => {
   const u = new URL(url);
   if (u.hostname === 'api.notion.com') {
+    if ((init.method ?? 'GET') === 'GET' && u.pathname.startsWith('/v1/databases/')) {
+      // Composed-tree seam (reader migration): data-source resolution
+      // (2025-09-03) precedes every query; the stub resolves constantly
+      // so the cases below exercise the query behavior they name.
+      return jsonResponse({ data_sources: [{ id: 'ds-synthetic' }] });
+    }
     const body = init.body ? JSON.parse(String(init.body)) : {};
     return jsonResponse(notionResponder(body));
   }

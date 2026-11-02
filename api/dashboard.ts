@@ -26,7 +26,7 @@ import { createClient } from '@supabase/supabase-js';
 import { applyCors, requireSession } from './_auth.js';
 import { hasDashboardConfiguration } from './_dashboard-config.js';
 import { getSyncFreshness } from './_sync-engine.js';
-import { queryCanonicalNotionDatabase } from './_notion-sources.js';
+import { queryCanonicalNotionDatabase, resolveDataSourceId, NOTION_API_VERSION } from './_notion-sources.js';
 import {
   normalizeMove,
   normalizePerson,
@@ -86,6 +86,10 @@ interface NotionQueryResponse {
 
 // Fetch all pages from a Notion database, following pagination cursors.
 async function queryNotionDatabase(databaseId: string, secret: string): Promise<NotionPage[]> {
+  // Reader migration (2026-11-02): query the data_sources route
+  // (Notion-Version 2025-09-03); the legacy databases query route was
+  // removed in that API version.
+  const dataSourceId = await resolveDataSourceId(databaseId, secret);
   const pages: NotionPage[] = [];
   let cursor: string | undefined;
 
@@ -93,11 +97,11 @@ async function queryNotionDatabase(databaseId: string, secret: string): Promise<
     const body: Record<string, unknown> = { page_size: 100 };
     if (cursor) body.start_cursor = cursor;
 
-    const res = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+    const res = await fetch(`https://api.notion.com/v1/data_sources/${dataSourceId}/query`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${secret}`,
-        'Notion-Version': '2022-06-28',
+        'Notion-Version': NOTION_API_VERSION,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),

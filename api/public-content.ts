@@ -19,6 +19,7 @@ import {
   type CmsManifest,
   type NotionPageLike,
 } from "./_cms-projection.js";
+import { resolveDataSourceId, NOTION_API_VERSION } from "./_notion-sources.js";
 
 interface ApiRequest {
   method?: string;
@@ -39,17 +40,21 @@ async function queryContent(
   notionSecret: string,
   databaseId: string,
 ): Promise<NotionPageLike[]> {
+  // Reader migration (2026-11-02): query the data_sources route
+  // (Notion-Version 2025-09-03); the legacy databases query route was
+  // removed in that API version.
+  const dataSourceId = await resolveDataSourceId(databaseId, notionSecret);
   const pages: NotionPageLike[] = [];
   let cursor: string | undefined;
   for (let page = 0; page < 10; page += 1) {
     const response = await fetch(
-      `https://api.notion.com/v1/databases/${encodeURIComponent(databaseId)}/query`,
+      `https://api.notion.com/v1/data_sources/${encodeURIComponent(dataSourceId)}/query`,
       {
         method: "POST",
         headers: {
           ["Author" + "ization"]: `Bearer ${notionSecret}`,
           "Content-Type": "application/json",
-          "Notion-Version": "2022-06-28",
+          "Notion-Version": NOTION_API_VERSION,
         },
         body: JSON.stringify({
           page_size: 100,

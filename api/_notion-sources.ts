@@ -9,8 +9,11 @@
 // Notion page carrying its raw properties ({ _id, _last_edited,
 // properties }). Consumers normalize on read with the same functions
 // /api/dashboard uses today, which keeps snapshot/live parity exact by
-// construction. Reads use the same legacy database query path
-// (Notion-Version 2022-06-28). The canonical five sources use bounded
+// construction. Reads resolve each database's data source and query the
+// data_sources route (Notion-Version 2025-09-03; see the reader
+// migration note at NOTION_API_VERSION below — the legacy
+// /v1/databases/{id}/query path this file used through 2026-11-02 was
+// removed in that API version). The canonical five sources use bounded
 // transient retries; optional sources retain their single-attempt behavior.
 
 import type { NotionPage } from "../src/lib/notionNormalizer.js";
@@ -62,6 +65,85 @@ interface NotionQueryPage {
   id?: unknown;
   last_edited_time?: unknown;
   properties?: unknown;
+}
+
+// Reader migration (2026-11-02): the Notion API's 2025-09-03 version
+// removed POST /v1/databases/{id}/query. Reads now resolve the
+// database's data source id once per instance (module-level cache) and
+// query POST /v1/data_sources/{id}/query. Database ids and data-source
+// ids are different UUIDs; configuration keeps carrying database ids,
+// so no env changes ride this migration. A database with several data
+// sources resolves to its first, with the count logged — every database
+// this app reads has exactly one data source today.
+export const NOTION_API_VERSION = "2025-09-03";
+const dataSourceIdCache = new Map<string, string>();
+
+// Test seam: resolution caching is per instance lifetime in production.
+export function resetDataSourceIdCache(): void {
+  dataSourceIdCache.clear();
+}
+
+export async function resolveDataSourceId(
+  databaseId: string,
+  notionSecret: string,
+  maxAttempts = 1,
+): Promise<string> {
+  const cached = dataSourceIdCache.get(databaseId);
+  if (cached) return cached;
+  const attempts = Math.max(1, maxAttempts);
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    let res: Response;
+    try {
+      res = await fetch(
+        `https://api.notion.com/v1/databases/${encodeURIComponent(databaseId)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${notionSecret}`,
+            "Notion-Version": NOTION_API_VERSION,
+          },
+        },
+      );
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts && isTransientNetworkFailure(error)) {
+        const delay = retryDelayMs(attempt, null) ?? 0;
+        await new Promise<void>((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
+    }
+    if (!res.ok) {
+      const text = await res.text();
+      const error = new Error(
+        `Notion database ${databaseId} → ${res.status}: ${text.slice(0, 300)}`,
+      );
+      lastError = error;
+      if (attempt < attempts && (res.status === 429 || res.status >= 500)) {
+        const delay = retryDelayMs(attempt, res.headers.get("Retry-After")) ?? 0;
+        await new Promise<void>((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
+    }
+    const payload = (await res.json()) as { data_sources?: unknown };
+    const list = Array.isArray(payload?.data_sources) ? payload.data_sources : [];
+    const first = list[0] as { id?: unknown } | undefined;
+    if (!first || typeof first.id !== "string" || first.id.length === 0) {
+      // A database with no resolvable data source is a configuration
+      // failure, not a transient one: fail closed, never fall back to
+      // the removed legacy route.
+      throw new Error(`Notion database ${databaseId} returned no data sources`);
+    }
+    if (list.length > 1) {
+      console.error(
+        `[notion-reader] database ${databaseId} has ${list.length} data sources; using the first`,
+      );
+    }
+    dataSourceIdCache.set(databaseId, first.id);
+    return first.id;
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
 interface NotionQueryResponse {
@@ -140,7 +222,8 @@ async function queryNotionPage(
   body: Record<string, unknown>,
   maxAttempts: number,
 ): Promise<NotionQueryResponse> {
-  const url = `https://api.notion.com/v1/databases/${databaseId}/query`;
+  const dataSourceId = await resolveDataSourceId(databaseId, notionSecret, maxAttempts);
+  const url = `https://api.notion.com/v1/data_sources/${dataSourceId}/query`;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     let response: Response | undefined;
@@ -150,7 +233,7 @@ async function queryNotionPage(
         method: "POST",
         headers: {
           ["Author" + "ization"]: `Bearer ${notionSecret}`,
-          "Notion-Version": "2022-06-28",
+          "Notion-Version": NOTION_API_VERSION,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),

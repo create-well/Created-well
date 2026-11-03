@@ -171,7 +171,18 @@
         "view": "next up"
       },
       "notion_view_note": "View name is deck-named (Handoff Bundle page 5: the sync reads only 'next up'). api/_notion-sources.ts carries no view names, so the view binding is not confirmed in the repo source map.",
-      "status": "provisional"
+      "status": "provisional",
+      "figma": {
+        "component": "EventCard",
+        "fileKey": "6GpuVqt4LiguAOdOwcS8OT",
+        "nodeId": "14-2",
+        "url": "https://www.figma.com/design/6GpuVqt4LiguAOdOwcS8OT/CR8W-Design-System?node-id=14-2",
+        "template": "src/code-connect/eventcard.figma.ts",
+        "code_target": null,
+        "library": "published 2026-11-03 (one of 13 changes in the CR8W Design System library publish; file renamed from 'Untitled' the same pass)",
+        "mapping": "NOT live — Code Connect publish is gated on Monny's named YES + her Secure Vault FIGMA_ACCESS_TOKEN (Code Connect: Write + File content: Read). This binding is staged metadata; it claims no live Figma mapping.",
+        "note": "Honest-match binding: this entry is the kit's gathering-card pattern (Web UI Kit p.3), the registry home for the Figma EventCard component-set. EventCard has no 1:1 code component — it is a composition rendered inside HomePanels / CommunityEventsView from the CMS gatherings payload — so code_target is null and the entry's status stays provisional."
+      }
     },
     {
       "component": null,
@@ -263,7 +274,18 @@
       "kit_source_note": "OS Frontend Spec (5 pages, native PDF): page 1 specimen at 1440x2400, cream ground, rust sidebar, eleven views mapped to the canonical databases, four view rules (read-only until verified, one database per truth, consent always visible, no writes in v1). Sidebar ground pixel-verified as raw rust #C25B38 (GROUND-TRUTH gap 1: the deck's cream-on-rust 4.5:1+ caption fails; the computed value is 3.69 — caption not transcribed as truth).",
       "notion_view": null,
       "notion_view_note": "The shell binds the seven Notion sources as data (api/_notion-sources.ts), not to a single view; no one view is the shell's mirror.",
-      "status": "verified"
+      "status": "verified",
+      "figma": {
+        "component": "NavHeader",
+        "fileKey": "6GpuVqt4LiguAOdOwcS8OT",
+        "nodeId": "14-14",
+        "url": "https://www.figma.com/design/6GpuVqt4LiguAOdOwcS8OT/CR8W-Design-System?node-id=14-14",
+        "template": "src/code-connect/navheader.figma.ts",
+        "code_target": "src/app/components/TopNav.tsx",
+        "library": "published 2026-11-03 (one of 13 changes in the CR8W Design System library publish; file renamed from 'Untitled' the same pass)",
+        "mapping": "NOT live — Code Connect publish is gated on Monny's named YES + her Secure Vault FIGMA_ACCESS_TOKEN (Code Connect: Write + File content: Read). This binding is staged metadata; it claims no live Figma mapping.",
+        "note": "Honest-match binding: NavHeader binds to TopNav.tsx, a composed part of this shell entry (see component_note — the shell as built is ViewShell.tsx composed with TopNav.tsx and RootLayout.tsx). The entry's primary component stays ViewShell.tsx; this binding records the NavHeader leg only."
+      }
     },
     {
       "component": null,

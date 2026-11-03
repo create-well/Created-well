@@ -1,0 +1,281 @@
+{
+  "artifacts": [
+    {
+      "canvas": "Web/CMS Handoff Bundle",
+      "entities": [],
+      "kind": "overview",
+      "name": "Web/CMS Handoff Bundle — cover / system overview",
+      "source_page": 1,
+      "summary": "Deck index page: names the bundle's 8 pages as files (tokens.css, tokens.json, fonts.txt, cms-schema.md x3, go-live-checklist.md), states the system in one paragraph (Notion owns content; forms tool owns RSVPs and consent; display layer is a mirror; nightly sync; RSVP saves the seat only, letter joins via explicit opt-in), and the build paths. This page is the naming source for artifacts 2-8 below."
+    },
+    {
+      "canvas": "Web/CMS Handoff Bundle",
+      "entities": [],
+      "kind": "tokens-css",
+      "name": "tokens.css",
+      "source_page": 2,
+      "summary": "The v1.1 :root variable set as copyable CSS text. Values agree with design-tokens-v1.1.json everywhere both carry them (Nov 1 errata). Exclusions: its contrast comments and the loosened camel comment are NOT transcribed (errata P1-P7, D7); the record governs."
+    },
+    {
+      "canvas": "Web/CMS Handoff Bundle",
+      "entities": [],
+      "kind": "tokens-json",
+      "name": "tokens.json",
+      "source_page": 3,
+      "summary": "The v1.1 W3C token set as copyable JSON text. Programmatic diff vs design-tokens-v1.1.json: 91 leaf values (7 colors, 4 radii, 5 spacing, 2 touch, 3 motion, 9 type styles), 0 differences (errata method, re-run by the design-kit skill's parser smoke test 2026-11-02)."
+    },
+    {
+      "canvas": "Web/CMS Handoff Bundle",
+      "entities": [],
+      "kind": "fonts",
+      "name": "fonts.txt",
+      "source_page": 4,
+      "summary": "Five-family stack with links and roles: Fredoka (display), Blinker (labels), Montserrat (body), EB Garamond (accents, italic only), IBM Plex Mono (configuration voice). Fonts travel via this page / the CSS slide as REPORTED input; the v1.1 JSON does not enumerate the stack."
+    },
+    {
+      "canvas": "Web/CMS Handoff Bundle",
+      "entities": [
+        {
+          "fields": [
+            "title",
+            "start",
+            "end",
+            "timezone",
+            "location",
+            "rsvp_deadline",
+            "rsvp_url",
+            "capacity",
+            "cover",
+            "status",
+            "slug"
+          ],
+          "name": "gatherings"
+        },
+        {
+          "fields": [
+            "number",
+            "title",
+            "duration_min",
+            "publish_date",
+            "audio_url",
+            "show_notes",
+            "status"
+          ],
+          "name": "episodes"
+        },
+        {
+          "fields": [
+            "title",
+            "excerpt",
+            "body",
+            "cover",
+            "author",
+            "status"
+          ],
+          "name": "journal_posts"
+        },
+        {
+          "fields": [
+            "name",
+            "role",
+            "photo",
+            "bio",
+            "instagram"
+          ],
+          "name": "hosts_guides"
+        }
+      ],
+      "kind": "cms-schema",
+      "name": "cms-schema.md — content",
+      "source_page": 5,
+      "summary": "Content schema, field by field: Notion property -> display field, types and rules. gatherings is the public face of CONTENT; the sync reads only the 'next up' view (published + start >= today, ascending); 'the vault' holds the past; status=cancelled keeps the page live with a plain banner. Conventions: lowercase_snake_case, ISO 8601 with times, blanks stay blank, partial data never publishes. Field lists below are transcribed from the slide text in this pass (not a CLI reconstruction). Transport named in the deck (Framer/Make) is superseded; field contracts carry over per spec §5.3."
+    },
+    {
+      "canvas": "Web/CMS Handoff Bundle",
+      "entities": [
+        {
+          "fields": [
+            "name",
+            "email",
+            "letter_opt_in",
+            "event_slug",
+            "submitted_at"
+          ],
+          "name": "rsvp_form"
+        },
+        {
+          "fields": [
+            "email",
+            "letter_consent",
+            "consent_source",
+            "consent_at",
+            "unsubscribed_at"
+          ],
+          "name": "consent_ledger"
+        }
+      ],
+      "kind": "cms-schema",
+      "name": "cms-schema.md — people",
+      "source_page": 6,
+      "summary": "People schema: the per-event RSVP form fields and the consent ledger columns, plus the consent contract (RSVP saves the seat only; the letter joins exclusively via the checkbox, tracked with source and timestamp, spoken aloud on the confirmation screen) and six RSVP-fired automations (guest confirmation, host heads-up digest, ledger row, letter handoff, 48h reminder, cancellation note). Form rules: closes itself at the deadline, capacity flips replies to a waitlist tag, duplicate email updates the seat, letter_opt_in is never pre-ticked."
+    },
+    {
+      "canvas": "Web/CMS Handoff Bundle",
+      "entities": [
+        {
+          "fields": [
+            "watch_next_up_view",
+            "completeness_check",
+            "field_map",
+            "upsert",
+            "error_route_degrade_to_warmth"
+          ],
+          "name": "sync_scenario"
+        }
+      ],
+      "kind": "cms-schema",
+      "name": "cms-schema.md — sync",
+      "source_page": 7,
+      "summary": "Sync scenario, module by module: (1) watch the 'next up' view, (2) completeness check (missing start/end/timezone = skipped and logged; partial data never publishes), (3) map fields per page 05 with the Notion page id as external key, (4) upsert (match updates, no match creates, gone archives), (5) on error degrade to warmth (last good publish stays live, host gets a plain email, scenario pauses). Content syncs nightly; RSVPs are real time and never lost on failure. The deck's Make/Framer transport does not carry over; the step contract and failure behavior map onto the CMS connector contract (spec §5.3)."
+    },
+    {
+      "canvas": "Web/CMS Handoff Bundle",
+      "entities": [],
+      "kind": "checklist",
+      "name": "go-live-checklist.md",
+      "source_page": 8,
+      "summary": "Eight setup moves in order (duplicate the Notion template; fill three real gatherings, complete rows only; load tokens.css + fonts; create the gatherings collection with the page-05 names/types; clone the RSVP form per event and paste each URL into rsvp_url; import the sync scenario and run once by hand; RSVP to your own event and watch the ledger/confirmation/consent line; flip status to published), the weekly five-minute check, and the failure table. Setup specifics name the deck's retired transport; the sequence and the completeness discipline carry over."
+    }
+  ],
+  "templates": [
+    {
+      "component": null,
+      "component_note": "Checked against the tree at HEAD 7c9bda3d: no repo component yet. No ContentCard or EventCard exists anywhere in src/ or api/ (re-confirmed in the 2026-11-02 rebind pass: grep, zero matches). The public-content data leg exists (src/lib/publicContent.ts, src/lib/usePublicContent.ts, api/public-content.ts) and the Release* components (ReleaseStateBlock, ReleaseStatusStrip, ReleaseVerificationPanel) render the release-verification JOIN view, not a public card. Internal views CommunityEventsView / WorkshopsView are dashboard surfaces, not this template.",
+      "repo_binding": {
+        "kind": "cms-data-route",
+        "paths": [
+          "api/public-content.ts",
+          "src/lib/publicContent.ts",
+          "src/lib/usePublicContent.ts"
+        ],
+        "note": "Rebind pass 2026-11-02: this release/content template binds to the CMS route leg — api/public-content.ts serves the public content payload this card renders; the lib files are its client read path. The binding is a data leg only: no rendering component exists, so component stays null and status stays provisional under the D1 gate (binding does not promote)."
+      },
+      "id": "gatherings-card",
+      "kit_source": {
+        "canvas": "Web UI Kit",
+        "page": 3
+      },
+      "kit_source_note": "Component Kit page: the gathering card (date block, title, time/place line, tag, 'rsvp ->', spots-left line). Also rendered in the gatherings list, Web UI Kit page 5. Cross-reference: Handoff Bundle page 5 (gatherings field contract).",
+      "notion_view": {
+        "source": "CONTENT",
+        "view": "next up"
+      },
+      "notion_view_note": "View name is deck-named (Handoff Bundle page 5: the sync reads only 'next up'). api/_notion-sources.ts carries no view names, so the view binding is not confirmed in the repo source map.",
+      "status": "provisional"
+    },
+    {
+      "component": null,
+      "component_note": "Checked against the tree: no repo component yet (same check as gatherings-card; no detail/route component renders public gatherings, and no public gatherings route exists in src/app/routes.ts — its nine routes are the internal dashboard pages).",
+      "repo_binding": {
+        "kind": "cms-data-route",
+        "paths": [
+          "api/public-content.ts",
+          "src/lib/publicContent.ts",
+          "src/lib/usePublicContent.ts"
+        ],
+        "note": "Rebind pass 2026-11-02: same CMS data leg as gatherings-card. There is no route-page binding for this template: the repo's route pages (src/app/pages/*.tsx via src/app/routes.ts) are internal dashboard surfaces, not the public detail page. Status stays provisional under the D1 gate (binding does not promote)."
+      },
+      "id": "gatherings-detail",
+      "kit_source": {
+        "canvas": "Web UI Kit",
+        "page": 5
+      },
+      "kit_source_note": "Gatherings page with the featured-workshop detail block (cover story + DATE / TIME / LOCATION + email capture + 'save my spot', 'Limited spots — RSVP by' line). Mirrored as mobile screen 03 — Event Detail, Web UI Kit page 6.",
+      "notion_view": {
+        "source": "CONTENT",
+        "view": "next up"
+      },
+      "notion_view_note": "Same deck-named view as gatherings-card; not confirmed in the repo source map.",
+      "status": "provisional"
+    },
+    {
+      "component": null,
+      "component_note": "Checked against the tree: no repo component yet. api/ has no rsvp route (api/public-content.ts is the only public route) and no RSVP form component exists in src/. RSVP-shaped strings in dashboard components (HubView, GeyserView, data.ts) are internal data, not this flow. Null re-confirmed firsthand in the 2026-11-02 rebind pass: full api/ listing read (_auth, _cms-projection, _dashboard-config, _notion-sources, _notionWriter, _supabase, _sync-engine, _sync-ledger, dashboard, notion-webhook, public-content, reconcile, server, snapshot, sync-runs) with zero rsvp matches anywhere in api/.",
+      "id": "rsvp-flow",
+      "kit_source": {
+        "canvas": "Web UI Kit",
+        "page": 12
+      },
+      "kit_source_note": "RSVP Flow page: three screens (01 Notice & Choose — event summary + 'save my spot'; 02 Tell Us Who — first name, email, letter checkbox unticked, one ask per row; 03 You're In — confirmation restates date/time/place + add-to-calendar). Form fields and rules of record: Handoff Bundle page 6 (rsvp_form). Kit rules carried verbatim: RSVP saves a seat only; no account, no password; the button never hides.",
+      "notion_view": null,
+      "notion_view_note": "No Notion view: the deck assigns RSVP capture to the forms tool, with the consent ledger syncing back to PEOPLE nightly. No repo source-map entry exists for an RSVP intake view.",
+      "status": "provisional"
+    },
+    {
+      "component": null,
+      "component_note": "Checked against the tree: no repo component implements the pattern. Consent display exists in the dashboard (consent counts and states in HubView, WorkshopsView, components/api.ts, DashboardContext) but no form surface carries letter_opt_in or a consent-ledger write; the pattern's repo leg does not exist yet.",
+      "id": "consent-form-patterns",
+      "kit_source": {
+        "canvas": "Web/CMS Handoff Bundle",
+        "page": 6
+      },
+      "kit_source_note": "The consent-aware pattern set: letter_opt_in checkbox, default off, never pre-ticked (stated three ways on the page); the consent ledger columns (email, letter_consent, consent_source, consent_at, unsubscribed_at); the letter platform imports only consent=yes rows with unsubscribed blank; an untick anywhere updates the ledger; the consent line is spoken aloud on the confirmation screen. Form specimen with the unticked letter checkbox also appears in the RSVP flow, Web UI Kit page 12, and the forms block, Web UI Kit page 3.",
+      "notion_view": null,
+      "notion_view_note": "Deck page 6: ledger rows sync back to PEOPLE in the Create Well OS, which stays the single source of truth for humans. No named view in the deck or the repo source map. Registry encoding: the writer schema carries notion_view as {source, view} or null; this entry's source is PEOPLE with no named view, so notion_view is null and the source is recorded in this note, not dropped.",
+      "status": "verified"
+    },
+    {
+      "component": null,
+      "component_note": "Checked against the tree: zero matches for the family in src/ (grep UNREACHABLE / VERIFYING returns nothing). The dashboard carries a different, settled vocabulary on adjacent surfaces (SyncStatusBar + src/lib/freshnessLabel.ts + src/lib/canonicalSourceStatus.ts: Fresh / Aging / Stale, per-source status). The kit family has no repo component yet; the two vocabularies are not merged here — which one a given surface speaks is a design call outside this seed.",
+      "id": "connection-state-wording",
+      "kit_source": {
+        "canvas": "OS Frontend Spec",
+        "page": "unpaginated (capture evidence)"
+      },
+      "kit_source_note": "The wording family NOT CONNECTED -> VERIFYING -> LIVE -> UNREACHABLE (plus WRITES DISABLED as a companion chip state), 'never red'. Evidence: the filed overview capture's text layer and the 2026-10-30 examination of the OS Frontend Spec canvas; the native OS Spec PDF is image-only, so no native text layer carries the family.",
+      "notion_view": null,
+      "status": "capture-only"
+    },
+    {
+      "component": "src/app/components/ViewShell.tsx",
+      "component_note": "Binding checked against the tree: the shell as built is ViewShell.tsx (per-view shell + header slot) composed with src/app/components/TopNav.tsx and src/app/RootLayout.tsx (which imports src/app/cr8w.css), with src/app/components/SyncStatusBar.tsx as the freshness line under the top bar. All four files exist at HEAD 7c9bda3d.",
+      "repo_binding": {
+        "kind": "route-table",
+        "paths": [
+          "src/app/routes.ts",
+          "src/app/pages/ThisWeekPage.tsx",
+          "src/app/pages/MovesPage.tsx",
+          "src/app/pages/CarePage.tsx",
+          "src/app/pages/FlowsPage.tsx",
+          "src/app/pages/PodyapsPage.tsx",
+          "src/app/pages/WorkshopsPage.tsx",
+          "src/app/pages/MoneyPage.tsx",
+          "src/app/pages/DecisionsPage.tsx",
+          "src/app/pages/SystemPage.tsx"
+        ],
+        "note": "Rebind pass 2026-11-02, read firsthand from src/app/routes.ts: the shell hosts nine route pages under RootLayout — / (index) ThisWeekPage, /moves MovesPage, /care CarePage, /flows FlowsPage, /podyaps PodyapsPage, /workshops WorkshopsPage, /money MoneyPage, /decisions DecisionsPage, /system SystemPage. HubView, PersonView, GeyserView, WorkshopsView, CommunityEventsView, and ThemeProvider also confirmed present at src/app/components/ in this pass. This entry's status field records its evidence class as before; under the seed's D1 gate it remains provisional for build (binding does not promote)."
+      },
+      "id": "dashboard-shell",
+      "kit_source": {
+        "canvas": "OS Frontend Spec",
+        "page": 1
+      },
+      "kit_source_note": "OS Frontend Spec (5 pages, native PDF): page 1 specimen at 1440x2400, cream ground, rust sidebar, eleven views mapped to the canonical databases, four view rules (read-only until verified, one database per truth, consent always visible, no writes in v1). Sidebar ground pixel-verified as raw rust #C25B38 (GROUND-TRUTH gap 1: the deck's cream-on-rust 4.5:1+ caption fails; the computed value is 3.69 — caption not transcribed as truth).",
+      "notion_view": null,
+      "notion_view_note": "The shell binds the seven Notion sources as data (api/_notion-sources.ts), not to a single view; no one view is the shell's mirror.",
+      "status": "verified"
+    },
+    {
+      "component": null,
+      "component_note": "Checked against the tree: no repo component yet. createdwell is a responsive web app (the shell collapses to one column) but no component implements the kit's named mobile screens as templates.",
+      "id": "mobile-core-screens",
+      "kit_source": {
+        "canvas": "Mobile Kit & CMS Configs",
+        "page": "canvas-level (10 pp, capture only)"
+      },
+      "kit_source_note": "PROVISIONAL — the Mobile Kit native file is NOT VERIFIED on this VM (see sources). Screen inventory as cross-checked from the Web UI Kit deck, page 1 ('Mobile — Six Core Screens') and page 6 ('05 — Mobile'): 01 Home, 02 Gatherings, 03 Event Detail, 04 Podcast, 05 Manifesto, plus a sixth screen not fully legible in the filed text. Mobile rules from the same pages: desktop columns become a stack, don't shrink; one column; the RSVP button stays in the thumb zone. The Mobile canvas itself (10 pp) additionally carries mobile foundations/components, the RSVP flow, and Notion + Framer configs per the inventory record — that layer rests on the overview capture only.",
+      "notion_view": null,
+      "status": "provisional"
+    }
+  ]
+}

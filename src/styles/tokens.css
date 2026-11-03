@@ -1,0 +1,157 @@
+/* CR8W Design Tokens — GENERATED from the tokens of record. Do not hand-edit. */
+/* Source of record: design-tokens-v1.1.json (see local_cr8w_design_kit). */
+/* A warmed color is a minor record version; a rename is major + migration note. */
+/* Generated 2026-11-03 by generate_tokens.py. */
+
+:root {
+  /* color */
+  --camel: #D4A771;
+  --clay: #E8AF93;
+  --cream: #F6EBDF;
+  --darkrust: #A34C2F;
+  --peach: #FFDEC2;
+  --rust: #C25B38;
+  --sand: #EAE3DB;
+  /* motion */
+  --ease: 300ms;
+  --press: 150ms;
+  --motion-reduced: "clamp to 0.01ms — see tokens.css";
+  /* radius */
+  --r-card: 24px;
+  --r-card-lg: 28px;
+  --r-image: 40px;
+  --r-pill: 999px;
+  /* spacing */
+  --space-l: 32px;
+  --space-m: 24px;
+  --space-s: 16px;
+  --space-xl: 48px;
+  --space-xs: 8px;
+  /* touch */
+  --cta-height: 56px;
+  --tap-min: 44px;
+  /* typography */
+  --type-body-family: "Montserrat";
+  --type-body-size: 16px;
+  --type-body-weight: 400;
+  --type-body-leading: 1.55;
+  --type-cardtitle-family: "Fredoka";
+  --type-cardtitle-size: 26px;
+  --type-cardtitle-weight: 600;
+  --type-cardtitle-leading: 1.15;
+  --type-display-family: "Fredoka";
+  --type-display-size: 92px;
+  --type-display-weight: 600;
+  --type-display-tracking: -0.04em;
+  --type-display-leading: 1.02;
+  --type-display-m-family: "Fredoka";
+  --type-display-m-size: 34px;
+  --type-display-m-weight: 600;
+  --type-display-m-tracking: -0.02em;
+  --type-display-m-leading: 1.1;
+  --type-eyebrow-family: "Blinker";
+  --type-eyebrow-size: 14px;
+  --type-eyebrow-weight: 700;
+  --type-eyebrow-tracking: 0.28em;
+  --type-h2-family: "Fredoka";
+  --type-h2-size: 56px;
+  --type-h2-weight: 600;
+  --type-h2-tracking: -0.02em;
+  --type-h2-leading: 1.05;
+  --type-h3-family: "Fredoka";
+  --type-h3-size: 34px;
+  --type-h3-weight: 600;
+  --type-h3-tracking: -0.01em;
+  --type-h3-leading: 1.1;
+  --type-label-family: "Blinker";
+  --type-label-size: 12px;
+  --type-label-weight: 700;
+  --type-label-tracking: 0.2em;
+  --type-small-family: "Montserrat";
+  --type-small-size: 13px;
+  --type-small-weight: 400;
+  --type-small-leading: 1.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   LAYER 2 — PRODUCTION EXTENSION (decision D1: named extension layer).
+   Everything above this block is Layer 1, generated from the tokens
+   of record (design-tokens-v1.1.json) by generate_tokens.py and left
+   byte-identical to the generator output. This layer carries the 47
+   production variables from src/app/cr8w.css under their production
+   names, values copied from that source (line cited per variable).
+   Merge rule (D1): merge, never swap; by exact var name, never by
+   role word. Layer 2 values are production state, not record truth.
+   Vars marked [runtime slot] are ThemeProvider slots: the value here
+   is the pre-theme :root default, NOT the applied themed value.
+   SHADOWS CALL (build-phase, recorded): G7 shadow vars are CARRIED IN,
+   labeled, because this layer's job is a complete, honest map of
+   production state and the Layer 2 round trip must diff 0 against
+   cr8w.css; dropping them would silently falsify the extension.
+   They remain production state only — the record has no shadow
+   category and new surfaces follow the record (no shadows).
+   ============================================================ */
+:root {
+  /* G1 — person-colors (production extension) */
+  --sunshine: #C49090; /* src/app/cr8w.css:34 */
+  --sunshine-light: #F5EAEA; /* src/app/cr8w.css:35 */
+  --sunshine-deep: #7A4F4F; /* src/app/cr8w.css:36 */
+  --monny: #7AB8DC; /* src/app/cr8w.css:37 */
+  --monny-light: #D8EDF8; /* src/app/cr8w.css:38 */
+  --monny-deep: #3A6A8A; /* src/app/cr8w.css:39 */
+  --bingle: #C4935A; /* src/app/cr8w.css:40 */
+  --bingle-light: #F0E0CC; /* src/app/cr8w.css:41 */
+  --bingle-deep: #6A4A28; /* src/app/cr8w.css:42 */
+  /* G2 — functional-bg (production extension) */
+  --bg-main: #F4F1ED; /* src/app/cr8w.css:46; [runtime slot] */
+  --bg-card: #FFFFFF; /* src/app/cr8w.css:47; [runtime slot] */
+  --bg-warm: #F4F1ED; /* src/app/cr8w.css:48; [runtime slot] */
+  --bg-elevated: #FAFAF8; /* src/app/cr8w.css:49 */
+  --cr8w-card-bg: #F4F1ED; /* src/app/cr8w.css:72; [runtime slot] */
+  --cr8w-surface: #FAF8F5; /* src/app/cr8w.css:73; [runtime slot] */
+  /* G3 — production-grounds (Sage & Lavender refresh) */
+  --peach-haze: #D6EDE8; /* src/app/cr8w.css:27; Near-echo of kit 'peach' (#FFDEC2); this value is mint. */
+  --clay-velour: #A3CFC3; /* src/app/cr8w.css:28; HOMONYM: echoes kit 'clay' (record --clay #E8AF93); this value is mint. Merge by exact name only. */
+  --deep-rust: #7BA89D; /* src/app/cr8w.css:29; [runtime slot] HOMONYM: echoes the kit word 'dark rust' (record --darkrust #A34C2F); this value is sage. Merge by exact name only, never role word. */
+  --camel-sun: #B8A9D4; /* src/app/cr8w.css:30; HOMONYM: echoes kit 'camel' (record --camel #D4A771); this value is lavender. Merge by exact name only. */
+  --sandstone: #F4F1ED; /* src/app/cr8w.css:31; Near-echo of kit 'sand' (#EAE3DB); different value. */
+  --secondary: #B8A9D4; /* src/app/cr8w.css:32 */
+  --geyser-accent: #7BA89D; /* src/app/cr8w.css:43; [runtime slot] */
+  --geyser-warm: #B8A9D4; /* src/app/cr8w.css:44 */
+  /* G4 — text and border neutrals (production extension) */
+  --text-primary: #2D2438; /* src/app/cr8w.css:53; [runtime slot] */
+  --text-secondary: #443855; /* src/app/cr8w.css:54 */
+  --text-muted: #6B5F7A; /* src/app/cr8w.css:55 */
+  --border-soft: #D6D1CA; /* src/app/cr8w.css:50 */
+  --border-medium: #B8B2A8; /* src/app/cr8w.css:51 */
+  /* G5 — cr8w runtime theme slots (production extension) */
+  --cr8w-primary: #7BA89D; /* src/app/cr8w.css:68; [runtime slot] */
+  --cr8w-primary-text: #466F64; /* src/app/cr8w.css:69; [runtime slot] */
+  --cr8w-secondary: #B8A9D4; /* src/app/cr8w.css:70; [runtime slot] */
+  --cr8w-text: #2D2438; /* src/app/cr8w.css:71; [runtime slot] */
+  --cr8w-btn-hover: #5F8D82; /* src/app/cr8w.css:74; [runtime slot] */
+  --cr8w-primary-rgb: 123,168,157; /* src/app/cr8w.css:75; [runtime slot] */
+  --cr8w-secondary-rgb: 184,169,212; /* src/app/cr8w.css:76; [runtime slot] */
+  --cr8w-text-rgb: 45,36,56; /* src/app/cr8w.css:77; [runtime slot] */
+  /* G6 — font stacks (production extension; families agree with the record, stacks add system-ui fallbacks) */
+  --font-display: 'Fredoka', sans-serif; /* src/app/cr8w.css:63 */
+  --font-body: 'Montserrat', system-ui, sans-serif; /* src/app/cr8w.css:64 */
+  --font-label: 'Blinker', system-ui, sans-serif; /* src/app/cr8w.css:65 */
+  /* G7 — shadows (production extension; a category the record does not contain — see header call) */
+  --shadow-sm: 0 1px 5px rgba(45,36,56,0.10); /* src/app/cr8w.css:56 */
+  --shadow-md: 0 4px 18px rgba(45,36,56,0.12); /* src/app/cr8w.css:57 */
+  --shadow-lg: 0 8px 32px rgba(45,36,56,0.15); /* src/app/cr8w.css:58 */
+  /* G8 — geometry (production extension; a parallel radius system beside the record --r-* leaves) */
+  --cr-radius-sm: 8px; /* src/app/cr8w.css:59 */
+  --cr-radius-md: 14px; /* src/app/cr8w.css:60 */
+  --cr-radius-lg: 20px; /* src/app/cr8w.css:61 */
+  --cr-radius-xl: 28px; /* src/app/cr8w.css:62 */
+  --nav-height: 60px; /* src/app/cr8w.css:66 */
+}

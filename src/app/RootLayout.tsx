@@ -178,7 +178,7 @@ export function RootLayout() {
         className={`scroll-top-btn ${showScrollTop ? 'visible' : ''}`}
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         title="Back to top"
-        style={{ bottom: '84px', left: '20px', right: 'auto' }}
+        style={{ bottom: '116px', left: '20px', right: 'auto' }}
       >
         ↑
       </button>

@@ -295,6 +295,23 @@ export interface BrainDump {
   id: number; author: string; content: string; tags?: string; drive_link?: string; created_at?: string;
 }
 
+/** One decision-queue item (D-1). KV-backed via the decisions resource. */
+export interface DecisionRecord {
+  id: number;
+  question: string;
+  context: string;
+  urgency: 'now' | 'this-week' | 'when-clear';
+  status: 'pending' | 'decided' | 'deferred';
+  answer?: string;
+  decided_at?: string;
+  created_at?: string;
+}
+
+export type DecisionCreate = Pick<DecisionRecord, 'question' | 'context' | 'urgency'>;
+
+export const createDecision = (d: DecisionCreate) => req<DecisionRecord>('POST', '/decisions', d);
+export const updateDecision = (id: number, updates: Partial<DecisionRecord>) => req<DecisionRecord>('PUT', `/decisions/${id}`, updates);
+
 export interface Announcement {
   id: number; text: string; priority: 'high' | 'medium' | 'low'; active?: number; created_at?: string;
 }
@@ -438,6 +455,7 @@ export interface SyncData {
   money?: MoneyRecord[];
   events?: EventRecord[];
   feedback?: FeedbackRecord[];
+  decisions?: DecisionRecord[];
 }
 
 export interface EventRecord {

@@ -34,6 +34,20 @@ test('NOTION_DB_LINKS point at the databases of record (API lane verified 2026-1
   assert.doesNotMatch(page, /49faf1111bbe43458c3e6a4dcec63b5c/);
 });
 
+test('KV-owned collections carry no NOTION_DB_LINKS entry or href (exec decision, register 1168)', () => {
+  const block = page.slice(page.indexOf('const NOTION_DB_LINKS'), page.indexOf('};', page.indexOf('const NOTION_DB_LINKS')));
+  for (const key of ['messages', 'checkins', 'workshops', 'wellNotes', 'brainDumps', 'announcements']) {
+    assert.doesNotMatch(block, new RegExp(`\\b${key}:`), `${key} must not be in the block`);
+  }
+  assert.doesNotMatch(page, /NOTION_DB_LINKS\.(messages|checkins|workshops|wellNotes|brainDumps|announcements)/);
+  // The old parallel-generation targets those rows pointed at are gone from the file.
+  assert.doesNotMatch(page, /81fc482da44d43cb9c426952654944ab/);
+  assert.doesNotMatch(page, /08a0e011142a4512a3dc8075800db7db/);
+  for (const label of ['Messages', 'Workshops', 'Check-ins', 'Well notes', 'Brain dumps', 'Announcements']) {
+    assert.match(page, new RegExp(`label="${label}"[^>]*source="KV store"`), `${label} row`);
+  }
+});
+
 test('decisions line names the KV resource, not a pending connection', () => {
   assert.match(page, /cr8w_decisions KV resource/);
   assert.doesNotMatch(page, /not yet connected to Notion/);

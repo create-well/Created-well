@@ -19,9 +19,10 @@ import {
 // sources. Targets verified firsthand by the API lane 2026-11-05: the
 // previous targets were a parallel same-titled database generation,
 // not the databases behind the sync.
-// KV-owned rows (messages, check-ins, workshops, well notes, brain
-// dumps, announcements) have no Notion database; their links are
-// thematic and stay as-is pending an exec-room call.
+// KV-owned collections (messages, check-ins, workshops, well notes,
+// brain dumps, announcements) have no Notion database at all, so they
+// carry NO entry here (exec decision, register line 1168): inside this
+// block, any target would assert a database that does not exist.
 const NOTION_DB_LINKS: Record<string, string> = {
   // MOVES db of record (0978d7ba…) — tasks
   tasks:         'https://app.notion.com/p/0978d7ba16924fee8431bffd28eacce0',
@@ -31,13 +32,6 @@ const NOTION_DB_LINKS: Record<string, string> = {
   forum:         'https://app.notion.com/p/b9aa570c4072489e987ec3522a6a2b07',
   // FLOWS db of record (3cd37e75…) — coflow dates (Type: Podyap/Workshop/…)
   coFlowDates:   'https://app.notion.com/p/3cd37e7529604bc8b07d76d0c0089fd7',
-  // KV-owned — no Notion database exists; thematic links
-  messages:      'https://app.notion.com/p/81fc482da44d43cb9c426952654944ab',
-  checkins:      'https://app.notion.com/p/81fc482da44d43cb9c426952654944ab',
-  workshops:     'https://app.notion.com/p/8d9ebf0c04cb47219ca2e3942cee6212',
-  wellNotes:     'https://app.notion.com/p/08a0e011142a4512a3dc8075800db7db',
-  brainDumps:    'https://app.notion.com/p/08a0e011142a4512a3dc8075800db7db',
-  announcements: 'https://app.notion.com/p/08a0e011142a4512a3dc8075800db7db',
 };
 
 const CONTENT_CHANNELS = [
@@ -469,13 +463,13 @@ export function SystemPage() {
           <DataCountRow label="Tasks"        count={data.tasks.length}          emoji="⛲️" internalPath="/moves"  notionHref={NOTION_DB_LINKS.tasks} source="MOVES hub" />
           <DataCountRow label="Stations"     count={data.stations.length}       emoji="🗂️" internalPath="/moves"  notionHref={NOTION_DB_LINKS.stations} source="PEOPLE hub" />
           <DataCountRow label="Forum posts"  count={data.forum.length}          emoji="💬" internalPath="/moves"  notionHref={NOTION_DB_LINKS.forum} source="CONTENT hub" />
-          <DataCountRow label="Messages"     count={data.messages.length}       emoji="📨" internalPath="/care"   notionHref={NOTION_DB_LINKS.messages} source="PEOPLE hub" />
-          <DataCountRow label="Workshops"    count={data.workshops.length}      emoji="🛠️" internalPath="/flows"  notionHref={NOTION_DB_LINKS.workshops} source="FLOWS hub" />
+          <DataCountRow label="Messages"     count={data.messages.length}       emoji="📨" internalPath="/care"   source="KV store" />
+          <DataCountRow label="Workshops"    count={data.workshops.length}      emoji="🛠️" internalPath="/flows"  source="KV store" />
           <DataCountRow label="CoFlow dates" count={data.coFlowDates.length}    emoji="🫧" internalPath="/flows"  notionHref={NOTION_DB_LINKS.coFlowDates} source="FLOWS hub" />
-          <DataCountRow label="Check-ins"    count={data.coFlowCheckins.length} emoji="✅" internalPath="/care"   notionHref={NOTION_DB_LINKS.checkins} source="PEOPLE hub" />
-          <DataCountRow label="Well notes"   count={data.wellNotes.length}      emoji="💧" internalPath="/"       notionHref={NOTION_DB_LINKS.wellNotes} source="CONTENT hub" />
-          <DataCountRow label="Brain dumps"  count={data.brainDumps.length}     emoji="🧠" internalPath="/"       notionHref={NOTION_DB_LINKS.brainDumps} source="CONTENT hub" />
-          <DataCountRow label="Announcements" count={data.announcements.length} emoji="📢" internalPath="/"       notionHref={NOTION_DB_LINKS.announcements} source="CONTENT hub" />
+          <DataCountRow label="Check-ins"    count={data.coFlowCheckins.length} emoji="✅" internalPath="/care"   source="KV store" />
+          <DataCountRow label="Well notes"   count={data.wellNotes.length}      emoji="💧" internalPath="/"       source="KV store" />
+          <DataCountRow label="Brain dumps"  count={data.brainDumps.length}     emoji="🧠" internalPath="/"       source="KV store" />
+          <DataCountRow label="Announcements" count={data.announcements.length} emoji="📢" internalPath="/"       source="KV store" />
         </div>
 
         {/* Public release verification (G-11 Consumer 1) */}

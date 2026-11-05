@@ -1126,7 +1126,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                         cursor: 'pointer',
                         transition: 'all 0.15s',
                       }}
-                    >{isNotified ? '\u2705 notifying' : '\uD83D\uDD14 notify me'}</button>
+                    >{isNotified ? '\u2705 watching on this device' : '\uD83D\uDD14 watch on this device'}</button>
                   </div>
                   <div style={{ fontFamily: "var(--font-label)", fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
                     {cat.desc}
@@ -1961,7 +1961,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                           fontFamily: 'var(--font-label)', fontSize: '0.56rem', fontWeight: 700,
                           color: p.color, textTransform: 'uppercase', letterSpacing: '0.04em',
                           display: 'block', marginBottom: 3,
-                        }}>currently holding</label>
+                        }}>currently holding · this device only</label>
                         <input
                           type="text"
                           value={profileHolding[key] || ''}

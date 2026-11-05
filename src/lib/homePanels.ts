@@ -59,8 +59,22 @@ export function nextUpFlow(flows: HomeFlow[], now: Date): HomeFlow | null {
   return best;
 }
 
-/** §7.1: the geyser marks the emergence day only — the day it happens. */
+/** A flow is a Geyser only when its own record says so: the Type
+ * select (flowType, canonical casing from the normalizer) or the
+ * raw Type label the normalizer leaves on theme. Nothing else
+ * marks one — in particular, never the date (register 1378: the
+ * old marker fired on any flow dated today, and with zero FLOWS
+ * rows carrying the marking, every firing was a mislabel). The
+ * Series field is not carried by the client record; Type is the
+ * Geyser path the data actually exposes. */
+export function isGeyserFlow(f: HomeFlow): boolean {
+  return f.flowType === 'Geyser' || f.theme === 'Geyser';
+}
+
+/** §7.1: the geyser marks the emergence day only — a Geyser-marked
+ * flow, on the day it happens. */
 export function isEmergenceDay(f: HomeFlow, now: Date): boolean {
+  if (!isGeyserFlow(f)) return false;
   const d = flowDate(f);
   if (!d) return false;
   return startOfDay(d).getTime() === startOfDay(now).getTime();

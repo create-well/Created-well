@@ -38,7 +38,7 @@ const DASHBOARD_SECTIONS = [
   {
     emoji: '💬',
     name: 'CR8W Chat',
-    desc: 'Real-time team messages, system notifications, and well drops.',
+    desc: 'Team messages, system notifications, and well drops.',
   },
   {
     emoji: '⛲️',

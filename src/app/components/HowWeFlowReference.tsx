@@ -145,7 +145,7 @@ function ContinuityNote() {
           lineHeight: 1.5,
         }}
       >
-        🔄 Supabase autosync runs every 15 s — all changes persist across devices automatically.
+        🔄 This page refreshes about every minute, so saved changes reach everyone on the team.
       </div>
     </div>
   );

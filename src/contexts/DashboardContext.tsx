@@ -427,6 +427,18 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         await api.deleteBrainDump(id);
       } catch (e) { console.error('Delete brain dump error:', e); }
     },
+    // Fix 3: flag writes (sent_to_playground / archived) are
+    // await-then-apply and rethrow — the flags control what renders,
+    // so a failed write must never present as a state change.
+    async updateBrainDump(id: number, updates: Partial<BrainDump>) {
+      try {
+        const updated = await api.updateBrainDump(id, updates);
+        setBrainDumps(prev => prev.map(d => d.id === id ? updated : d));
+      } catch (e) {
+        console.error('Update brain dump error:', e);
+        throw e;
+      }
+    },
 
     // Announcements
     async dismissAnnouncement(id: number) {

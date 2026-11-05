@@ -229,7 +229,6 @@ export function FlowCommandCenter() {
   const [anonymous, setAnonymous]             = useState(false);
   const [dropped, setDropped]                 = useState(false);
   const [resonance, setResonance]             = useState<"mmm-hmm" | "unh-unh" | null>(null);
-  const [resonanceCounts, setResonanceCounts] = useState({ "mmm-hmm": 0, "unh-unh": 0 });
   const [selectedType, setSelectedType]       = useState<typeof EVENT_TYPES[number]>("Podyap");
 
   const flow          = useMemo(() => pickNextFlow(data.coFlowDates), [data.coFlowDates]);
@@ -238,12 +237,6 @@ export function FlowCommandCenter() {
   const recoveryHours = useMemo(() => getRecoveryHours(data.coFlowDates), [data.coFlowDates]);
 
   function castResonance(vote: "mmm-hmm" | "unh-unh") {
-    if (resonance === vote) return;
-    setResonanceCounts((prev) => ({
-      ...prev,
-      [vote]: prev[vote] + 1,
-      ...(resonance ? { [resonance]: Math.max(0, prev[resonance as keyof typeof prev] - 1) } : {}),
-    }));
     setResonance(vote);
   }
 
@@ -340,21 +333,21 @@ export function FlowCommandCenter() {
                 </Button>
               </div>
 
-              {/* Flow Keeper Override banner */}
+              {/* Session topic banner */}
               <div className="rounded-lg border border-secondary/60 bg-secondary/15 p-4">
                 <span className="font-['Blinker'] text-[11px] font-bold uppercase tracking-[0.13em] text-secondary-foreground">
-                  Flow Keeper override
+                  Session topic
                 </span>
                 <p className="mt-1 font-['Montserrat'] text-sm leading-6 text-foreground">
-                  Flow Keeper's gut overrode the vote. The topic is{" "}
+                  The topic is{" "}
                   <span className="font-semibold">{topic}</span>
                 </p>
               </div>
 
-              {/* Collective resonance with live counts */}
+              {/* Personal resonance check — this device only, never aggregated */}
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
                 <span className="font-['Blinker'] text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                  Collective resonance
+                  Your resonance
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -364,11 +357,6 @@ export function FlowCommandCenter() {
                     className="font-['Blinker'] gap-1.5"
                   >
                     mmm-hmm
-                    {resonanceCounts["mmm-hmm"] > 0 && (
-                      <span className="rounded-full bg-white/25 px-1.5 py-0.5 text-[10px] leading-none">
-                        {resonanceCounts["mmm-hmm"]}
-                      </span>
-                    )}
                   </Button>
                   <Button
                     size="sm"
@@ -377,11 +365,6 @@ export function FlowCommandCenter() {
                     className="font-['Blinker'] gap-1.5"
                   >
                     unh-unh
-                    {resonanceCounts["unh-unh"] > 0 && (
-                      <span className="rounded-full bg-white/25 px-1.5 py-0.5 text-[10px] leading-none">
-                        {resonanceCounts["unh-unh"]}
-                      </span>
-                    )}
                   </Button>
                 </div>
               </div>
@@ -424,7 +407,7 @@ export function FlowCommandCenter() {
                   </CardDescription>
                 </div>
                 <Badge className="font-['Blinker'] text-[11px] uppercase tracking-[0.1em]">
-                  Locked topic
+                  Up next
                 </Badge>
               </div>
             </CardHeader>
@@ -486,7 +469,7 @@ export function FlowCommandCenter() {
                   </CardDescription>
                 </div>
                 <Badge className="shrink-0 font-['Blinker'] text-[11px] uppercase tracking-[0.1em]">
-                  Locked topic
+                  Up next
                 </Badge>
               </div>
             </CardHeader>
@@ -524,15 +507,15 @@ export function FlowCommandCenter() {
             </CardContent>
           </Card>
 
-          {/* Section 4: Live Gear Card */}
+          {/* Section 4: Gear setup card (static reference, no telemetry) */}
           <Card className="border-border shadow-none">
             <CardHeader className="px-5 py-5 sm:px-6">
               <div className="flex items-center justify-between gap-2">
                 <CardTitle className="font-['Fredoka'] text-xl font-medium text-foreground">
-                  Live gear
+                  Gear setup
                 </CardTitle>
                 <Badge variant="outline" className="font-['Blinker'] text-[11px] uppercase tracking-[0.1em]">
-                  <Check className="mr-1 size-3" aria-hidden="true" /> Omar ready
+                  <Check className="mr-1 size-3" aria-hidden="true" /> Omar's kit
                 </Badge>
               </div>
             </CardHeader>
@@ -540,7 +523,7 @@ export function FlowCommandCenter() {
               {[
                 { Icon: Volume2, label: "Rodecaster Pro", detail: "Noise Gate OFF · Compressor ON · Limiter ON −3 dB" },
                 { Icon: Mic2,    label: "Mics",           detail: "Boom stands + pop filters · calibrated −16 dB to −12 dB" },
-                { Icon: Video,   label: "DJI Osmo",       detail: "battery 100% · backup audio rolling" },
+                { Icon: Video,   label: "DJI Osmo",       detail: "Charge to full before the session · backup audio on" },
               ].map(({ Icon, label, detail }) => (
                 <div key={label} className="flex gap-3 rounded-lg bg-muted/55 p-3">
                   <Icon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />

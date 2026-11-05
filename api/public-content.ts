@@ -11,14 +11,23 @@
 // complete manifest (never a partial one); with no manifest yet, 503.
 // A row that loses a gate leg is therefore absent at the first revalidation
 // after the change — worst case 60s plus one request.
+//
+// OPT-1 (2026-11-04): the manifest cache is backed by the durable KV
+// store (api/_cms-manifest-store.ts). A cold instance hydrates from the
+// store before revalidating, and a successful revalidation writes
+// through, so a cold instance during a Notion outage serves the stored
+// last-good instead of a 503. Every store failure degrades to the
+// Phase 1 behavior above, unchanged.
 
 import {
   buildProjection,
   createManifestCache,
   freshnessLabel,
   type CmsManifest,
+  type ManifestCache,
   type NotionPageLike,
 } from "./_cms-projection.js";
+import { createSupabaseManifestStore } from "./_cms-manifest-store.js";
 import { resolveDataSourceId, NOTION_API_VERSION } from "./_notion-sources.js";
 
 interface ApiRequest {
@@ -34,7 +43,7 @@ interface ApiResponse {
 }
 
 const TTL_MS = 60_000;
-const cache = createManifestCache(TTL_MS);
+const cache = createManifestCache(TTL_MS, createSupabaseManifestStore());
 
 async function queryContent(
   notionSecret: string,
@@ -98,7 +107,10 @@ function sendManifest(
   now: Date,
 ): void {
   const age = now.getTime() - Date.parse(manifest.generatedAt);
-  res.setHeader?.("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+  // OPT-2 (2026-11-04): s-maxage names the shared-cache window explicitly;
+  // without it the served header carried only max-age and the SWR window
+  // never reached clients or the edge (CMS connections audit, 2026-11-04).
+  res.setHeader?.("Cache-Control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
   res.setHeader?.("X-CMS-Release", manifest.releaseId);
   res.setHeader?.("X-CMS-Generated-At", manifest.generatedAt);
   res.status(200).json({
@@ -111,47 +123,65 @@ function sendManifest(
   });
 }
 
-export default async function handler(
-  req: ApiRequest,
-  res: ApiResponse,
-): Promise<void> {
-  if (req.method !== "GET") {
-    res.status(405).json({ error: "method not allowed" });
-    return;
-  }
-  const now = new Date();
-  if (cache.isFresh(now)) {
-    sendManifest(res, cache.current() as CmsManifest, "cache", now);
-    return;
-  }
-  const notionSecret = process.env.NOTION_SECRET;
-  const databaseId = process.env.NOTION_DB_CONTENT;
-  try {
-    if (!notionSecret || !databaseId) {
-      throw new Error("adapter not configured");
-    }
-    const pages = await queryContent(notionSecret, databaseId);
-    const { items, held } = buildProjection(pages, now);
-    const heldTotal = Object.values(held).reduce((a, b) => a + b, 0);
-    if (heldTotal > 0) {
-      // Internal visibility only: readiness holds never enter the payload.
-      console.log("[cms] readiness holds", JSON.stringify(held));
-    }
-    sendManifest(res, cache.replace(items, now), "notion", now);
-  } catch (err) {
-    // F-SWEEP2-3: revalidation failures (a mis-rotated NOTION_SECRET,
-    // a Notion outage, a truncated query) previously left no log
-    // trace while last-good served on. Name the failure class;
-    // behavior is otherwise unchanged.
-    console.error(
-      "[cms] revalidation failed:",
-      err instanceof Error ? err.message : "unknown error",
-    );
-    const lastGood = cache.current();
-    if (lastGood) {
-      sendManifest(res, lastGood, "last-good", now);
+export function createPublicContentHandler(cacheInstance: ManifestCache) {
+  return async function handler(
+    req: ApiRequest,
+    res: ApiResponse,
+  ): Promise<void> {
+    if (req.method !== "GET") {
+      res.status(405).json({ error: "method not allowed" });
       return;
     }
-    res.status(503).json({ error: "projection unavailable" });
-  }
+    const now = new Date();
+    if (cacheInstance.isFresh(now)) {
+      sendManifest(res, cacheInstance.current() as CmsManifest, "cache", now);
+      return;
+    }
+    // Cold start: hydrate from the durable store before revalidating.
+    // A hydrated manifest that is still fresh serves directly; a stale
+    // one stays installed as last-good for the failure path below.
+    if (!cacheInstance.current()) {
+      await cacheInstance.hydrate();
+      if (cacheInstance.isFresh(now)) {
+        sendManifest(res, cacheInstance.current() as CmsManifest, "cache", now);
+        return;
+      }
+    }
+    const notionSecret = process.env.NOTION_SECRET;
+    const databaseId = process.env.NOTION_DB_CONTENT;
+    try {
+      if (!notionSecret || !databaseId) {
+        throw new Error("adapter not configured");
+      }
+      const pages = await queryContent(notionSecret, databaseId);
+      const { items, held } = buildProjection(pages, now);
+      const heldTotal = Object.values(held).reduce((a, b) => a + b, 0);
+      if (heldTotal > 0) {
+        // Internal visibility only: readiness holds never enter the payload.
+        console.log("[cms] readiness holds", JSON.stringify(held));
+      }
+      const manifest = cacheInstance.replace(items, now);
+      // Write-through: failure-isolated inside persist(); the response
+      // never waits on or fails for the store.
+      await cacheInstance.persist();
+      sendManifest(res, manifest, "notion", now);
+    } catch (err) {
+      // F-SWEEP2-3: revalidation failures (a mis-rotated NOTION_SECRET,
+      // a Notion outage, a truncated query) previously left no log
+      // trace while last-good served on. Name the failure class;
+      // behavior is otherwise unchanged.
+      console.error(
+        "[cms] revalidation failed:",
+        err instanceof Error ? err.message : "unknown error",
+      );
+      const lastGood = cacheInstance.current();
+      if (lastGood) {
+        sendManifest(res, lastGood, "last-good", now);
+        return;
+      }
+      res.status(503).json({ error: "projection unavailable" });
+    }
+  };
 }
+
+export default createPublicContentHandler(cache);

@@ -43,6 +43,7 @@ interface HubViewProps {
   onUpdateBrainDump: (id: number, updates: Partial<BrainDump>) => Promise<void>;
   activeUser?: string;
   wellNotes: WellNote[];
+  onDeleteWellNote?: (id: number) => Promise<void>;
   onAddWellNote: (content: string) => void;
   onLandWellNote: (id: number) => void;
   workshops?: Workshop[];
@@ -346,7 +347,7 @@ function getGreeting() {
   return 'Good evening';
 }
 
-export function HubView({ onNavigate, onNavigateGeyserStations, announcements, brainDumps, onAddBrainDump, onDeleteBrainDump, onUpdateBrainDump, activeUser, wellNotes, onAddWellNote, onLandWellNote, workshops = [], coFlowDates = [], coFlowCheckins = [], actionItems = [], stations = [] }: HubViewProps) {
+export function HubView({ onNavigate, onNavigateGeyserStations, announcements, brainDumps, onAddBrainDump, onDeleteBrainDump, onUpdateBrainDump, activeUser, wellNotes, onAddWellNote, onLandWellNote, onDeleteWellNote, workshops = [], coFlowDates = [], coFlowCheckins = [], actionItems = [], stations = [] }: HubViewProps) {
   const [showSynergy, setShowSynergy] = useState(false);
   const [openSynergySections, setOpenSynergySections] = useState<Set<string>>(new Set());
   const [showAllDumps, setShowAllDumps] = useState(false);
@@ -2302,7 +2303,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
       </div>{/* end .hub-columns (brain dump + mbody) */}
 
       {/* Notes from the Well — community exchange */}
-      <NotesFromTheWell wellNotes={wellNotes} onAddNote={onAddWellNote} onLandNote={onLandWellNote} />
+      <NotesFromTheWell wellNotes={wellNotes} onAddNote={onAddWellNote} onLandNote={onLandWellNote} onDeleteNote={onDeleteWellNote} />
 
       {/* Collective Synergy */}
       <div className="hub-section-sm">

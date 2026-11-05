@@ -26,9 +26,56 @@ interface Props {
   wellNotes: WellNote[];
   onAddNote: (content: string) => void;
   onLandNote: (id: number) => void;
+  onDeleteNote?: (id: number) => Promise<void>;
 }
 
-export function NotesFromTheWell({ wellNotes, onAddNote, onLandNote }: Props) {
+function WellNoteDeleteControl({ noteId, onDeleteNote, onDeleted }: {
+  noteId: number;
+  onDeleteNote: (id: number) => Promise<void>;
+  onDeleted: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit() {
+    if (!confirming) { setConfirming(true); return; }
+    setBusy(true);
+    setError('');
+    try {
+      await onDeleteNote(noteId);
+      onDeleted();
+    } catch {
+      setError('That did not delete. Check the connection and try again.');
+      setBusy(false);
+      setConfirming(false);
+    }
+  }
+
+  return (
+    <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 4 }}>
+      <button
+        type="button"
+        onClick={submit}
+        disabled={busy}
+        style={{
+          padding: '5px 12px', borderRadius: 7, minHeight: 44, background: 'none',
+          color: confirming ? '#B3261E' : 'var(--text-muted)',
+          fontFamily: 'var(--font-label)', fontSize: '0.72rem',
+          border: confirming ? '1px solid #B3261E' : '1px solid transparent',
+          cursor: busy ? 'wait' : 'pointer',
+        }}
+      >
+        {busy ? 'Deleting\u2026' : confirming ? 'Confirm delete' : 'Delete'}
+      </button>
+      {error && (
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#B3261E' }}>{error}</span>
+      )}
+    </span>
+  );
+}
+
+export function NotesFromTheWell({ wellNotes, onAddNote, onLandNote, onDeleteNote }: Props) {
   const [input, setInput] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
@@ -239,6 +286,14 @@ export function NotesFromTheWell({ wellNotes, onAddNote, onLandNote }: Props) {
               }
               return null;
             })()}
+            {onDeleteNote && currentNote && currentNote.id > 0 && (
+              <WellNoteDeleteControl
+                key={currentNote.id}
+                noteId={currentNote.id}
+                onDeleteNote={onDeleteNote}
+                onDeleted={pullAnother}
+              />
+            )}
             <button
               onClick={pullAnother}
               className="well-note-pull-btn"

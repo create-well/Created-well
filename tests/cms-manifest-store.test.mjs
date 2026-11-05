@@ -90,6 +90,48 @@ test('Q-1 hydrate timeout degrades to absent instead of hanging', async () => {
   assert.equal(await cache.hydrate(), false);
 });
 
+test('retry-once: a store read that throws once hydrates on the retry', async () => {
+  let reads = 0;
+  const store = { read: async () => { reads += 1; if (reads === 1) throw new Error('kv down'); return manifestAt(0); }, write: async () => {} };
+  const cache = createManifestCache(60_000, store, 25);
+  assert.equal(await cache.hydrate(), true);
+  assert.equal(reads, 2);
+  assert.equal(cache.current()?.releaseId, 'stored-1');
+});
+
+test('retry-once: a persistently throwing store is read exactly twice, then degrades', async () => {
+  let reads = 0;
+  const store = { read: async () => { reads += 1; throw new Error('kv down'); }, write: async () => {} };
+  const cache = createManifestCache(60_000, store, 25);
+  assert.equal(await cache.hydrate(), false);
+  assert.equal(reads, 2);
+  assert.equal(cache.current(), null);
+});
+
+test('retry-once: an empty store is a definitive answer and is never retried', async () => {
+  let reads = 0;
+  const store = { read: async () => { reads += 1; return null; }, write: async () => {} };
+  const cache = createManifestCache(60_000, store, 25);
+  assert.equal(await cache.hydrate(), false);
+  assert.equal(reads, 1);
+});
+
+test('retry-once: a timed-out read is retried and can still hydrate', async () => {
+  let reads = 0;
+  const store = { read: () => { reads += 1; return reads === 1 ? new Promise(() => {}) : Promise.resolve(manifestAt(0)); }, write: async () => {} };
+  const cache = createManifestCache(60_000, store, 25);
+  assert.equal(await cache.hydrate(), true);
+  assert.equal(reads, 2);
+});
+
+test('retry-once: two timed-out reads degrade after exactly two reads', async () => {
+  let reads = 0;
+  const store = { read: () => { reads += 1; return new Promise(() => {}); }, write: async () => {} };
+  const cache = createManifestCache(60_000, store, 25);
+  assert.equal(await cache.hydrate(), false);
+  assert.equal(reads, 2);
+});
+
 test('Q-1 supabase store: round-trip, corrupt reads as absent, no-env degrades', async () => {
   let row = null;
   const fakeClient = () => ({

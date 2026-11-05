@@ -55,12 +55,14 @@ const nNumber   = (n: number) => ({ number: n });
 type OmitMeta<T> = Omit<T, 'id' | 'created_at' | 'notionPageId'>;
 
 export function taskToProperties(t: OmitMeta<Task>): Record<string, unknown> {
-  // Canonical MOVES (Create Well OS 3da8c564...) Status: Now, Next, Done, Dropped
+  // Canonical MOVES (Create Well OS 3da8c564...) Status:
+  // Now, Next, Done, Blocked, Dropped. Blocked is a first-class
+  // Notion value so the client state survives the round trip.
   const STATUS: Record<string, string> = {
     todo:        'Next',
     in_progress: 'Now',
     done:        'Done',
-    blocked:     'Now',
+    blocked:     'Blocked',
     dropped:     'Dropped',
   };
   const props: Record<string, unknown> = {

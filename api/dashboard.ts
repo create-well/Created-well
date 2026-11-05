@@ -161,6 +161,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'cr8w_coflow_checkins',
     'cr8w_well_notes',
     'cr8w_calendar_events',
+    'cr8w_decisions',
   ] as const;
 
   try {
@@ -210,7 +211,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const [
       messages, braindumps, announcements, forumReplies,
       workshops, workshopPrograms, workshopResources,
-      coflowCheckins, wellNotes, calendarEvents,
+      coflowCheckins, wellNotes, calendarEvents, decisions,
     ] = kvSettled.map((s) => s.values);
 
     const payload: SyncData = {
@@ -254,7 +255,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Cache-Control', 'private, no-store');
     // Only this primary, configured source with validated pagination can assert completion.
     const contentQueryComplete = Boolean(secret && dbContent && !notionSettled[3].error);
-    res.json({ ...payload, syncFreshness, sourceErrors, contentQueryComplete });
+    // D-1b: decisions pass through on the payload, typed by trust like
+    // the other KV slices. The field is attached here rather than in
+    // the SyncData literal above because the SyncData typing for it
+    // lands with the Frontend leg; the wire shape is the same.
+    res.json({ ...payload, decisions, syncFreshness, sourceErrors, contentQueryComplete });
   } catch (err) {
     console.error('[/api/dashboard] Error building payload:', err);
     res.status(503).json({

@@ -155,6 +155,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ── Generic CRUD for list resources ───────────────────────────────────────
+    // D-1b: the decisions queue's vocabularies (client DecisionRecord).
+    const DECISION_URGENCIES = ['now', 'this-week', 'when-clear'];
+    // QA note (D-1 verdict): the DecisionRecord type union admits
+    // 'deferred' for read compatibility, but no page partition renders
+    // it, so it is NOT a writable status — defer is an urgency write
+    // only, on both sides of the wire. The writable set is exactly:
+    const DECISION_STATUSES = ['pending', 'decided'];
     const KV_MAP: Record<string, string> = {
       tasks: 'cr8w_tasks',
       stations: 'cr8w_stations',
@@ -162,6 +169,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       messages: 'cr8w_messages',
       braindumps: 'cr8w_braindumps',
       announcements: 'cr8w_announcements',
+      decisions: 'cr8w_decisions',
       workshops: 'cr8w_workshops',
       'workshop-programs': 'cr8w_workshop_programs',
       'workshop-resources': 'cr8w_workshop_resources',
@@ -409,8 +417,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       if (method === 'POST' && !id) {
         const b = await body(req);
+        // D-1b: a decisions create needs a real question and an in-enum
+        // urgency; refused before the store is touched. Context is the
+        // queue's optional note and defaults to ''.
+        if (resource === 'decisions') {
+          if (typeof b.question !== 'string' || b.question.trim().length === 0) { res.status(400).json({ error: 'question is required' }); return; }
+          if (!DECISION_URGENCIES.includes(b.urgency)) { res.status(400).json({ error: "urgency must be 'now', 'this-week', or 'when-clear'" }); return; }
+          if (typeof b.context !== 'string') b.context = '';
+        }
         const list = await getList(kvKey);
         const item: Record<string, any> = { ...b, id: Date.now(), created_at: new Date().toISOString() };
+        // D-1b: status is server-owned on create — a new decision is
+        // 'pending' whatever the body claims.
+        if (resource === 'decisions') item.status = 'pending';
         // Notion dual-write for the 4 CMS-backed types.
         // Truthful outcome: a Notion failure returns 502 and KV is unchanged.
         const sync = await syncToNotion('create', item);
@@ -425,6 +444,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       if (method === 'PUT' && id) {
         const b = await body(req);
+        // D-1b: Partial updates pass through untouched, except the two
+        // enum fields the queue sorts and partitions by — an out-of-enum
+        // value is refused rather than stored.
+        if (resource === 'decisions') {
+          if ('urgency' in b && !DECISION_URGENCIES.includes(b.urgency)) { res.status(400).json({ error: "urgency must be 'now', 'this-week', or 'when-clear'" }); return; }
+          if ('status' in b && !DECISION_STATUSES.includes(b.status)) { res.status(400).json({ error: "status must be 'pending' or 'decided' ('deferred' is not writable — defer is an urgency write)" }); return; }
+        }
         const list = await getList(kvKey);
         const idx = list.findIndex((x: any) => String(x.id) === String(id));
         if (idx === -1) { res.status(404).json({ error: 'Not found' }); return; }

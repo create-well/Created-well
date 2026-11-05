@@ -51,6 +51,10 @@ function statusPill(status: string) {
 function FlowCard({ flow }: { flow: CoFlowDate }) {
   const dateStr = flow.date ? formatDate(flow.date) : 'Date not set yet.';
   const hostPerson = flow.host ? PERSONS[flow.host] : null;
+  // Partiful is the RSVP platform of record (register 1484, Leg 2): a flow
+  // whose related event carries a Partiful link offers it as the RSVP door.
+  // Upcoming only — a past event takes no RSVPs.
+  const showRsvp = !!flow.partifulLink && (!flow.date || flow.date >= localDateString(new Date()));
   return (
     <div style={{
       background: '#fff',
@@ -89,6 +93,23 @@ function FlowCard({ flow }: { flow: CoFlowDate }) {
       {flow.notes && (
         <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: 'var(--text-secondary, #6B5F7A)', lineHeight: 1.5 }}>
           {flow.notes}
+        </div>
+      )}
+
+      {showRsvp && (
+        <div>
+          <a
+            href={flow.partifulLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 700,
+              color: 'var(--cr8w-primary-text, #466F64)', textDecoration: 'none',
+              letterSpacing: '0.02em',
+            }}
+          >
+            RSVP on Partiful ↗
+          </a>
         </div>
       )}
     </div>

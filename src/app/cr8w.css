@@ -2094,6 +2094,14 @@ a.gcc-pill-link:hover { background: var(--cr8w-card-bg, #F4F1ED); transform: tra
   border-color: rgba(123,168,157,0.35) !important;
   box-shadow: 0 0 0 3px rgba(123,168,157,0.08);
 }
+/* Placeholder, chosen deliberately (UI design call, register
+   1405 item 2): the muted token the card metadata uses (5.93:1
+   on the white card), never the browser default. opacity: 1 is
+   load-bearing — Firefox applies a default opacity to
+   placeholders that would wash the authored color back below
+   standard; with it, the token color is the rendered color in
+   every browser. */
+.well-note-textarea::placeholder, .well-note-input::placeholder { color: var(--text-muted); opacity: 1; }
 .well-note-submit-btn:hover:not(:disabled) {
   background: #A8472A !important;
   transform: translateY(-1px);

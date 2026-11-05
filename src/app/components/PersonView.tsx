@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  PERSONS, WELLSHEET_PROMPTS, CALENDAR_EVENTS, GLOSSARY, MILESTONES, STATIONS_DEFAULT,
+  PERSONS, WELLSHEET_PROMPTS, CALENDAR_EVENTS, GLOSSARY, STATIONS_DEFAULT,
   HD_PROFILES, GOOGLE_ACCOUNTS, MBODY_PRACTICES,
   getDaysToLaunch, formatDate, formatEventDate, formatTimestamp, getEventColor, truncate, capitalize, getDayOfYear,
   type ActionItem, type MomentumItem, type NoteItem, type Station
@@ -467,9 +467,6 @@ export function PersonView({
       { id: 'practice', icon: '🌿', title: 'Living Your Design', isPractice: true }
     ];
 
-    const doneCount = MILESTONES.filter(m => m.done).length;
-    const progress = MILESTONES.length > 0 ? Math.round((doneCount / MILESTONES.length) * 100) : 0;
-
     return (
       <div className="person-tab-content">
 
@@ -642,25 +639,10 @@ export function PersonView({
             </div>
           </div>
 
-          {/* Milestones */}
-          {MILESTONES.length > 0 && (
+          {/* Stations */}
+          {stationList.length > 0 && (
           <div className="well-section">
-            <h3 className="well-section-title"><span className="section-icon">🚀</span> Hard Launch Milestones</h3>
-            <div className="card" style={{ marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.82rem' }}>
-                <span style={{ fontWeight: 600 }}>{doneCount} of {MILESTONES.length} complete</span>
-                <span style={{ color: 'var(--text-muted)' }}>{progress}%</span>
-              </div>
-              <div className="launch-progress-bar"><div className="launch-progress-fill" style={{ width: `${progress}%` }}></div></div>
-              <div className="milestones-grid">
-                {MILESTONES.map((m, i) => (
-                  <div key={i} className={`milestone-item ${m.done ? 'done-milestone' : ''}`}>
-                    <div className={`milestone-check ${m.done ? 'done' : ''}`}>{m.done ? '✓' : ''}</div>
-                    <span className="milestone-text">{m.text}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <h3 className="well-section-title">Stations</h3>
             <div className="stations-grid">
               {stationList.map(s => (
                 <div key={s.id} className="station-card">

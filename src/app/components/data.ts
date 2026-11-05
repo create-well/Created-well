@@ -113,16 +113,6 @@ export const GLOSSARY = [
   { term: 'Monnyfesting', def: 'Monny-specific manifesting — when the sacral generator brings visions into embodied reality.' }
 ];
 
-export const MILESTONES: { text: string; done: boolean }[] = [
-  { text: 'Venue & Taverna Costera space alignment confirmed', done: true },
-  { text: 'Flow Keeper & team role rotation locked', done: true },
-  { text: 'Live audio & recording gear calibrated (-14 dB target)', done: true },
-  { text: '33 community guests confirmed on invite pipeline', done: true },
-  { text: 'The Topic Well seeded with core Podyap & workshop arcs', done: true },
-  { text: 'Activation stations mapped (Art Well, Sound Bath, Letter Station)', done: false },
-  { text: 'Decomprocessing debrief & depanty templates pre-loaded', done: false },
-];
-
 export interface Station {
   id: number; emoji: string; name: string; status: string;
   description: string; owner: string;

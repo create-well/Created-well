@@ -73,7 +73,7 @@ function resp(ok, status, body) {
   };
 }
 
-function installFetch({ failing = new Set(), failingKv = new Set(), movesRow = null, contentPages = null } = {}) {
+function installFetch({ failing = new Set(), failingKv = new Set(), movesRow = null, contentPages = null, kvRows = {} } = {}) {
   let contentCall = 0;
   const originalFetch = globalThis.fetch;
   const originalEnv = { ...process.env };
@@ -107,7 +107,9 @@ function installFetch({ failing = new Set(), failingKv = new Set(), movesRow = n
     }
     if (u.includes('/rest/v1/')) {
       const keyMatch = u.match(/key=eq\.([^&]+)/);
-      if (keyMatch && failingKv.has(decodeURIComponent(keyMatch[1]))) throw new Error('kv read boom');
+      const key = keyMatch ? decodeURIComponent(keyMatch[1]) : null;
+      if (key && failingKv.has(key)) throw new Error('kv read boom');
+      if (key && key in kvRows) return resp(true, 200, { value: JSON.stringify(kvRows[key]) });
       // maybeSingle expects a single object (or none); an array body errors.
       return resp(true, 200, {});
     }
@@ -197,4 +199,26 @@ test('valid paginated CONTENT retains both full IDs and asserts completed query'
     assert.deepEqual(res.body.forum.map(x=>x.notionPageId),ids);
     assert.deepEqual(res.body.forum.map(x=>x.flowRelation.ids),[[flow],[flow]]);
   } finally {restore();}
+});
+
+test('KV boundary validation: malformed rows dropped and named, valid rows served', async () => {
+  const restore = installFetch({ kvRows: {
+    cr8w_messages: [
+      { id: 1, author: 'monny', content: 'valid message' },
+      { id: 2, author: 'monny' },
+      'not a record',
+    ],
+    cr8w_decisions: [
+      { id: 3, question: 'Ship it?', context: '', urgency: 'now', status: 'pending' },
+      { id: 4, question: 'Ghost', context: '', urgency: 'now', status: 'deferred' },
+    ],
+  } });
+  try {
+    const res = await callHandler();
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.messages.map((m) => m.id), [1]);
+    assert.match(res.body.sourceErrors['kv:cr8w_messages'], /dropped 2 malformed/);
+    assert.deepEqual(res.body.decisions.map((d) => d.id), [3]);
+    assert.match(res.body.sourceErrors['kv:cr8w_decisions'], /dropped 1 malformed/);
+  } finally { restore(); }
 });

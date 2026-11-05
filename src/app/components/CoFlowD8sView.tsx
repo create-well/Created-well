@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, X, MapPin, Clock, Users, ChevronDown, ChevronUp, Lock, Unlock, Edit3, ExternalLink, Archive, Calendar } from 'lucide-react';
 import { PERSONS, capitalize, formatTimestamp } from './data';
 import { parseDateValue, dateLabel, shortDateLabel, DATE_NOT_SET, calendarDayDiff, localDateString } from '../../lib/dateLabel';
+import { coFlowTitle } from '../../lib/calendarAgenda';
 import type { CoFlowDate, CoFlowCheckin, CalendarEventKV } from './api';
 import * as api from './api';
 
@@ -192,8 +193,8 @@ export function CoFlowD8sView({
             </div>
             <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
               {nextD8
-                ? `${rsvpGoingCount}/3 confirmed for ${getDayOfWeekLabel(nextD8.date).split(',')[0]}'s BHD. Drop your check-in and lock in your vibe.`
-                : 'Drop your weekly check-in before the next behind h0es doors. Confirm time, suggest a spot, and add agenda items.'
+                ? `${rsvpGoingCount}/3 confirmed for ${getDayOfWeekLabel(nextD8.date).split(',')[0]}'s ${coFlowTitle(nextD8)}. Drop your check-in and lock in your vibe.`
+                : 'Drop your weekly check-in before the next session. Confirm time, suggest a spot, and add agenda items.'
               }
             </div>
           </div>
@@ -900,7 +901,7 @@ function CheckinTab({ coflowCheckins, weekCheckins, checkedInPersons, showForm, 
       <div style={{ marginBottom: 12 }}>
         <span style={labelStyle}>Weekly Co-Flow Check</span>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
-          Drop your check-in before the next behind h0es doors. Share your vibe, confirm time, suggest a spot, add agenda items.
+          Drop your check-in before the next {nextD8 ? coFlowTitle(nextD8) : 'session'}. Share your vibe, confirm time, suggest a spot, add agenda items.
         </p>
       </div>
 
@@ -1019,7 +1020,7 @@ function CheckinForm({ onSubmit, nextD8 }: {
       {/* Time + Availability */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
         <div>
-          <label style={labelStyle}>Availability for next BHD</label>
+          <label style={labelStyle}>Availability for the next {nextD8 ? coFlowTitle(nextD8) : 'session'}</label>
           <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
             <button onClick={() => setConfirmTime(true)} style={{
               padding: '8px 16px', borderRadius: 'var(--cr-radius-sm)', cursor: 'pointer',
@@ -1172,7 +1173,7 @@ function AgendaBuilder({ d8, onUpdateD8 }: {
           fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: '#5A9A5A',
           marginBottom: 12,
         }}>
-          {'\u{1F512}'} Agenda is locked for the upcoming BHD. Unlock to make changes.
+          {'\u{1F512}'} Agenda is locked for the upcoming {coFlowTitle(d8)}. Unlock to make changes.
         </div>
       )}
 
@@ -1363,7 +1364,7 @@ function ArchiveTab({ archivedD8s, expandedArchive, setExpandedArchive, onUpdate
                   </div>
                 )}
 
-                {/* Session Notes (post-BHD reflection) */}
+                {/* Session Notes (post-session reflection) */}
                 <div style={{ marginBottom: 12 }}>
                   <span style={labelStyle}>Session Notes</span>
                   <textarea

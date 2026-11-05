@@ -273,10 +273,6 @@ export interface ActionItem {
   created_at?: string;
 }
 
-export interface MomentumItem {
-  id: number; person: string; content: string; item_type: string; created_at?: string;
-}
-
 export interface NoteItem {
   id: number; author: string; content: string; created_at?: string;
 }

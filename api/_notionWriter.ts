@@ -4,6 +4,8 @@
  *   PEOPLE  → stations       (NOTION_DB_PEOPLE)
  *   CONTENT → forum posts    (NOTION_DB_CONTENT)
  *   FLOWS   → coflow dates   (NOTION_DB_FLOWS)
+ * Plus the MONEY quick log (M-1b): create-only, no KV shadow —
+ * see createMoneyPage below. (NOTION_DB_MONEY)
  *
  * Property names must match the actual Notion database schemas.
  * They mirror the aliases used in src/lib/notionNormalizer.ts.
@@ -46,6 +48,7 @@ const nTitle    = (s: string) => ({ title:     [{ text: { content: s.slice(0, 20
 const nRichText = (s: string) => ({ rich_text: [{ text: { content: s.slice(0, 2000) } }] });
 const nSelect   = (name: string) => ({ select: { name } });
 const nDate     = (start: string) => ({ date: { start } });
+const nNumber   = (n: number) => ({ number: n });
 
 // ── Per-type property builders ─────────────────────────────────────────────────
 
@@ -144,6 +147,92 @@ export async function notionUpdate(
 /** Archive (soft-delete) a Notion page. */
 export async function notionArchive(pageId: string): Promise<void> {
   await notionFetch('PATCH', `/pages/${pageId}`, { archived: true });
+}
+
+// ── MONEY quick log (M-1b, 2026-11-04) ────────────────────────────────────────
+// The Money view's quick log creates ONE canonical MONEY row. Unlike the
+// four registry types below, money has no KV shadow list: MONEY is
+// canonical in Notion and the dashboard reads it through the sync
+// payload, so this writer is create-only and the route stores nothing
+// anywhere else. Write shape (money-view-layout-review-2026-11-04.md):
+// Name, Amount, Direction, Actual (the picked date), Stage. Type (the
+// normalizer's "Kind") is left unset in v1 — the quick log is a
+// real-money log, not a pipeline tool.
+
+export interface MoneyCreateInput {
+  name: string;
+  amount: number;
+  direction: 'In' | 'Out';
+  actual: string;
+  stage: 'Received' | 'Paid';
+}
+
+export type MoneyValidation =
+  | { ok: true; value: MoneyCreateInput }
+  | { ok: false; error: string };
+
+const DATE_SHAPE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function validateMoneyCreate(input: unknown): MoneyValidation {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return { ok: false, error: 'body must be an object' };
+  }
+  const b = input as Record<string, unknown>;
+  if (typeof b.name !== 'string' || b.name.trim().length === 0) {
+    return { ok: false, error: 'name is required' };
+  }
+  if (typeof b.amount !== 'number' || !Number.isFinite(b.amount) || b.amount <= 0) {
+    return { ok: false, error: 'amount must be a finite number greater than 0' };
+  }
+  if (b.direction !== 'In' && b.direction !== 'Out') {
+    return { ok: false, error: "direction must be 'In' or 'Out'" };
+  }
+  if (b.stage !== 'Received' && b.stage !== 'Paid') {
+    return { ok: false, error: "stage must be 'Received' or 'Paid'" };
+  }
+  // Stage follows the direction (In → Received, Out → Paid): the client
+  // derives it, and the pairing is the record's meaning, so a mismatch
+  // is refused rather than written.
+  if ((b.direction === 'In') !== (b.stage === 'Received')) {
+    return { ok: false, error: "stage must follow direction ('In' → 'Received', 'Out' → 'Paid')" };
+  }
+  if (typeof b.actual !== 'string' || !DATE_SHAPE.test(b.actual)) {
+    return { ok: false, error: 'actual must be a YYYY-MM-DD date' };
+  }
+  const parsed = new Date(`${b.actual}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== b.actual) {
+    return { ok: false, error: 'actual must be a real calendar date' };
+  }
+  return {
+    ok: true,
+    value: {
+      name: b.name.trim(),
+      amount: b.amount,
+      direction: b.direction,
+      actual: b.actual,
+      stage: b.stage,
+    },
+  };
+}
+
+export function moneyToProperties(m: MoneyCreateInput): Record<string, unknown> {
+  return {
+    Name:      nTitle(m.name),
+    Amount:    nNumber(m.amount),
+    Direction: nSelect(m.direction),
+    Actual:    nDate(m.actual),
+    Stage:     nSelect(m.stage),
+  };
+}
+
+/** Create one MONEY page; resolves with the created page object. */
+export async function createMoneyPage(m: MoneyCreateInput): Promise<Record<string, unknown>> {
+  const databaseId = process.env.NOTION_DB_MONEY;
+  if (!databaseId) throw new Error('NOTION_DB_MONEY env var is not set');
+  return notionFetch<Record<string, unknown>>('POST', '/pages', {
+    parent: { database_id: databaseId },
+    properties: moneyToProperties(m),
+  });
 }
 
 // ── Resource → DB ID + property builder registry ──────────────────────────────

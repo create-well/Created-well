@@ -1643,8 +1643,8 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                         >
                           {/* Date chip */}
                           <div style={{
-                            background: isToday ? 'var(--cr8w-primary, #7BA89D)' : isTomorrow ? 'rgba(var(--cr8w-primary-rgb, 123,168,157),0.15)' : 'rgba(var(--cr8w-text-rgb, 44,28,16),0.05)',
-                            color: isToday ? '#fff' : isTomorrow ? 'var(--cr8w-primary, #7BA89D)' : 'var(--cr8w-text, #2C1C10)',
+                            background: isToday ? 'var(--cr8w-primary-text, #466F64)' : isTomorrow ? 'rgba(var(--cr8w-primary-rgb, 123,168,157),0.15)' : 'rgba(var(--cr8w-text-rgb, 44,28,16),0.05)',
+                            color: isToday ? '#fff' : isTomorrow ? 'var(--cr8w-primary-text, #466F64)' : 'var(--cr8w-text, #2C1C10)',
                             borderRadius: 8,
                             padding: '4px 8px',
                             fontFamily: 'var(--font-label)',

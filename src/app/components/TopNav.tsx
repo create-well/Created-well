@@ -227,7 +227,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
           })()}
         </div>
 
-        <button className="hamburger" onClick={() => setMobileOpen(!mobileOpen)}>
+        <button className="hamburger" aria-label="Menu" onClick={() => setMobileOpen(!mobileOpen)}>
           <span></span><span></span><span></span>
         </button>
       </nav>

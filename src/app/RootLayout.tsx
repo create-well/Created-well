@@ -16,11 +16,6 @@ export function RootLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [showDomainBanner, setShowDomainBanner] = useState(() => {
-    const isCustomDomain = window.location.hostname === 'createwell.monnyfest.co';
-    const dismissed = sessionStorage.getItem('cr8w_domain_banner_dismissed');
-    return !isCustomDomain && !dismissed;
-  });
   const [showAddTask, setShowAddTask] = useState(false);
 
   // Scroll to top on route change
@@ -65,37 +60,6 @@ export function RootLayout() {
       </div>
       <TopNav onSignOut={actions.signOut} />
       <SyncStatusBar />
-
-      {showDomainBanner && (
-        <div style={{
-          background: 'linear-gradient(135deg, rgba(123,168,157,0.12) 0%, rgba(184,169,212,0.08) 100%)',
-          border: '1px solid rgba(123,168,157,0.2)',
-          color: 'var(--text-primary, #EAE3DB)',
-          textAlign: 'center',
-          fontSize: '0.78rem',
-          padding: '8px 40px 8px 12px',
-          fontFamily: 'var(--font-label, Montserrat, sans-serif)',
-          letterSpacing: '0.01em',
-          lineHeight: 1.5,
-          position: 'relative',
-        }}>
-          🔧 Custom domain is setting up — you're viewing via the direct link. Bookmark this page!
-          <button
-            onClick={() => {
-              setShowDomainBanner(false);
-              sessionStorage.setItem('cr8w_domain_banner_dismissed', 'true');
-            }}
-            style={{
-              position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-              background: 'none', border: 'none', color: 'var(--text-muted, #8A7D72)',
-              cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '2px 4px',
-            }}
-            title="Dismiss"
-          >
-            ×
-          </button>
-        </div>
-      )}
 
       <main className="cr-main">
         <Outlet />

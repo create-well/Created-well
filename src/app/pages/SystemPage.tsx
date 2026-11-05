@@ -342,6 +342,12 @@ export function SystemPage() {
     band && data.lastSynced ? `${band} · last loaded ${relativeTime(data.lastSynced)}` :
     'No successful load yet';
 
+  // The custom-domain state lives on this surface, the one that owns the
+  // configuration (UX ruling 1497): it used to render as a standing banner
+  // in the RootLayout stack on every origin but the custom domain. The row
+  // reads the viewer's actual hostname at render, nothing stored.
+  const onCustomDomain = window.location.hostname === 'createwell.monnyfest.co';
+
   return (
     <ViewShell state="fresh">
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px 48px' }}>
@@ -421,6 +427,32 @@ export function SystemPage() {
             value={data.permissions.careConsent ? 'Granted' : 'Not granted'}
             status={data.permissions.careConsent ? 'ok' : 'warn'}
           />
+          {/* The domain notice as a plain row in this card's idiom. The
+              value is a full sentence, so it takes the page's readable
+              text color, not a status tone: label --cr8w-text, value
+              --text-secondary, on the theme card background. */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            padding: '10px 0',
+          }}>
+            <span style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.82rem',
+              color: 'var(--cr8w-text, #2D2438)',
+            }}>
+              Custom domain
+            </span>
+            <span style={{
+              fontFamily: 'var(--font-label)', fontSize: '0.75rem',
+              color: 'var(--text-secondary, #443855)', fontWeight: 600,
+              textAlign: 'right',
+            }}>
+              {onCustomDomain ? "Live — you're viewing via the custom domain" : "Setting up — you're viewing via the direct link"}
+            </span>
+          </div>
         </div>
 
         {data.syncStatus === 'failed' && (

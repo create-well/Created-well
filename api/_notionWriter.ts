@@ -124,6 +124,86 @@ export function coFlowDateToProperties(d: OmitMeta<CoFlowDate>): Record<string, 
   return props;
 }
 
+// ── Partial property builders (RR-004) ───────────────────────────────────────
+// The full builders above always write their identity fields (a task's
+// Name defaults to 'Untitled', its Status to 'Next'), which is correct
+// for a create or a full-record update and destructive for a partial
+// one. The builders below map ONLY the keys present in the body, with
+// the same value maps and the same explicit-clear convention (a present
+// key with an empty value clears the field; an absent key leaves it
+// untouched). They back the page-id-addressed update path in
+// api/server.ts, where the client sends partial edits ({ status },
+// { status, source }) for Notion-sourced records.
+
+const TASK_STATUS: Record<string, string> = {
+  todo:        'Next',
+  in_progress: 'Now',
+  done:        'Done',
+  blocked:     'Blocked',
+  dropped:     'Dropped',
+};
+
+export function taskToPartialProperties(t: Record<string, unknown>): Record<string, unknown> {
+  const props: Record<string, unknown> = {};
+  if (typeof t.title === 'string' && t.title.length > 0) props['Name'] = nTitle(t.title);
+  if ('status' in t) props['Status'] = nSelect(TASK_STATUS[t.status as string] ?? 'Next');
+  if ('due_date' in t) props['Due'] = t.due_date ? nDate(t.due_date as string) : { date: null };
+  if ('category' in t) props['Type'] = t.category ? nSelect(t.category as string) : { select: null };
+  if ('source' in t) props['Blocked By'] = t.source ? nRichText(t.source as string) : { rich_text: [] };
+  return props;
+}
+
+export function stationToPartialProperties(s: Record<string, unknown>): Record<string, unknown> {
+  const props: Record<string, unknown> = {};
+  if (typeof s.name === 'string' && s.name.length > 0) props['Name'] = nTitle(s.name);
+  if ('status' in s) props['Status'] = nSelect(s.status as string);
+  if ('description' in s) props['Description'] = nRichText((s.description as string) || '');
+  if ('owner' in s) props['Owner'] = nRichText((s.owner as string) || '');
+  if (s.emoji) props['Emoji'] = nRichText(s.emoji as string);
+  return props;
+}
+
+export function forumPostToPartialProperties(p: Record<string, unknown>): Record<string, unknown> {
+  const props: Record<string, unknown> = {};
+  if (typeof p.content === 'string' && p.content.length > 0) props['Content'] = nTitle(p.content);
+  if ('author' in p) props['Author'] = nSelect((p.author as string) || 'anonymous');
+  if (p.tag) props['Tag'] = nSelect(p.tag as string);
+  return props;
+}
+
+const COFLOW_STATUS: Record<string, string> = {
+  idea:      'Upcoming',
+  ready:     'Upcoming',
+  approved:  'Upcoming',
+  scheduled: 'Upcoming',
+  happened:  'Active',
+  wrapped:   'Archived',
+  cancelled: 'Archived',
+};
+
+export function coFlowDateToPartialProperties(d: Record<string, unknown>): Record<string, unknown> {
+  const props: Record<string, unknown> = {};
+  if ('status' in d) props['Status'] = nSelect(COFLOW_STATUS[d.status as string] ?? 'Upcoming');
+  if ('notes' in d) props['Notes'] = nRichText((d.notes as string) || '');
+  if (d.date) {
+    props['Date'] = nDate(d.date as string);
+    props['Name'] = nTitle(`CoFlow – ${d.date as string}`);
+  }
+  if (d.host)         props['Host']          = nSelect(d.host as string);
+  if (d.flowType)     props['Type']          = nSelect(d.flowType as string);
+  if (d.theme)        props['Theme']         = nRichText(d.theme as string);
+  if (d.location && d.location !== 'TBD') props['Location'] = nRichText(d.location as string);
+  if (d.timeRange)    props['Time Range']    = nRichText(d.timeRange as string);
+  if (d.sessionNotes) props['Session Notes'] = nRichText(d.sessionNotes as string);
+  return props;
+}
+
+/** A Notion page id: a hyphenated UUID, or its 32-hex unhyphenated form. */
+export function isNotionPageId(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+      || /^[0-9a-f]{32}$/i.test(id);
+}
+
 // ── CRUD operations ────────────────────────────────────────────────────────────
 
 /** Create a new page in a Notion database. Returns the new page's UUID. */
@@ -244,23 +324,28 @@ type PropsBuilder = (item: Record<string, unknown>) => Record<string, unknown>;
 interface NotionResourceConfig {
   dbIdEnvVar: string;
   toProperties: PropsBuilder;
+  toPartialProperties: PropsBuilder;
 }
 
 export const NOTION_RESOURCES: Record<string, NotionResourceConfig> = {
   tasks: {
     dbIdEnvVar:   'NOTION_DB_MOVES',
     toProperties: (item) => taskToProperties(item as OmitMeta<Task>),
+    toPartialProperties: (item) => taskToPartialProperties(item),
   },
   stations: {
     dbIdEnvVar:   'NOTION_DB_PEOPLE',
     toProperties: (item) => stationToProperties(item as OmitMeta<Station>),
+    toPartialProperties: (item) => stationToPartialProperties(item),
   },
   forum: {
     dbIdEnvVar:   'NOTION_DB_CONTENT',
     toProperties: (item) => forumPostToProperties(item as OmitMeta<ForumPost>),
+    toPartialProperties: (item) => forumPostToPartialProperties(item),
   },
   'coflow-dates': {
     dbIdEnvVar:   'NOTION_DB_FLOWS',
     toProperties: (item) => coFlowDateToProperties(item as OmitMeta<CoFlowDate>),
+    toPartialProperties: (item) => coFlowDateToPartialProperties(item),
   },
 };

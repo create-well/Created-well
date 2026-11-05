@@ -21,7 +21,7 @@ const STOPS = [
     key: 'present',
     emoji: '\uD83C\uDF24\uFE0F',
     label: 'present',
-    desc: 'first-name visible, you can react and be seen',
+    desc: 'your name shows on what you post',
     color: '#F5DFC8',
   },
   {
@@ -29,7 +29,7 @@ const STOPS = [
     key: 'open',
     emoji: '\u2600\uFE0F',
     label: 'open',
-    desc: 'fully visible, speak from the well, receive invites',
+    desc: 'your name shows, plus an open-mode banner on your well',
     color: '#E8C875',
   },
 ] as const;

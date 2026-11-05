@@ -1825,6 +1825,30 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                                 📅 Google Calendar
                               </a>
 
+                              {/* Partiful RSVP — the platform of record (register
+                                  1484, Leg 2): renders when the event's co-flow
+                                  record carries a projected Partiful link. */}
+                              {ev.coFlowDate?.partifulLink && (
+                                <a
+                                  href={ev.coFlowDate.partifulLink}
+                                  target="_blank" rel="noopener noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  style={{
+                                    display: 'flex', alignItems: 'center', gap: 5,
+                                    padding: '6px 12px', borderRadius: 8,
+                                    background: 'rgba(var(--cr8w-primary-rgb, 123,168,157),0.08)',
+                                    border: '1px solid rgba(var(--cr8w-primary-rgb, 123,168,157),0.25)',
+                                    color: 'var(--cr8w-primary-text, #466F64)',
+                                    fontFamily: 'var(--font-label)', fontSize: '0.62rem',
+                                    fontWeight: 600, textDecoration: 'none',
+                                    cursor: 'pointer', transition: 'all 0.15s',
+                                    letterSpacing: '0.02em',
+                                  }}
+                                >
+                                  🎉 RSVP on Partiful ↗
+                                </a>
+                              )}
+
                               {/* In-app PlayD8s link (events carrying a co-flow record) */}
                               {isBHD && (
                                 <button

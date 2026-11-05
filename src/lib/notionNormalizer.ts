@@ -423,9 +423,16 @@ export function normalizeContent(page: NotionPage): ForumPost & { flowRelation: 
   const name = getText(pick(p, 'Name', 'Title', 'Content', 'Post'));
   const extra = contentUrl ? ` [${statusRaw || 'draft'}]` : '';
 
+  // Registry-mirror rows (the CMS registry mirror in CONTENT) carry the
+  // literal marker leading their Registry Details. The flag rides the
+  // record so note/post reshapes can exclude mirror rows while the
+  // content snapshot keeps them (register 1435, Leg 1).
+  const registryMirror = getText(pick(p, 'Registry Details')).trimStart().startsWith('registry-mirror');
+
   return {
     id:           stableId(page.id),
     notionPageId: page.id,
+    registryMirror,
     flowRelation: readContentFlowRelation(p['Flow']),
     author:       audienceRaw.toLowerCase() || 'team',
     content:      (name || 'Untitled') + extra,

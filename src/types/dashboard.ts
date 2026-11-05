@@ -1,13 +1,13 @@
 import type {
   Task, Station, ForumPost, ForumReply, Message, BrainDump,
   Announcement, Workshop, WorkshopProgram, WorkshopResource,
-  CoFlowDate, CoFlowCheckin, WellNote, MoneyRecord,
+  CoFlowDate, CoFlowCheckin, WellNote, MoneyRecord, DecisionRecord,
 } from '../app/components/api';
 
 export type {
   Task, Station, ForumPost, ForumReply, Message, BrainDump,
   Announcement, Workshop, WorkshopProgram, WorkshopResource,
-  CoFlowDate, CoFlowCheckin, WellNote, MoneyRecord,
+  CoFlowDate, CoFlowCheckin, WellNote, MoneyRecord, DecisionRecord,
 };
 
 export type SyncStatus = 'loading' | 'fresh' | 'stale' | 'failed';
@@ -36,6 +36,8 @@ export interface DashboardPayload {
   wellNotes: WellNote[];
   /** MONEY records from the payload (M-1a); empty when the payload carried none. */
   money: MoneyRecord[];
+  /** Decision-queue records from the payload (D-1); empty when the payload carried none. */
+  decisions: DecisionRecord[];
   syncStatus: SyncStatus;
   /** Legacy name: last successful payload load, not source observation time. */
   lastSynced: Date | null;
@@ -98,6 +100,9 @@ export interface DashboardActions {
   landWellNote: (id: number) => Promise<void>;
 
   addMoney: (m: import('../app/components/api').MoneyCreate) => Promise<void>;
+
+  addDecision: (d: import('../app/components/api').DecisionCreate) => Promise<void>;
+  updateDecision: (id: number, updates: Partial<DecisionRecord>) => Promise<void>;
 
   retrySync: () => void;
   signOut: () => Promise<void>;

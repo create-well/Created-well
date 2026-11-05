@@ -2,25 +2,19 @@ import React, { useState } from 'react';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { shortDateLabel } from '../../lib/dateLabel';
+import {
+  sortPendingDecisions, decidedDecisions,
+  buildDecisionCreate, buildDecideUpdate, buildDeferUpdate,
+} from '../../lib/decisionsView';
+import type { DecisionRecord } from '../components/api';
 
-interface Decision {
-  id: string;
-  question: string;
-  context: string;
-  urgency: 'now' | 'this-week' | 'when-clear';
-  decidedAt?: string;
-  answer?: string;
-  status: 'pending' | 'decided' | 'deferred';
-  createdAt: string;
-}
-
-const URGENCY_LABELS: Record<Decision['urgency'], string> = {
+const URGENCY_LABELS: Record<DecisionRecord['urgency'], string> = {
   'now': 'Needs deciding now',
   'this-week': 'This week',
   'when-clear': 'When I have clarity',
 };
 
-const URGENCY_COLORS: Record<Decision['urgency'], string> = {
+const URGENCY_COLORS: Record<DecisionRecord['urgency'], string> = {
   'now': '#FF453A',
   'this-week': '#FF9F0A',
   'when-clear': '#7BA89D',
@@ -31,12 +25,14 @@ function DecisionCard({
   onDecide,
   onDefer,
 }: {
-  decision: Decision;
-  onDecide: (id: string, answer: string) => void;
-  onDefer: (id: string) => void;
+  decision: DecisionRecord;
+  onDecide: (id: number, answer: string) => Promise<void>;
+  onDefer: (id: number) => Promise<void>;
 }) {
   const [deciding, setDeciding] = useState(false);
   const [answer, setAnswer] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   if (decision.status === 'decided') {
     return (
@@ -66,10 +62,35 @@ function DecisionCard({
           fontFamily: 'var(--font-label)', fontSize: '0.62rem',
           color: '#30D158', marginTop: 4,
         }}>
-          ✓ Decided {shortDateLabel(decision.decidedAt, '')}
+          ✓ Decided {shortDateLabel(decision.decided_at, '')}
         </div>
       </div>
     );
+  }
+
+  async function submitDecide() {
+    setBusy(true);
+    setError('');
+    try {
+      await onDecide(decision.id, answer);
+      setDeciding(false);
+    } catch {
+      setError('That did not save. Check the connection and try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitDefer() {
+    setBusy(true);
+    setError('');
+    try {
+      await onDefer(decision.id);
+    } catch {
+      setError('That did not save. Check the connection and try again.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -123,15 +144,15 @@ function DecisionCard({
             }}
           />
           <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={() => { onDecide(decision.id, answer); setDeciding(false); }} style={{
+            <button onClick={submitDecide} disabled={busy} style={{
               padding: '5px 14px', borderRadius: 7,
               background: '#30D158', color: '#fff',
               fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600,
-              border: 'none', cursor: 'pointer',
+              border: 'none', cursor: busy ? 'wait' : 'pointer',
             }}>
-              Mark decided
+              {busy ? 'Saving…' : 'Mark decided'}
             </button>
-            <button onClick={() => setDeciding(false)} style={{
+            <button onClick={() => setDeciding(false)} disabled={busy} style={{
               padding: '5px 14px', borderRadius: 7, background: 'none',
               color: 'var(--text-muted)', fontFamily: 'var(--font-label)', fontSize: '0.72rem',
               border: '1px solid var(--border-soft)', cursor: 'pointer',
@@ -150,29 +171,49 @@ function DecisionCard({
           }}>
             Decide
           </button>
-          <button onClick={() => onDefer(decision.id)} style={{
+          <button onClick={submitDefer} disabled={busy} style={{
             padding: '5px 12px', borderRadius: 7, background: 'none',
             color: 'var(--text-muted)', fontFamily: 'var(--font-label)', fontSize: '0.72rem',
-            border: '1px solid var(--border-soft)', cursor: 'pointer',
+            border: '1px solid var(--border-soft)', cursor: busy ? 'wait' : 'pointer',
           }}>
-            Defer
+            {busy ? 'Saving…' : 'Defer'}
           </button>
+        </div>
+      )}
+      {error && (
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#FF453A', marginTop: 8 }}>
+          {error}
         </div>
       )}
     </div>
   );
 }
 
-function AddDecisionForm({ onAdd, onCancel }: { onAdd: (d: Omit<Decision, 'id' | 'createdAt' | 'status'>) => void; onCancel: () => void }) {
+function AddDecisionForm({
+  onAdd,
+  onCancel,
+}: {
+  onAdd: (d: { question: string; context: string; urgency: DecisionRecord['urgency'] }) => Promise<void>;
+  onCancel: () => void;
+}) {
   const [question, setQuestion] = useState('');
   const [context, setContext] = useState('');
-  const [urgency, setUrgency] = useState<Decision['urgency']>('this-week');
+  const [urgency, setUrgency] = useState<DecisionRecord['urgency']>('this-week');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!question.trim()) return;
-    onAdd({ question: question.trim(), context: context.trim(), urgency });
-    onCancel();
+    if (!question.trim() || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      await onAdd({ question: question.trim(), context: context.trim(), urgency });
+      onCancel();
+    } catch {
+      setError('That did not save. Check the connection and try again.');
+      setBusy(false);
+    }
   }
 
   return (
@@ -207,34 +248,38 @@ function AddDecisionForm({ onAdd, onCancel }: { onAdd: (d: Omit<Decision, 'id' |
           padding: '6px 10px', resize: 'none',
         }}
       />
-      <div style={{ display: 'flex', gap: 6 }}>
-        {(['now', 'this-week', 'when-clear'] as Decision['urgency'][]).map(u => (
-          <button
-            key={u}
-            type="button"
-            onClick={() => setUrgency(u)}
-            style={{
-              padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
-              fontFamily: 'var(--font-label)', fontSize: '0.65rem', fontWeight: 600,
-              border: `1px solid ${urgency === u ? URGENCY_COLORS[u] : 'var(--border-soft)'}`,
-              background: urgency === u ? `${URGENCY_COLORS[u]}18` : 'none',
-              color: urgency === u ? URGENCY_COLORS[u] : 'var(--text-muted)',
-            }}
-          >
-            {URGENCY_LABELS[u]}
-          </button>
-        ))}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {(['now', 'this-week', 'when-clear'] as DecisionRecord['urgency'][]).map(u => {
+          const selected = urgency === u;
+          return (
+            <button
+              key={u}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => setUrgency(u)}
+              style={{
+                padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
+                fontFamily: 'var(--font-label)', fontSize: '0.65rem', fontWeight: selected ? 800 : 600,
+                border: `1px solid ${selected ? URGENCY_COLORS[u] : 'var(--border-soft)'}`,
+                background: selected ? URGENCY_COLORS[u] : 'none',
+                color: selected ? '#fff' : 'var(--text-muted)',
+              }}
+            >
+              {URGENCY_LABELS[u]}
+            </button>
+          );
+        })}
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button type="submit" style={{
+        <button type="submit" disabled={busy} style={{
           padding: '6px 16px', borderRadius: 8,
           background: 'var(--cr8w-text, #2D2438)', color: '#fff',
           fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600,
-          border: 'none', cursor: 'pointer',
+          border: 'none', cursor: busy ? 'wait' : 'pointer',
         }}>
-          Add to queue
+          {busy ? 'Adding…' : 'Add to queue'}
         </button>
-        <button type="button" onClick={onCancel} style={{
+        <button type="button" onClick={onCancel} disabled={busy} style={{
           padding: '6px 14px', borderRadius: 8, background: 'none',
           color: 'var(--text-muted)', fontFamily: 'var(--font-label)', fontSize: '0.72rem',
           border: '1px solid var(--border-soft)', cursor: 'pointer',
@@ -242,13 +287,17 @@ function AddDecisionForm({ onAdd, onCancel }: { onAdd: (d: Omit<Decision, 'id' |
           Cancel
         </button>
       </div>
+      {error && (
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#FF453A' }}>
+          {error}
+        </div>
+      )}
     </form>
   );
 }
 
 export function DecisionsPage() {
-  const { data } = useDashboard();
-  const [decisions, setDecisions] = useState<Decision[]>([]);
+  const { data, actions } = useDashboard();
   const [adding, setAdding] = useState(false);
   const [showDecided, setShowDecided] = useState(false);
 
@@ -256,31 +305,25 @@ export function DecisionsPage() {
     data.syncStatus === 'loading' ? 'loading' :
     data.syncStatus === 'failed' ? 'failed' : 'fresh';
 
-  const pending = decisions.filter(d => d.status === 'pending');
-  const decided = decisions.filter(d => d.status === 'decided');
+  const records = data.decisions || [];
+  const pending = sortPendingDecisions(records);
+  const decided = decidedDecisions(records);
 
-  function addDecision(d: Omit<Decision, 'id' | 'createdAt' | 'status'>) {
-    setDecisions(prev => [
-      { ...d, id: String(Date.now()), createdAt: new Date().toISOString(), status: 'pending' },
-      ...prev,
-    ]);
+  async function addDecision(d: { question: string; context: string; urgency: DecisionRecord['urgency'] }) {
+    await actions.addDecision(buildDecisionCreate(d));
   }
 
-  function decide(id: string, answer: string) {
-    setDecisions(prev => prev.map(d =>
-      d.id === id ? { ...d, status: 'decided', answer, decidedAt: new Date().toISOString() } : d
-    ));
+  async function decide(id: number, answer: string) {
+    await actions.updateDecision(id, buildDecideUpdate(answer, new Date().toISOString()));
   }
 
-  function defer(id: string) {
-    setDecisions(prev => prev.map(d =>
-      d.id === id ? { ...d, urgency: 'when-clear' } : d
-    ));
+  async function defer(id: number) {
+    await actions.updateDecision(id, buildDeferUpdate());
   }
 
   return (
     <ViewShell state={state} onRetry={() => {}}>
-      <div style={{ maxWidth: 620, margin: '0 auto', padding: '24px 16px 48px' }}>
+      <div style={{ maxWidth: 620, margin: '0 auto', padding: '24px 16px 96px' }}>
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
           <div style={{
@@ -302,6 +345,30 @@ export function DecisionsPage() {
           }}>
             One place for everything that needs a decision. Decide, defer, or let it wait.
           </p>
+        </div>
+
+        {/* Guiding principle — at the top, solid card treatment */}
+        <div style={{
+          padding: '14px 18px',
+          borderRadius: 12,
+          background: 'var(--cr8w-card-bg, #F4F1ED)',
+          border: '1px solid rgba(123,168,157,0.18)',
+          marginBottom: 24,
+        }}>
+          <div style={{
+            fontFamily: 'var(--font-label)', fontSize: '0.6rem', fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.1em',
+            color: 'var(--text-muted)', marginBottom: 6,
+          }}>
+            How Monica decides
+          </div>
+          <div style={{
+            fontFamily: 'var(--font-body)', fontSize: '0.78rem',
+            color: 'var(--cr8w-text, #2D2438)', lineHeight: 1.6,
+          }}>
+            Does this move the work forward, or does it just move the worry?
+            If it's not a clear yes, it's a defer or a no.
+          </div>
         </div>
 
         {/* Add button */}
@@ -343,15 +410,9 @@ export function DecisionsPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-            {pending
-              .sort((a, b) => {
-                const order = { now: 0, 'this-week': 1, 'when-clear': 2 };
-                return order[a.urgency] - order[b.urgency];
-              })
-              .map(d => (
-                <DecisionCard key={d.id} decision={d} onDecide={decide} onDefer={defer} />
-              ))
-            }
+            {pending.map(d => (
+              <DecisionCard key={d.id} decision={d} onDecide={decide} onDefer={defer} />
+            ))}
           </div>
         )}
 
@@ -360,6 +421,7 @@ export function DecisionsPage() {
           <div>
             <button
               onClick={() => setShowDecided(v => !v)}
+              aria-expanded={showDecided}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 background: 'none', border: 'none', cursor: 'pointer',
@@ -379,30 +441,6 @@ export function DecisionsPage() {
             )}
           </div>
         )}
-
-        {/* Guiding principle */}
-        <div style={{
-          marginTop: 32,
-          padding: '14px 18px',
-          borderRadius: 12,
-          background: 'linear-gradient(135deg, rgba(123,168,157,0.06) 0%, rgba(184,169,212,0.04) 100%)',
-          border: '1px solid rgba(123,168,157,0.18)',
-        }}>
-          <div style={{
-            fontFamily: 'var(--font-label)', fontSize: '0.6rem', fontWeight: 700,
-            textTransform: 'uppercase', letterSpacing: '0.1em',
-            color: 'var(--text-muted)', marginBottom: 6,
-          }}>
-            How Monica decides
-          </div>
-          <div style={{
-            fontFamily: 'var(--font-body)', fontSize: '0.78rem',
-            color: 'var(--cr8w-text, #2D2438)', lineHeight: 1.6,
-          }}>
-            Does this move the work forward, or does it just move the worry?
-            If it's not a clear yes, it's a defer or a no.
-          </div>
-        </div>
       </div>
     </ViewShell>
   );

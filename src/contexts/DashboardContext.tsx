@@ -6,6 +6,7 @@ import type { Task, Station, ForumPost, Message, BrainDump, Announcement, ForumR
 import type { Workshop, WorkshopProgram, WorkshopResource } from '../app/components/api';
 import type { CoFlowDate, CoFlowCheckin, WellNote } from '../app/components/api';
 import type { MoneyRecord, MoneyCreate } from '../app/components/api';
+import type { DecisionRecord, DecisionCreate } from '../app/components/api';
 import { getStoredProfile } from '../app/components/AuthGate';
 import { shouldShowOnboarding } from '../app/components/WelcomeModal';
 import type { DashboardContextValue, DashboardPayload, SyncStatus } from '../types/dashboard';
@@ -58,6 +59,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const [coFlowCheckins, setCoFlowCheckins] = useState<CoFlowCheckin[]>([]);
   const [wellNotes, setWellNotes] = useState<WellNote[]>([]);
   const [money, setMoney] = useState<MoneyRecord[]>([]);
+  const [decisions, setDecisions] = useState<DecisionRecord[]>([]);
 
   // ── Sync metadata ────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
@@ -201,6 +203,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
         setMoney(canonicalOnLoad(usedFallback, data.money, money));
+        setDecisions(data.decisions || []);
         setSyncStatus(dashboardStatusForSnapshot(sourceStatuses, contentSnapshot.status));
         const receivedAt = Date.now();
         setLastSynced(new Date(receivedAt));
@@ -666,6 +669,29 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
       }
     },
 
+    // Decisions (D-1): same honesty contract as addMoney — state moves
+    // only with the server's returned record, and failures rethrow so
+    // the card owns its error surface. A decision never shows decided
+    // or deferred before the write lands.
+    async addDecision(item: DecisionCreate) {
+      try {
+        const created = await api.createDecision(item);
+        setDecisions(prev => [created, ...prev]);
+      } catch (e) {
+        console.error('Add decision error:', e);
+        throw e;
+      }
+    },
+    async updateDecision(id: number, updates: Partial<DecisionRecord>) {
+      try {
+        const updated = await api.updateDecision(id, updates);
+        setDecisions(prev => prev.map(d => d.id === id ? updated : d));
+      } catch (e) {
+        console.error('Update decision error:', e);
+        throw e;
+      }
+    },
+
     // Sync + auth
     retrySync() {
       fetchSyncRef.current?.(false);
@@ -695,6 +721,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     coFlowCheckins,
     wellNotes,
     money,
+    decisions,
     syncStatus: computedSyncStatus,
     lastSynced,
     syncFreshness,

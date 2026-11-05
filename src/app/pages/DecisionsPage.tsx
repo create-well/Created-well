@@ -24,15 +24,44 @@ function DecisionCard({
   decision,
   onDecide,
   onDefer,
+  onDelete,
 }: {
   decision: DecisionRecord;
   onDecide: (id: number, answer: string) => Promise<void>;
   onDefer: (id: number) => Promise<void>;
+  onDelete: (id: number) => Promise<void>;
 }) {
   const [deciding, setDeciding] = useState(false);
   const [answer, setAnswer] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  async function submitDelete() {
+    if (!confirmingDelete) { setConfirmingDelete(true); return; }
+    setBusy(true);
+    setError('');
+    try {
+      await onDelete(decision.id);
+    } catch {
+      setError('That did not delete. Check the connection and try again.');
+      setConfirmingDelete(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const deleteButton = (
+    <button onClick={submitDelete} disabled={busy} style={{
+      padding: '5px 12px', borderRadius: 7, background: 'none',
+      color: confirmingDelete ? '#FF453A' : 'var(--text-muted)',
+      fontFamily: 'var(--font-label)', fontSize: '0.72rem',
+      border: confirmingDelete ? '1px solid #FF453A' : '1px solid transparent',
+      cursor: busy ? 'wait' : 'pointer',
+    }}>
+      {busy ? 'Deleting…' : confirmingDelete ? 'Confirm delete' : 'Delete'}
+    </button>
+  );
 
   if (decision.status === 'decided') {
     return (
@@ -64,6 +93,12 @@ function DecisionCard({
         }}>
           ✓ Decided {shortDateLabel(decision.decided_at, '')}
         </div>
+        <div style={{ marginTop: 8 }}>{deleteButton}</div>
+        {error && (
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#FF453A', marginTop: 8 }}>
+            {error}
+          </div>
+        )}
       </div>
     );
   }
@@ -178,6 +213,7 @@ function DecisionCard({
           }}>
             {busy ? 'Saving…' : 'Defer'}
           </button>
+          {deleteButton}
         </div>
       )}
       {error && (
@@ -309,6 +345,10 @@ export function DecisionsPage() {
   const pending = sortPendingDecisions(records);
   const decided = decidedDecisions(records);
 
+  async function removeDecision(id: number) {
+    await actions.deleteDecision(id);
+  }
+
   async function addDecision(d: { question: string; context: string; urgency: DecisionRecord['urgency'] }) {
     await actions.addDecision(buildDecisionCreate(d));
   }
@@ -411,7 +451,7 @@ export function DecisionsPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
             {pending.map(d => (
-              <DecisionCard key={d.id} decision={d} onDecide={decide} onDefer={defer} />
+              <DecisionCard key={d.id} decision={d} onDecide={decide} onDefer={defer} onDelete={removeDecision} />
             ))}
           </div>
         )}
@@ -436,7 +476,7 @@ export function DecisionsPage() {
             </button>
             {showDecided && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {decided.map(d => <DecisionCard key={d.id} decision={d} onDecide={decide} onDefer={defer} />)}
+                {decided.map(d => <DecisionCard key={d.id} decision={d} onDecide={decide} onDefer={defer} onDelete={removeDecision} />)}
               </div>
             )}
           </div>

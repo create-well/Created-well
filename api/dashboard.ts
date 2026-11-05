@@ -27,6 +27,7 @@ import { applyCors, requireSession } from './_auth.js';
 import { hasDashboardConfiguration } from './_dashboard-config.js';
 import { getSyncFreshness } from './_sync-engine.js';
 import { queryCanonicalNotionDatabase, resolveDataSourceId, NOTION_API_VERSION } from './_notion-sources.js';
+import { validateKvSlice } from './_kv-validation.js';
 import {
   normalizeMove,
   buildOwnerSlugIndex,
@@ -208,11 +209,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const [movesPages, peoplePages, flowsPages, contentPages, moneyPages, openAsksPages, eventsPages, feedbackPages] =
       notionSettled.map((s) => s.values);
     const ownerSlugIndex = buildOwnerSlugIndex(peoplePages);
+    // KV boundary validation: stored rows are checked at this read
+    // boundary instead of being passed through on trust. A malformed
+    // row is dropped, the valid rows are served, and the drop is named
+    // in sourceErrors under the slice's kv: key. A slice whose read
+    // already failed keeps its read error and stays empty.
+    const kvValidated = kvSettled.map((s, i) => {
+      if (s.error) return s.values;
+      const { values, dropped } = validateKvSlice(KV_KEYS[i], s.values);
+      if (dropped > 0) {
+        sourceErrors[`kv:${KV_KEYS[i]}`] =
+          `KV validation dropped ${dropped} malformed record(s); valid records served`;
+      }
+      return values;
+    });
     const [
       messages, braindumps, announcements, forumReplies,
       workshops, workshopPrograms, workshopResources,
       coflowCheckins, wellNotes, calendarEvents, decisions,
-    ] = kvSettled.map((s) => s.values);
+    ] = kvValidated;
 
     const payload: SyncData = {
       // Notion-backed
@@ -228,7 +243,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       money:             moneyPages.map(normalizeMoney) as MoneyRecord[],
       events:            eventsPages.map(normalizeEvent) as EventRecord[],
       feedback:          feedbackPages.map(normalizeFeedback) as FeedbackRecord[],
-      // KV-backed (passed through; typed by trust — these were written by our own API)
+      // KV-backed (boundary-validated per slice; see validateKvSlice)
       messages:          messages          as SyncData['messages'],
       braindumps:        braindumps        as SyncData['braindumps'],
       announcements:     announcements     as SyncData['announcements'],
@@ -255,8 +270,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Cache-Control', 'private, no-store');
     // Only this primary, configured source with validated pagination can assert completion.
     const contentQueryComplete = Boolean(secret && dbContent && !notionSettled[3].error);
-    // D-1b: decisions pass through on the payload, typed by trust like
-    // the other KV slices. The field is attached here rather than in
+    // D-1b: decisions ride the payload, boundary-validated like the
+    // other KV slices. The field is attached here rather than in
     // the SyncData literal above because the SyncData typing for it
     // lands with the Frontend leg; the wire shape is the same.
     res.json({ ...payload, decisions, syncFreshness, sourceErrors, contentQueryComplete });

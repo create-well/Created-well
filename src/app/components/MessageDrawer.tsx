@@ -562,7 +562,7 @@ export function MessageDrawer({
               textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 5,
               display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap',
             }}>
-              {formatMsgTime(msg.created_at)} {'\u00B7'} {prefix === 'FORUM' ? 'Well Sync' : prefix === 'REMINDER' ? 'Reminder' : 'System'}
+              {formatMsgTime(msg.created_at)} {'\u00B7'} {prefix === 'FORUM' ? 'Well Drop' : prefix === 'REMINDER' ? 'Reminder' : 'System'}
               {nav.action && (
                 <>
                   {' '}{'\u00B7'}{' '}

@@ -53,7 +53,7 @@ function DecisionCard({
 
   const deleteButton = (
     <button onClick={submitDelete} disabled={busy} style={{
-      padding: '5px 12px', borderRadius: 7, background: 'none',
+      padding: '5px 12px', borderRadius: 7, minHeight: 44, background: 'none',
       color: confirmingDelete ? '#FF453A' : 'var(--text-muted)',
       fontFamily: 'var(--font-label)', fontSize: '0.72rem',
       border: confirmingDelete ? '1px solid #FF453A' : '1px solid transparent',
@@ -95,7 +95,7 @@ function DecisionCard({
         </div>
         <div style={{ marginTop: 8 }}>{deleteButton}</div>
         {error && (
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#FF453A', marginTop: 8 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#B3261E', marginTop: 8 }}>
             {error}
           </div>
         )}

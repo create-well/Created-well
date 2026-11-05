@@ -364,7 +364,7 @@ function MovesTab({ tasks }: { tasks: Task[] }) {
                   fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.04em',
                   background: `${statusColor(t.status)}15`, color: statusColor(t.status), flexShrink: 0,
                 }}>
-                  {t.status === 'in_progress' ? 'Now' : t.status === 'todo' ? 'Next' : t.status}
+                  {t.status === 'in_progress' ? 'Now' : t.status === 'todo' ? 'Next' : t.status === 'blocked' ? 'Blocked' : t.status === 'dropped' ? 'Dropped' : t.status === 'done' ? 'Done' : t.status}
                 </span>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

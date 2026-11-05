@@ -400,8 +400,8 @@ export function PersonView({
             {[
               { key: 'active', label: 'Active' },
               { key: 'all', label: 'All' },
-              { key: 'todo', label: 'To Do' },
-              { key: 'in_progress', label: 'In Progress' },
+              { key: 'todo', label: 'Next' },
+              { key: 'in_progress', label: 'Now' },
               { key: 'done', label: 'Done' },
               { key: 'blocked', label: 'Blocked' }
             ].map(s => (
@@ -440,8 +440,8 @@ export function PersonView({
                   </div>
                 </div>
                 <select className="action-status-select" value={item.status} onChange={e => onUpdateTaskStatus(item.id, e.target.value as any)}>
-                  <option value="todo">To Do</option>
-                  <option value="in_progress">In Progress</option>
+                  <option value="todo">Next</option>
+                  <option value="in_progress">Now</option>
                   <option value="done">Done</option>
                   <option value="blocked">Blocked</option>
                 </select>

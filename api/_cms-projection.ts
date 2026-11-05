@@ -149,18 +149,68 @@ export function freshnessLabel(ageMs: number): Freshness {
 
 // Last-good manifest cache (spec 7.3 + 10.2): the public surface serves the
 // last fully validated projection; a failed revalidation never replaces it.
-// Phase 1 keeps the manifest in the function instance; the durable store is
-// the named Phase 2 step (cms design note, 2026-10-26).
+// Phase 1 kept the manifest in the function instance. OPT-1 (2026-11-04)
+// adds the durable tier the contract's section 7 names: an optional
+// ManifestStore the cache hydrates from on cold start and the handler
+// writes through after a successful revalidation, so a cold instance
+// during a Notion outage serves the stored last-good instead of a 503.
+// The in-memory manifest remains the serving source on every request;
+// the store is read only while the cache is empty, never per request,
+// and every store failure degrades to exact Phase 1 behavior.
+export interface ManifestStore {
+  read: () => Promise<CmsManifest | null>;
+  write: (manifest: CmsManifest) => Promise<void>;
+}
+
+const ITEM_KEYS = ["name", "link", "contentType", "publishDate", "where", "tag"];
+
+// Shape check for a manifest coming back from durable storage (G-45 +
+// F-SWEEP2-1 discipline): a stored value is served only if it is exactly
+// manifest-shaped — string releaseId, a generatedAt Date.parse accepts,
+// and items carrying precisely the six allowlist keys with string or
+// null values. Anything else is not a manifest this surface may serve.
+export function validateManifest(value: unknown): CmsManifest | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  if (typeof v.releaseId !== "string" || v.releaseId.length === 0) return null;
+  if (typeof v.generatedAt !== "string" || !Number.isFinite(Date.parse(v.generatedAt))) {
+    return null;
+  }
+  if (!Array.isArray(v.items)) return null;
+  for (const item of v.items) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+    const keys = Object.keys(item as Record<string, unknown>);
+    if (keys.length !== ITEM_KEYS.length) return null;
+    for (const key of ITEM_KEYS) {
+      if (!Object.prototype.hasOwnProperty.call(item, key)) return null;
+      const field = (item as Record<string, unknown>)[key];
+      if (key === "name" || key === "link") {
+        if (typeof field !== "string") return null;
+      } else if (field !== null && typeof field !== "string") {
+        return null;
+      }
+    }
+  }
+  return value as CmsManifest;
+}
+
 export interface ManifestCache {
   current: () => CmsManifest | null;
   ageMs: (now: Date) => number | null;
   isFresh: (now: Date) => boolean;
   replace: (items: CmsItem[], now: Date) => CmsManifest;
+  hydrate: () => Promise<boolean>;
+  persist: () => Promise<void>;
 }
 
-export function createManifestCache(ttlMs: number): ManifestCache {
+export function createManifestCache(
+  ttlMs: number,
+  store?: ManifestStore,
+  hydrateTimeoutMs = 1_500,
+): ManifestCache {
   let manifest: CmsManifest | null = null;
   let counter = 0;
+  let hydrating: Promise<boolean> | null = null;
   return {
     current: () => manifest,
     ageMs: (now) =>
@@ -177,6 +227,51 @@ export function createManifestCache(ttlMs: number): ManifestCache {
         items,
       };
       return manifest;
+    },
+    hydrate: () => {
+      // Single-flight: concurrent cold requests share one store read.
+      // Only an empty cache hydrates; once anything is installed
+      // (stored or revalidated), hydration never runs again.
+      if (manifest || !store) return Promise.resolve(false);
+      if (!hydrating) {
+        hydrating = (async () => {
+          try {
+            const read = store.read();
+            const timeout = new Promise<null>((resolve) => {
+              const t = setTimeout(() => resolve(null), hydrateTimeoutMs);
+              (t as { unref?: () => void }).unref?.();
+            });
+            const stored = await Promise.race([read, timeout]);
+            if (stored && !manifest) {
+              manifest = stored;
+              return true;
+            }
+            return false;
+          } catch (err) {
+            console.error(
+              "[cms] manifest store read failed:",
+              err instanceof Error ? err.message : "unknown error",
+            );
+            return false;
+          } finally {
+            hydrating = null;
+          }
+        })();
+      }
+      return hydrating;
+    },
+    persist: async () => {
+      if (!store || !manifest) return;
+      try {
+        await store.write(manifest);
+      } catch (err) {
+        // Failure-isolated by design: the in-memory manifest is already
+        // this instance's truth; a store write error only logs its class.
+        console.error(
+          "[cms] manifest store write failed:",
+          err instanceof Error ? err.message : "unknown error",
+        );
+      }
     },
   };
 }

@@ -182,6 +182,7 @@ export const deleteCoFlowCheckin = (id: number) => req<{ ok: boolean }>('DELETE'
 export const getWellNotes = () => req<WellNote[]>('GET', '/well-notes');
 export const createWellNote = (n: { content: string }) => req<WellNote>('POST', '/well-notes', n);
 export const updateWellNote = (id: number, n: Partial<WellNote>) => req<WellNote>('PUT', `/well-notes/${id}`, n);
+export const deleteWellNote = (id: number) => req<{ ok: boolean }>('DELETE', `/well-notes/${id}`);
 
 // Settings (generic JSON config storage)
 export const getSetting = <T = any>(key: string) => req<{ value: T | null }>('GET', `/settings/${key}`);

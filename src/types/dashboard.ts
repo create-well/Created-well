@@ -98,6 +98,7 @@ export interface DashboardActions {
 
   addWellNote: (content: string) => Promise<void>;
   landWellNote: (id: number) => Promise<void>;
+  deleteWellNote: (id: number) => Promise<void>;
 
   addMoney: (m: import('../app/components/api').MoneyCreate) => Promise<void>;
 

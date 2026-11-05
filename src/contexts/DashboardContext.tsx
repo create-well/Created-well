@@ -647,6 +647,18 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         sendSystemMessage('💧 someone dropped a note in the well — pull from the spring to find it');
       } catch (e) { saveFailed(e, 'Add well note error:'); }
     },
+    // Well-note delete (register 1424): the D-1 honesty contract,
+    // mirroring deleteDecision — await the server, apply on
+    // success, rethrow on failure; the surface owns its error
+    // line and nothing vanishes on a failed delete. The server
+    // needed no change: 'well-notes' rides the generic resource
+    // router (api/server.ts resource map), whose list DELETE
+    // covers cr8w_well_notes exactly as it covers decisions.
+    async deleteWellNote(id: number) {
+      await api.deleteWellNote(id);
+      setWellNotes(prev => prev.filter(n => n.id !== id));
+    },
+
     async landWellNote(id: number) {
       try {
         const note = wellNotes.find(n => n.id === id);

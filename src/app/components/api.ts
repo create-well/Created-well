@@ -315,6 +315,7 @@ export type DecisionCreate = Pick<DecisionRecord, 'question' | 'context' | 'urge
 
 export const createDecision = (d: DecisionCreate) => req<DecisionRecord>('POST', '/decisions', d);
 export const updateDecision = (id: number, updates: Partial<DecisionRecord>) => req<DecisionRecord>('PUT', `/decisions/${id}`, updates);
+export const deleteDecision = (id: number) => req<{ ok: boolean }>('DELETE', `/decisions/${id}`);
 
 export interface Announcement {
   id: number; text: string; priority: 'high' | 'medium' | 'low'; active?: number; created_at?: string;

@@ -691,6 +691,15 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         throw e;
       }
     },
+    async deleteDecision(id: number) {
+      try {
+        await api.deleteDecision(id);
+        setDecisions(prev => prev.filter(d => d.id !== id));
+      } catch (e) {
+        console.error('Delete decision error:', e);
+        throw e;
+      }
+    },
 
     // Sync + auth
     retrySync() {

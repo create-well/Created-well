@@ -9,11 +9,11 @@ You are continuing real production repos, not inventing a new product.
 
 - Canonical repo: `create-well/Created-well` (branch: main)
 - Vercel project: `createdwell` — Production deploy live
-- Domains: `dash.cr8w.com`, `www.cr8w.com`, `createdwell.vercel.app`
-- Second lane: Figma Make → `create-well/cr8w-dashboard` → Vercel `cr8w-dashboard` (marketing site + team dashboard)
+- Domains: `dash.cr8w.com`, `createdwell.vercel.app` (`www.cr8w.com` and `cr8w.com` answer with a retired holding page)
+- Single lane: this repo is the only live surface. The former `create-well/cr8w-dashboard` repo and its Vercel project are RETIRED (repo archived, recoverable) — never route work, sync, or deploys there.
 - Supabase: active backend, RLS enabled on KV/cache/workspace-sync tables
-- Sync route: `/api/notion-sync` — server-side, session-gated, 6 sources (FLOWS, MOVES, PEOPLE, CONTENT, MONEY, EVENTS), 60s server cache, paginated queries
-- Write-back route: `/api/rsvp` — writes to PEOPLE, email-matched (update, never duplicate)
+- Sync engine: Notion → Supabase snapshots, driven by `/api/reconcile` (Vercel cron, every 15 minutes) and the `/api/notion-webhook` receiver; per-source delivery state and freshness are recorded in Supabase (`sync_delivery_state`, `sync_runs`). There is no `/api/notion-sync` route.
+- Read path: the dashboard fanout `/api/dashboard` (session-gated) serves SEVEN sources from the registry in `api/_notion-sources.ts`: PEOPLE, FLOWS, MOVES, MONEY, CONTENT, EVENTS, FEEDBACK. Separately, the CMS connector serves the public projection at `GET /api/public-content` (triple gate: Published AND Final? AND Audience = Public; six-field allowlist; the connector never writes).
 
 ## System rule
 
@@ -23,14 +23,17 @@ The sync contract: Notion writes. The delivery layer remembers. The site reads. 
 
 ## Core Notion databases
 
-Exactly five operational databases, plus EVENTS for gatherings:
+The seven sync sources of record:
 
-- PEOPLE — one row per human. Key properties: Consent Captured, Pathway Stage, Next Invitation
-- FLOWS — one row per dated thing. Key properties: Flow Keeper, Ready to Hold?
-- MOVES — one owner, one due date. Key properties: Blocked By, Needs Tending?
-- MONEY — record both directions of cash. Key property: Real Only
-- CONTENT — Final is the publishing gate. Key property: Ready to Release?
-- EVENTS — gatherings feed. Powers the public site's event cards.
+- PEOPLE — one row per human.
+- FLOWS — one row per dated thing. Key properties: Flow Keeper, Ready to Hold?, Hard Stop.
+- MOVES — one owner, one due date. Key properties: Status (Now / Next / Done / Blocked / Dropped), Blocked By.
+- MONEY — record both directions of cash. Key properties: Stage (Possible / Committed / Invoiced / Received / Paid), Direction (In / Out).
+- CONTENT — publishable assets. Final? is the publishing gate (with Published and Audience = Public for the public projection).
+- EVENTS — gatherings feed.
+- FEEDBACK — session feedback.
+
+Also of record, outside the fanout registry: OPEN ASKS (aggregate counts only, never a fanout source) and INVENTORY (created 2026-11-04; joins the sync set only when the Q-101 program lands it).
 
 Use exact property names or fail loudly. Never guess a property name.
 
@@ -40,13 +43,17 @@ Use exact property names or fail loudly. Never guess a property name.
 - MOVES: every row has an owner and a due date
 - PEOPLE: no row without consent
 - MONEY: every row sits at its true stage
-- CONTENT: every row has Final checked and a publish date
+- CONTENT: every public row has Final checked and a publish date
 - EVENTS: only published/scheduled, date on or after today
 
 ## Bounded write-back operations
 
-1. RSVP intake (`/api/rsvp`) — email-matched PEOPLE write. Consent written ONLY on explicit opt-in. Never pre-tick.
-2. Letter opt-in — explicit checkbox only. Photo/video consent never becomes email consent.
+All write-backs ride the session-gated generic API in `api/server.ts` — there is no `/api/rsvp` route (the workshop RSVP write-back is parked; RSVP state is device-local today, a named gap).
+
+1. Dual-write CRUD — tasks (MOVES), stations (PEOPLE), forum (CONTENT), coflow-dates (FLOWS): creates, updates, and deletes write through to Notion; a Notion failure answers 502 and nothing is reported saved. Dashboard records are addressed by Notion page id.
+2. Money create — `POST /api/server/money`, create-only, writes exactly Name / Amount / Direction / Actual / Stage to MONEY.
+3. Decisions — KV-persisted queue (`cr8w_decisions`); decide and defer writes are urgency/status writes, never Notion writes.
+4. Letter opt-in — explicit checkbox only. Photo/video consent never becomes email consent.
 
 ## Human gates — never automate
 

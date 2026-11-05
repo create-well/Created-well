@@ -103,6 +103,7 @@ export interface DashboardActions {
 
   addDecision: (d: import('../app/components/api').DecisionCreate) => Promise<void>;
   updateDecision: (id: number, updates: Partial<DecisionRecord>) => Promise<void>;
+  deleteDecision: (id: number) => Promise<void>;
 
   retrySync: () => void;
   signOut: () => Promise<void>;

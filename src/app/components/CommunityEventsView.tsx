@@ -248,6 +248,7 @@ function WorkshopsTab({ flows }: { flows: CoFlowDate[] }) {
             onClick={() => setSub(t.key)}
             style={{
               flex: 1,
+              minHeight: 44,
               padding: '8px 10px',
               borderRadius: t.key === 'workshops' ? '10px 0 0 10px' : '0 10px 10px 0',
               border: sub === t.key ? '1.5px solid var(--cr8w-primary, #7BA89D)' : '1px solid rgba(0,0,0,0.1)',
@@ -322,6 +323,7 @@ function MovesTab({ tasks }: { tasks: Task[] }) {
           return (
             <button
               key={key}
+              className="cr-hit44"
               onClick={() => setFilter(key)}
               style={{
                 padding: '4px 10px',
@@ -533,6 +535,7 @@ export function CommunityEventsView({ defaultTab = 'upcoming' }: { defaultTab?: 
               display: 'flex',
               alignItems: 'center',
               gap: 5,
+              minHeight: 44,
               padding: '10px 12px',
               border: 'none',
               borderBottom: activeTab === tab.key ? '2px solid var(--cr8w-primary, #7BA89D)' : '2px solid transparent',

@@ -874,7 +874,7 @@ export function GeyserView({
   return (
     <div className="geyser-command-center" style={{ maxWidth: 900, margin: '0 auto', padding: '0 20px 60px' }}>
       <div className="geyser-header">
-        <div className="geyser-header-title">Geyser</div>
+        <div className="geyser-header-title">Flows</div>
       </div>
 
       {/* Tabs — ARIA tablist pattern (QA finding 2026-11-02): roving
@@ -883,7 +883,7 @@ export function GeyserView({
       <div
         className="geyser-tabs"
         role="tablist"
-        aria-label="Geyser views"
+        aria-label="Flows views"
         onKeyDown={e => {
           const el = (e.target as HTMLElement).closest('[role="tab"]');
           if (!el) return;

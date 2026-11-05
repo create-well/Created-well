@@ -443,6 +443,8 @@ export interface MoneyRecord {
   name:         string;
   amount:       number;
   kind:         string;
+  direction:    string;
+  stage:        string;
   date:         string;
   flowId:       string;
   docUrl:       string;
@@ -457,6 +459,8 @@ export function normalizeMoney(page: NotionPage): MoneyRecord {
     name:         getText(pick(p, 'Name', 'Title', 'Description')) || 'Untitled',
     amount:       (p['Amount'] as any)?.number ?? 0,
     kind:         getSelect(pick(p, 'Kind', 'Type', 'Category')) || '',
+    direction:    getSelect(pick(p, 'Direction')) || '',
+    stage:        getSelect(pick(p, 'Stage')) || '',
     // Expected is the forward-looking date for active records; Actual replaces it
     // once the line item has settled. Older imports may still provide Date.
     date:         getDate(pick(p, 'Actual', 'Expected', 'Date', 'Transaction Date', 'Due')) || '',

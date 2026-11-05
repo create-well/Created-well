@@ -391,11 +391,24 @@ export interface MoneyRecord {
   name:         string;
   amount:       number;
   kind:         string;
+  direction:    string;
+  stage:        string;
   date:         string;
   flowId:       string;
   docUrl:       string;
   created_at:   string;
 }
+
+/** Quick-log write shape for the MONEY create route (M-1b): Kind unset in v1. */
+export interface MoneyCreate {
+  name: string;
+  amount: number;
+  direction: 'In' | 'Out';
+  actual: string;
+  stage: 'Received' | 'Paid';
+}
+
+export const createMoney = (m: MoneyCreate) => req<MoneyRecord>('POST', '/money', m);
 
 export interface SyncData {
   /** Source-specific failures from the primary dashboard route; absent on fallback. */

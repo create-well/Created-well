@@ -5,6 +5,7 @@ import * as api from '../app/components/api';
 import type { Task, Station, ForumPost, Message, BrainDump, Announcement, ForumReply } from '../app/components/api';
 import type { Workshop, WorkshopProgram, WorkshopResource } from '../app/components/api';
 import type { CoFlowDate, CoFlowCheckin, WellNote } from '../app/components/api';
+import type { MoneyRecord, MoneyCreate } from '../app/components/api';
 import { getStoredProfile } from '../app/components/AuthGate';
 import { shouldShowOnboarding } from '../app/components/WelcomeModal';
 import type { DashboardContextValue, DashboardPayload, SyncStatus } from '../types/dashboard';
@@ -45,6 +46,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const [coFlowDates, setCoFlowDates] = useState<CoFlowDate[]>([]);
   const [coFlowCheckins, setCoFlowCheckins] = useState<CoFlowCheckin[]>([]);
   const [wellNotes, setWellNotes] = useState<WellNote[]>([]);
+  const [money, setMoney] = useState<MoneyRecord[]>([]);
 
   // ── Sync metadata ────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
@@ -183,6 +185,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowDates(data.coflowDates || []);
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
+        setMoney(data.money || []);
         setSyncStatus(dashboardStatusForSnapshot(sourceStatuses, contentSnapshot.status));
         const receivedAt = Date.now();
         setLastSynced(new Date(receivedAt));
@@ -572,6 +575,20 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
       } catch (e) { console.error('Land well note error:', e); }
     },
 
+    // Money (M-1): the created record comes back from the MONEY create
+    // route and joins the slice; the next payload load replaces the
+    // slice with the source of truth. Like addTask, failures rethrow —
+    // the quick log owns its failure surface and never shows a fake save.
+    async addMoney(item: MoneyCreate) {
+      try {
+        const created = await api.createMoney(item);
+        setMoney(prev => [...prev, created]);
+      } catch (e) {
+        console.error('Add money error:', e);
+        throw e;
+      }
+    },
+
     // Sync + auth
     retrySync() {
       fetchSyncRef.current?.(false);
@@ -600,6 +617,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     coFlowDates,
     coFlowCheckins,
     wellNotes,
+    money,
     syncStatus: computedSyncStatus,
     lastSynced,
     syncFreshness,

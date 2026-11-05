@@ -15,6 +15,17 @@ import { localDateString } from '../lib/dateLabel';
 import { MoveDeleteNotice } from '../app/components/MoveDeleteNotice';
 import { makeContentFlowSnapshot, snapshotFromDashboard } from '../lib/contentFlowSnapshot';
 import { dashboardStatusForSnapshot, sourceStatusesFromDashboard, uniformCanonicalStatus } from '../lib/canonicalSourceStatus';
+import { canonicalOnLoad } from '../lib/canonicalFallback';
+import { writeAddress } from '../lib/pageIdAddressing';
+import { showToast } from '../app/components/Toast';
+
+// RR-004 surfacing: a failed write is never swallowed. Every write
+// handler's catch routes here — the failure is logged and the user
+// sees it, in the house copy the Money and Decisions surfaces use.
+function saveFailed(e: unknown, label: string) {
+  console.error(label, e);
+  showToast('That did not save. Try again.', 'alert');
+}
 
 const DashboardCtx = createContext<DashboardContextValue | null>(null);
 
@@ -165,8 +176,12 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         // carries it; a fallback load clears it, never a stale count.
         setPeopleCare(usedFallback ? null : (data.peopleCare ?? null));
         setOpenAsksCare(usedFallback ? null : (data.openAsksCare ?? null));
-        setTasks(data.tasks || []);
-        setStations(data.stations || []);
+        // Canonical slices (tasks, stations, coflowDates, money): the
+        // fallback response omits them, so a fallback load holds the
+        // last-good in-memory values instead of blanking them — the
+        // protection forum already had, extended to the canonical set.
+        setTasks(canonicalOnLoad(usedFallback, data.tasks, tasks));
+        setStations(canonicalOnLoad(usedFallback, data.stations, stations));
         // Capture from the primary response, before mutable optimistic forum state.
         const contentSnapshot = snapshotFromDashboard(data, usedFallback);
         const sourceStatuses = sourceStatusesFromDashboard(data, usedFallback);
@@ -182,10 +197,10 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setWorkshops(data.workshops || []);
         setWorkshopPrograms(data.workshopPrograms || []);
         setWorkshopResources(data.workshopResources || []);
-        setCoFlowDates(data.coflowDates || []);
+        setCoFlowDates(canonicalOnLoad(usedFallback, data.coflowDates, coFlowDates));
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
-        setMoney(data.money || []);
+        setMoney(canonicalOnLoad(usedFallback, data.money, money));
         setSyncStatus(dashboardStatusForSnapshot(sourceStatuses, contentSnapshot.status));
         const receivedAt = Date.now();
         setLastSynced(new Date(receivedAt));
@@ -283,16 +298,24 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
       }
     },
     async updateTask(id: number, updates: Partial<Task>) {
+      const prior = tasks.find(t => t.id === id);
       try {
         setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-        await api.updateTask(id, updates);
-      } catch (e) { console.error('Update task error:', e); }
+        await api.updateTask(writeAddress(prior, id), updates);
+      } catch (e) {
+        if (prior) setTasks(prev => prev.map(t => t.id === id ? prior : t));
+        saveFailed(e, 'Update task error:');
+      }
     },
     async updateTaskStatus(id: number, status: Task['status']) {
+      const prior = tasks.find(t => t.id === id);
       try {
         setTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t));
-        await api.updateTask(id, { status });
-      } catch (e) { console.error('Update task status error:', e); }
+        await api.updateTask(writeAddress(prior, id), { status });
+      } catch (e) {
+        if (prior) setTasks(prev => prev.map(t => t.id === id ? prior : t));
+        saveFailed(e, 'Update task status error:');
+      }
     },
     async deleteTask(id: number) {
       try {
@@ -310,31 +333,46 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
       try {
         const created = await api.createStation(s);
         setStations(prev => [...prev, created]);
-      } catch (e) { console.error('Add station error:', e); }
+      } catch (e) { saveFailed(e, 'Add station error:'); }
     },
     async updateStationStatus(id: number, status: string) {
+      const prior = stations.find(s => s.id === id);
       try {
         setStations(prev => prev.map(s => s.id === id ? { ...s, status } : s));
-        await api.updateStation(id, { status });
-      } catch (e) { console.error('Update station status error:', e); }
+        await api.updateStation(writeAddress(prior, id), { status });
+      } catch (e) {
+        if (prior) setStations(prev => prev.map(s => s.id === id ? prior : s));
+        saveFailed(e, 'Update station status error:');
+      }
     },
     async updateStationOwner(id: number, owner: string) {
+      const prior = stations.find(s => s.id === id);
       try {
         setStations(prev => prev.map(s => s.id === id ? { ...s, owner } : s));
-        await api.updateStation(id, { owner });
-      } catch (e) { console.error('Update station owner error:', e); }
+        await api.updateStation(writeAddress(prior, id), { owner });
+      } catch (e) {
+        if (prior) setStations(prev => prev.map(s => s.id === id ? prior : s));
+        saveFailed(e, 'Update station owner error:');
+      }
     },
     async updateStationField(id: number, updates: Partial<Station>) {
+      const prior = stations.find(s => s.id === id);
       try {
         setStations(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
-        await api.updateStation(id, updates);
-      } catch (e) { console.error('Update station field error:', e); }
+        await api.updateStation(writeAddress(prior, id), updates);
+      } catch (e) {
+        if (prior) setStations(prev => prev.map(s => s.id === id ? prior : s));
+        saveFailed(e, 'Update station field error:');
+      }
     },
     async deleteStation(id: number) {
       try {
         setStations(prev => prev.filter(s => s.id !== id));
         await api.deleteStation(id);
-      } catch (e) { console.error('Delete station error:', e); }
+      } catch (e) {
+        setStations(stations);
+        saveFailed(e, 'Delete station error:');
+      }
     },
 
     // Forum
@@ -344,22 +382,31 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setForum(prev => [created, ...prev]);
         const authorLabel = post.author ? post.author.charAt(0).toUpperCase() + post.author.slice(1) : 'Someone';
         sendSystemMessage(`[UPDATE] 💬 ${authorLabel} dropped a new post in The Well${post.tag ? ` [${post.tag}]` : ''}`);
-      } catch (e) { console.error('Add forum post error:', e); }
+      } catch (e) { saveFailed(e, 'Add forum post error:'); }
     },
     async updateForumPost(id: number, updates: Partial<ForumPost>) {
+      const prior = forum.find(p => p.id === id);
       try {
         setForum(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
-        const updated = await api.updateForumPost(id, updates);
-        setForum(prev => prev.map(p => p.id === id ? updated : p));
+        const updated = await api.updateForumPost(writeAddress(prior, id), updates);
+        // A page-addressed response carries the page id as its id;
+        // the record's local numeric identity does not change.
+        setForum(prev => prev.map(p => p.id === id ? { ...updated, id } : p));
         const authorLabel = updates.author || forum.find(p => p.id === id)?.author || 'Someone';
         sendSystemMessage(`[UPDATE] ✏️ ${authorLabel.charAt(0).toUpperCase() + authorLabel.slice(1)} edited a post in The Well`);
-      } catch (e) { console.error('Update forum post error:', e); }
+      } catch (e) {
+        if (prior) setForum(prev => prev.map(p => p.id === id ? prior : p));
+        saveFailed(e, 'Update forum post error:');
+      }
     },
     async deleteForumPost(id: number) {
       try {
         setForum(prev => prev.filter(p => p.id !== id));
         await api.deleteForumPost(id);
-      } catch (e) { console.error('Delete forum post error:', e); }
+      } catch (e) {
+        setForum(forum);
+        saveFailed(e, 'Delete forum post error:');
+      }
     },
 
     // Forum replies
@@ -371,15 +418,15 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         const created = await api.createForumReply(postId, reply);
         setForumReplies(prev => prev.map(r => r.id === tempId ? { ...created, postId } : r));
       } catch (e) {
-        console.error('Add forum reply error:', e);
         setForumReplies(prev => prev.filter(r => r.id !== tempId));
+        saveFailed(e, 'Add forum reply error:');
       }
     },
     async deleteForumReply(replyId: number) {
       try {
         setForumReplies(prev => prev.filter(r => r.id !== replyId));
         await api.deleteForumReply(replyId);
-      } catch (e) { console.error('Delete forum reply error:', e); }
+      } catch (e) { saveFailed(e, 'Delete forum reply error:'); }
     },
 
     // Messages
@@ -391,27 +438,38 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         const created = await api.sendMessage(msg);
         setMessages(prev => prev.map(m => m.id === tempId ? created : m));
       } catch (e) {
-        console.error('Send message error:', e);
         setMessages(prev => prev.filter(m => m.id !== tempId));
+        saveFailed(e, 'Send message error:');
       }
     },
     async updateMessage(id: number, content: string) {
+      const prior = messages.find(m => m.id === id);
       try {
         setMessages(prev => prev.map(m => m.id === id ? { ...m, content, edited: true } : m));
         await api.updateMessage(id, { content, edited: true });
-      } catch (e) { console.error('Update message error:', e); }
+      } catch (e) {
+        if (prior) setMessages(prev => prev.map(m => m.id === id ? prior : m));
+        saveFailed(e, 'Update message error:');
+      }
     },
     async updateMessageFields(id: number, fields: Partial<Message>) {
+      const prior = messages.find(m => m.id === id);
       try {
         setMessages(prev => prev.map(m => m.id === id ? { ...m, ...fields } : m));
         await api.updateMessage(id, fields);
-      } catch (e) { console.error('Update message fields error:', e); }
+      } catch (e) {
+        if (prior) setMessages(prev => prev.map(m => m.id === id ? prior : m));
+        saveFailed(e, 'Update message fields error:');
+      }
     },
     async deleteMessage(id: number) {
       try {
         setMessages(prev => prev.filter(m => m.id !== id));
         await api.deleteMessage(id);
-      } catch (e) { console.error('Delete message error:', e); }
+      } catch (e) {
+        setMessages(messages);
+        saveFailed(e, 'Delete message error:');
+      }
     },
 
     // Brain dumps
@@ -419,13 +477,13 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
       try {
         const created = await api.createBrainDump(dump);
         setBrainDumps(prev => [created, ...prev]);
-      } catch (e) { console.error('Add brain dump error:', e); }
+      } catch (e) { saveFailed(e, 'Add brain dump error:'); }
     },
     async deleteBrainDump(id: number) {
       try {
         setBrainDumps(prev => prev.filter(d => d.id !== id));
         await api.deleteBrainDump(id);
-      } catch (e) { console.error('Delete brain dump error:', e); }
+      } catch (e) { saveFailed(e, 'Delete brain dump error:'); }
     },
     // Fix 3: flag writes (sent_to_playground / archived) are
     // await-then-apply and rethrow — the flags control what renders,
@@ -445,7 +503,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
       try {
         setAnnouncements(prev => prev.filter(a => a.id !== id));
         await api.deleteAnnouncement(id);
-      } catch (e) { console.error('Dismiss announcement error:', e); }
+      } catch (e) { saveFailed(e, 'Dismiss announcement error:'); }
     },
     async addAnnouncement() {
       const text = prompt('New announcement:');
@@ -454,7 +512,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
       try {
         const created = await api.createAnnouncement({ text, priority, active: 1 });
         setAnnouncements(prev => [created, ...prev]);
-      } catch (e) { console.error('Add announcement error:', e); }
+      } catch (e) { saveFailed(e, 'Add announcement error:'); }
     },
 
     // Workshops
@@ -468,49 +526,49 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
             break;
           }
         }
-      } catch (e) { console.error('Add workshop error:', e); }
+      } catch (e) { saveFailed(e, 'Add workshop error:'); }
     },
     async updateWorkshop(id: number, updates: Partial<Workshop>) {
       try {
         setWorkshops(prev => prev.map(w => w.id === id ? { ...w, ...updates } : w));
         await api.updateWorkshop(id, updates);
-      } catch (e) { console.error('Update workshop error:', e); }
+      } catch (e) { saveFailed(e, 'Update workshop error:'); }
     },
     async deleteWorkshop(id: number) {
       try {
         setWorkshops(prev => prev.filter(w => w.id !== id));
         await api.deleteWorkshop(id);
-      } catch (e) { console.error('Delete workshop error:', e); }
+      } catch (e) { saveFailed(e, 'Delete workshop error:'); }
     },
     async addWorkshopProgram(p: Omit<WorkshopProgram, 'id' | 'created_at'>) {
       try {
         const created = await api.createWorkshopProgram(p);
         setWorkshopPrograms(prev => [...prev, created]);
-      } catch (e) { console.error('Add workshop program error:', e); }
+      } catch (e) { saveFailed(e, 'Add workshop program error:'); }
     },
     async updateWorkshopProgram(id: number, updates: Partial<WorkshopProgram>) {
       try {
         setWorkshopPrograms(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
         await api.updateWorkshopProgram(id, updates);
-      } catch (e) { console.error('Update workshop program error:', e); }
+      } catch (e) { saveFailed(e, 'Update workshop program error:'); }
     },
     async deleteWorkshopProgram(id: number) {
       try {
         setWorkshopPrograms(prev => prev.filter(p => p.id !== id));
         await api.deleteWorkshopProgram(id);
-      } catch (e) { console.error('Delete workshop program error:', e); }
+      } catch (e) { saveFailed(e, 'Delete workshop program error:'); }
     },
     async addWorkshopResource(r: Omit<WorkshopResource, 'id' | 'created_at'>) {
       try {
         const created = await api.createWorkshopResource(r);
         setWorkshopResources(prev => [...prev, created]);
-      } catch (e) { console.error('Add workshop resource error:', e); }
+      } catch (e) { saveFailed(e, 'Add workshop resource error:'); }
     },
     async deleteWorkshopResource(id: number) {
       try {
         setWorkshopResources(prev => prev.filter(r => r.id !== id));
         await api.deleteWorkshopResource(id);
-      } catch (e) { console.error('Delete workshop resource error:', e); }
+      } catch (e) { saveFailed(e, 'Delete workshop resource error:'); }
     },
 
     // CoFlow dates
@@ -522,13 +580,13 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         const dateLabel = new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
         const timeStr = d.startTime && d.endTime ? `${d.startTime} – ${d.endTime}` : d.timeRange || 'TBD';
         sendSystemMessage(`[UPDATE] 🗓️ New behind h0es doors scheduled! ${dateLabel} · ${timeStr} · ${d.location || 'TBD'}${d.host ? ` · Hosted by ${hostLabel}` : ''}${d.theme ? ` · "${d.theme}"` : ''}`);
-      } catch (e) { console.error('Add coflow date error:', e); }
+      } catch (e) { saveFailed(e, 'Add coflow date error:'); }
     },
     async updateCoFlowDate(id: number, updates: Partial<CoFlowDate>) {
       try {
         const prev = coFlowDates.find(d => d.id === id);
         setCoFlowDates(p => p.map(d => d.id === id ? { ...d, ...updates } : d));
-        await api.updateCoFlowDate(id, updates);
+        await api.updateCoFlowDate(writeAddress(prev, id), updates);
         if (prev && (updates.date || updates.startTime || updates.endTime || updates.location || updates.host || updates.theme) && updates.status !== 'wrapped') {
           const dateLabel = new Date((updates.date || prev.date) + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
           sendSystemMessage(`[UPDATE] ✏️ behind h0es doors updated → ${dateLabel} · ${updates.location || prev.location || 'TBD'}`);
@@ -537,7 +595,11 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
           const dateLabel = new Date(prev.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           sendSystemMessage(`[UPDATE] 📚 behind h0es doors (${dateLabel}) has been archived.`);
         }
-      } catch (e) { console.error('Update coflow date error:', e); }
+      } catch (e) {
+        const prior = coFlowDates.find(d => d.id === id);
+        if (prior) setCoFlowDates(p => p.map(d => d.id === id ? prior : d));
+        saveFailed(e, 'Update coflow date error:');
+      }
     },
     async deleteCoFlowDate(id: number) {
       try {
@@ -548,7 +610,10 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
           const dateLabel = new Date(d8.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
           sendSystemMessage(`[UPDATE] ❌ behind h0es doors on ${dateLabel} has been cancelled.`);
         }
-      } catch (e) { console.error('Delete coflow date error:', e); }
+      } catch (e) {
+        setCoFlowDates(coFlowDates);
+        saveFailed(e, 'Delete coflow date error:');
+      }
     },
 
     // CoFlow checkins
@@ -561,13 +626,13 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         const moodStr = c.mood && moodEmojis[c.mood] ? ` ${moodEmojis[c.mood]}` : '';
         const agendaCount = c.agendaItems?.length || 0;
         sendSystemMessage(`[UPDATE] ✅ ${authorLabel} dropped a PlayD8s check-in${moodStr}${agendaCount > 0 ? ` with ${agendaCount} agenda item${agendaCount > 1 ? 's' : ''}` : ''}. ${c.confirmTime ? 'Time confirmed ✓' : 'Time needs adjusting ⚠️'}`);
-      } catch (e) { console.error('Add coflow checkin error:', e); }
+      } catch (e) { saveFailed(e, 'Add coflow checkin error:'); }
     },
     async deleteCoFlowCheckin(id: number) {
       try {
         setCoFlowCheckins(prev => prev.filter(c => c.id !== id));
         await api.deleteCoFlowCheckin(id);
-      } catch (e) { console.error('Delete coflow checkin error:', e); }
+      } catch (e) { saveFailed(e, 'Delete coflow checkin error:'); }
     },
 
     // Well notes
@@ -576,7 +641,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         const created = await api.createWellNote({ content });
         setWellNotes(prev => [...prev, created]);
         sendSystemMessage('💧 someone dropped a note in the well — pull from the spring to find it');
-      } catch (e) { console.error('Add well note error:', e); }
+      } catch (e) { saveFailed(e, 'Add well note error:'); }
     },
     async landWellNote(id: number) {
       try {
@@ -584,7 +649,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         if (!note) return;
         const updated = await api.updateWellNote(id, { landed: (note.landed || 0) + 1 });
         setWellNotes(prev => prev.map(n => n.id === id ? updated : n));
-      } catch (e) { console.error('Land well note error:', e); }
+      } catch (e) { saveFailed(e, 'Land well note error:'); }
     },
 
     // Money (M-1): the created record comes back from the MONEY create

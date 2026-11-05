@@ -67,7 +67,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
     <>
       <nav className="top-nav">
         {/* Logo / Home */}
-        <NavLink
+        <NavLink aria-current="page"
           to="/"
           end
           className={({ isActive }) =>
@@ -89,7 +89,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
         {/* Desktop Nav Links */}
         <div className="nav-links">
           {NAV_ITEMS.map(item => (
-            <NavLink
+            <NavLink aria-current="page"
               key={item.path}
               to={item.path}
               end={item.end}
@@ -266,7 +266,7 @@ export function TopNav({ onSignOut }: TopNavProps) {
           </div>
 
           {NAV_ITEMS.map(item => (
-            <NavLink
+            <NavLink aria-current="page"
               key={item.path}
               to={item.path}
               end={item.end}

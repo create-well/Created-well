@@ -1,20 +1,18 @@
-// Notion source registry for createdwell live-sync (Phase 2 port).
+// Notion source registry for createdwell live-sync.
 //
-// Adaptation note: on cr8w-dashboard the sync sources are that app's
-// seven dashboard databases and fetchSourceRows lives in notion-sync,
-// returning UI-shaped rows. Createdwell's five databases feed seven UI
-// collections through the pure normalizers behind /api/dashboard, so a
-// per-database snapshot in UI shape cannot represent them 1:1. The
-// snapshot here therefore stores the normalizer INPUT: one row per
-// Notion page carrying its raw properties ({ _id, _last_edited,
-// properties }). Consumers normalize on read with the same functions
-// /api/dashboard uses today, which keeps snapshot/live parity exact by
-// construction. Reads resolve each database's data source and query the
-// data_sources route (Notion-Version 2025-09-03; see the reader
-// migration note at NOTION_API_VERSION below — the legacy
-// /v1/databases/{id}/query path this file used through 2026-11-02 was
-// removed in that API version). The canonical five sources use bounded
-// transient retries; optional sources retain their single-attempt behavior.
+// The seven sources feed the dashboard's UI collections through the
+// pure normalizers behind /api/dashboard, so a per-database snapshot
+// in UI shape cannot represent them 1:1. The snapshot here therefore
+// stores the normalizer INPUT: one row per Notion page carrying its
+// raw properties ({ _id, _last_edited, properties }). Consumers
+// normalize on read with the same functions /api/dashboard uses today,
+// which keeps snapshot/live parity exact by construction. Reads
+// resolve each database's data source and query the data_sources
+// route (Notion-Version 2025-09-03; see the reader migration note at
+// NOTION_API_VERSION below — the legacy /v1/databases/{id}/query path
+// this file used through 2026-11-02 was removed in that API version).
+// The canonical five sources use bounded transient retries; optional
+// sources retain their single-attempt behavior.
 
 import type { NotionPage } from "../src/lib/notionNormalizer.js";
 

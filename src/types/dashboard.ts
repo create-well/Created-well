@@ -76,6 +76,7 @@ export interface DashboardActions {
 
   addBrainDump: (d: Omit<BrainDump, 'id' | 'created_at'>) => Promise<void>;
   deleteBrainDump: (id: number) => Promise<void>;
+  updateBrainDump: (id: number, updates: Partial<BrainDump>) => Promise<void>;
 
   dismissAnnouncement: (id: number) => Promise<void>;
   addAnnouncement: () => Promise<void>;

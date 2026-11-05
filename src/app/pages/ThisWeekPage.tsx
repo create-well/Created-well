@@ -58,6 +58,7 @@ export function ThisWeekPage() {
         brainDumps={data.brainDumps}
         onAddBrainDump={actions.addBrainDump}
         onDeleteBrainDump={actions.deleteBrainDump}
+        onUpdateBrainDump={actions.updateBrainDump}
         syncTime={syncTime}
         activeUser={ui.chatActiveUser}
         wellNotes={data.wellNotes}

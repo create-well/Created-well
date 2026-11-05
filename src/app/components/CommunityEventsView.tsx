@@ -33,10 +33,11 @@ const FLOW_STATUS_LABELS: Record<string, string> = {
 
 function statusPill(status: string) {
   const isArchived = FLOW_ARCHIVED.has(status);
+  const shade = isArchived ? 'var(--status-archived)' : 'var(--status-done)';
   const s = {
     label: FLOW_STATUS_LABELS[status] || status,
-    bg:    isArchived ? 'rgba(180,160,150,0.12)' : 'rgba(123,168,157,0.12)',
-    color: isArchived ? '#8A7060' : '#5A9B8E',
+    bg:    `color-mix(in srgb, ${shade} 12%, transparent)`,
+    color: shade,
   };
   return (
     <span style={{
@@ -309,7 +310,15 @@ function MovesTab({ tasks }: { tasks: Task[] }) {
   const ROLE_KEYS = ['all', ...Object.keys(TASK_ROLES)];
 
   function statusColor(s: Task['status']) {
-    return s === 'in_progress' ? '#FF9F0A' : s === 'done' ? '#30D158' : s === 'blocked' ? '#FF453A' : '#A89888';
+    // The --status-* shade set (cr8w.css): one deep shade per
+    // status, AA as small text on white and cream. The old iOS
+    // system hexes failed at 1.90-3.08:1 and Next/Dropped shared
+    // one fallback color; both defects end here.
+    return s === 'in_progress' ? 'var(--status-now)'
+      : s === 'done' ? 'var(--status-done)'
+      : s === 'blocked' ? 'var(--status-blocked)'
+      : s === 'dropped' ? 'var(--status-dropped)'
+      : 'var(--status-next)';
   }
 
   return (
@@ -362,7 +371,8 @@ function MovesTab({ tasks }: { tasks: Task[] }) {
                 <span style={{
                   padding: '2px 7px', borderRadius: 7, fontSize: '0.6rem', fontWeight: 700,
                   fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.04em',
-                  background: `${statusColor(t.status)}15`, color: statusColor(t.status), flexShrink: 0,
+                  background: t.status === 'blocked' ? 'var(--status-blocked)' : `color-mix(in srgb, ${statusColor(t.status)} 8%, transparent)`,
+                  color: t.status === 'blocked' ? '#F6EBDF' : statusColor(t.status), flexShrink: 0,
                 }}>
                   {t.status === 'in_progress' ? 'Now' : t.status === 'todo' ? 'Next' : t.status === 'blocked' ? 'Blocked' : t.status === 'dropped' ? 'Dropped' : t.status === 'done' ? 'Done' : t.status}
                 </span>

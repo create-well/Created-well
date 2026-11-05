@@ -30,6 +30,15 @@ html.cw-no-motion *::after {
   --camel-sun:   #B8A9D4;
   --sandstone:   #F4F1ED;
   --secondary:   #B8A9D4;
+  /* status shades — /flows status text set (UI design call
+     2026-11-05): every shade passes AA as small text on white and
+     cream; tints derive from the same shade via color-mix. */
+  --status-blocked:  #964226;
+  --status-now:      #7F5008;
+  --status-done:     #295E53;
+  --status-next:     #6E5B3E;
+  --status-dropped:  #635672;
+  --status-archived: #6E5546;
   /* person colors */
   --sunshine:       #C49090;
   --sunshine-light: #F5EAEA;

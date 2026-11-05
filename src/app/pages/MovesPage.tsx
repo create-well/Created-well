@@ -54,7 +54,6 @@ export function MovesPage() {
       emptyBody="Tasks and stations will surface here. A clear board is a healthy board."
       onRetry={actions.retrySync}
     >
-      <ContentFlowSnapshotPanel snapshot={data.contentFlowSnapshot} onRetry={actions.retrySync} />
       <GeyserView
         onNavigate={handleNavigate}
         actionItems={data.tasks}
@@ -82,6 +81,7 @@ export function MovesPage() {
         onAddStation={actions.addStation}
         onDeleteStation={actions.deleteStation}
       />
+      <ContentFlowSnapshotPanel snapshot={data.contentFlowSnapshot} onRetry={actions.retrySync} />
       {showAddTask && (
         <AddTaskModal
           currentPerson={null}

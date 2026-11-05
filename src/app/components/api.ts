@@ -288,6 +288,11 @@ export interface Station {
 export interface ForumPost {
   id: number; author: string; content: string; tag?: string; created_at?: string;
   notionPageId?: string;
+  // True when the CONTENT source row is a registry-mirror row (its
+  // Registry Details leads with the literal "registry-mirror"), set by
+  // normalizeContent. Surfaces that reshape forum rows into notes or
+  // posts exclude flagged rows; the content snapshot keeps them.
+  registryMirror?: boolean;
 }
 
 export interface ForumReply {

@@ -138,7 +138,7 @@ export function RootLayout() {
               person={ui.activePerson}
               onNavigate={() => ui.setActivePerson(null)}
               actionItems={data.tasks}
-              wellNotes={data.forum.map(f => ({ id: f.id, author: f.author, content: f.content, created_at: f.created_at }))}
+              wellNotes={data.forum.filter(f => !f.registryMirror).map(f => ({ id: f.id, author: f.author, content: f.content, created_at: f.created_at }))}
               stations={data.stations}
               onAddTask={() => setShowAddTask(true)}
               onUpdateTaskStatus={actions.updateTaskStatus}

@@ -129,6 +129,7 @@ export function MoneyPage() {
 
   const segmentStyle = (active: boolean): React.CSSProperties => ({
     flex: 1,
+    minHeight: 44,
     padding: '7px 0',
     borderRadius: 8,
     border: 'none',
@@ -289,7 +290,7 @@ export function MoneyPage() {
               type="submit"
               disabled={logging}
               style={{
-                padding: '6px 16px', borderRadius: 7,
+                padding: '6px 16px', borderRadius: 7, minHeight: 44,
                 background: 'var(--cr8w-primary, #7BA89D)', color: '#fff',
                 fontFamily: 'var(--font-label)', fontSize: '0.78rem', fontWeight: 600,
                 border: 'none', cursor: logging ? 'wait' : 'pointer',
@@ -302,7 +303,7 @@ export function MoneyPage() {
           {logError && (
             <div style={{
               fontFamily: 'var(--font-body)', fontSize: '0.75rem',
-              color: EXPENSE_COLOR, marginTop: 8,
+              color: '#B3261E', marginTop: 8,
             }}>
               {logError}
             </div>
@@ -374,7 +375,7 @@ export function MoneyPage() {
               />
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => saveNextMove(nextMove)} disabled={savingNextMove} style={{
-                  padding: '5px 14px', borderRadius: 7,
+                  padding: '5px 14px', borderRadius: 7, minHeight: 44,
                   background: 'var(--cr8w-primary, #7BA89D)', color: '#fff',
                   fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600,
                   border: 'none', cursor: savingNextMove ? 'wait' : 'pointer',
@@ -382,7 +383,7 @@ export function MoneyPage() {
                   {savingNextMove ? 'Saving…' : 'Save'}
                 </button>
                 <button onClick={() => saveNextMove('')} disabled={savingNextMove} style={{
-                  padding: '5px 14px', borderRadius: 7,
+                  padding: '5px 14px', borderRadius: 7, minHeight: 44,
                   background: 'none', color: 'var(--text-muted)',
                   fontFamily: 'var(--font-label)', fontSize: '0.72rem',
                   border: '1px solid var(--border-soft)', cursor: 'pointer',
@@ -391,7 +392,7 @@ export function MoneyPage() {
                 </button>
               </div>
               {nextMoveError && (
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: EXPENSE_COLOR }}>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#B3261E' }}>
                   {nextMoveError}
                 </div>
               )}

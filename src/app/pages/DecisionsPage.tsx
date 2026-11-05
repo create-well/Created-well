@@ -145,7 +145,7 @@ function DecisionCard({
           />
           <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={submitDecide} disabled={busy} style={{
-              padding: '5px 14px', borderRadius: 7,
+              padding: '5px 14px', borderRadius: 7, minHeight: 44,
               background: '#30D158', color: '#fff',
               fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600,
               border: 'none', cursor: busy ? 'wait' : 'pointer',
@@ -153,7 +153,7 @@ function DecisionCard({
               {busy ? 'Saving…' : 'Mark decided'}
             </button>
             <button onClick={() => setDeciding(false)} disabled={busy} style={{
-              padding: '5px 14px', borderRadius: 7, background: 'none',
+              padding: '5px 14px', borderRadius: 7, minHeight: 44, background: 'none',
               color: 'var(--text-muted)', fontFamily: 'var(--font-label)', fontSize: '0.72rem',
               border: '1px solid var(--border-soft)', cursor: 'pointer',
             }}>
@@ -164,7 +164,7 @@ function DecisionCard({
       ) : (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={() => setDeciding(true)} style={{
-            padding: '5px 14px', borderRadius: 7,
+            padding: '5px 14px', borderRadius: 7, minHeight: 44,
             background: 'var(--cr8w-primary, #7BA89D)', color: '#fff',
             fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600,
             border: 'none', cursor: 'pointer',
@@ -172,7 +172,7 @@ function DecisionCard({
             Decide
           </button>
           <button onClick={submitDefer} disabled={busy} style={{
-            padding: '5px 12px', borderRadius: 7, background: 'none',
+            padding: '5px 12px', borderRadius: 7, minHeight: 44, background: 'none',
             color: 'var(--text-muted)', fontFamily: 'var(--font-label)', fontSize: '0.72rem',
             border: '1px solid var(--border-soft)', cursor: busy ? 'wait' : 'pointer',
           }}>
@@ -181,7 +181,7 @@ function DecisionCard({
         </div>
       )}
       {error && (
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#FF453A', marginTop: 8 }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#B3261E', marginTop: 8 }}>
           {error}
         </div>
       )}
@@ -258,7 +258,7 @@ function AddDecisionForm({
               aria-pressed={selected}
               onClick={() => setUrgency(u)}
               style={{
-                padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
+                padding: '4px 10px', borderRadius: 6, cursor: 'pointer', minHeight: 44,
                 fontFamily: 'var(--font-label)', fontSize: '0.65rem', fontWeight: selected ? 800 : 600,
                 border: `1px solid ${selected ? URGENCY_COLORS[u] : 'var(--border-soft)'}`,
                 background: selected ? URGENCY_COLORS[u] : 'none',
@@ -272,7 +272,7 @@ function AddDecisionForm({
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="submit" disabled={busy} style={{
-          padding: '6px 16px', borderRadius: 8,
+          padding: '6px 16px', borderRadius: 8, minHeight: 44,
           background: 'var(--cr8w-text, #2D2438)', color: '#fff',
           fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600,
           border: 'none', cursor: busy ? 'wait' : 'pointer',
@@ -280,7 +280,7 @@ function AddDecisionForm({
           {busy ? 'Adding…' : 'Add to queue'}
         </button>
         <button type="button" onClick={onCancel} disabled={busy} style={{
-          padding: '6px 14px', borderRadius: 8, background: 'none',
+          padding: '6px 14px', borderRadius: 8, minHeight: 44, background: 'none',
           color: 'var(--text-muted)', fontFamily: 'var(--font-label)', fontSize: '0.72rem',
           border: '1px solid var(--border-soft)', cursor: 'pointer',
         }}>
@@ -288,7 +288,7 @@ function AddDecisionForm({
         </button>
       </div>
       {error && (
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#FF453A' }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#B3261E' }}>
           {error}
         </div>
       )}

@@ -13,7 +13,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive, createMoneyPage, validateMoneyCreate } from './_notionWriter.js';
+import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive, createMoneyPage, validateMoneyCreate, isNotionPageId } from './_notionWriter.js';
 import { normalizeMoney } from '../src/lib/notionNormalizer.js';
 import { applyCors, requireSession, requireSessionOrCron } from './_auth.js';
 
@@ -453,7 +453,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         const list = await getList(kvKey);
         const idx = list.findIndex((x: any) => String(x.id) === String(id));
-        if (idx === -1) { res.status(404).json({ error: 'Not found' }); return; }
+        if (idx === -1) {
+          // RR-004 (shape A): the dual-write resources may also be
+          // addressed by Notion page id. The dashboard payload presents
+          // Notion-sourced records under their page, and their edits
+          // carry partial bodies — so the update writes through to
+          // Notion with the partial property builders, no KV shadow
+          // required. A KV id that misses keeps the plain 404.
+          const cfg = NOTION_RESOURCES[resource];
+          if (cfg && isNotionPageId(id)) {
+            if (!process.env[cfg.dbIdEnvVar] || !process.env.NOTION_SECRET) {
+              res.status(502).json({ error: 'Notion update failed', notion_error: 'notion_not_configured' }); return;
+            }
+            try {
+              await notionUpdate(id, cfg.toPartialProperties(b));
+            } catch (err: any) {
+              console.error(`[_notionWriter] update failed for ${resource}:`, err);
+              res.status(502).json({ error: 'Notion update failed', notion_error: 'notion_write_failed' }); return;
+            }
+            res.json({ ...b, id, notionPageId: id, notion_sync: 'ok' }); return;
+          }
+          res.status(404).json({ error: 'Not found' }); return;
+        }
         list[idx] = { ...list[idx], ...b, id: list[idx].id, updated_at: new Date().toISOString() };
         // Notion dual-write: update if item has a notionPageId.
         // Truthful outcome: a Notion failure returns 502 and KV is unchanged.

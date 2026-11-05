@@ -586,6 +586,7 @@ export function DecomprocessFAB() {
           onClick={handleOpenHistory}
           title="decomprocess history"
           style={{
+            position: 'relative',
             width: 26,
             height: 26,
             borderRadius: '50%',
@@ -600,7 +601,18 @@ export function DecomprocessFAB() {
             transition: 'all 0.2s',
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           }}
-        >{'\uD83D\uDCDC'}</button>
+        >
+          {/* 44px hit area (audit-3): the visible button stays 26px —
+              the landed cluster clearance leaves only a 12px gap to
+              the scroll-top box, so the box cannot grow. This layer
+              expands the clickable area to 44x44 around it: -12 top
+              fills the gap without crossing the scroll-top's bottom
+              edge, -6 bottom fills the cluster gap without reaching
+              the main FAB. Clicks on it bubble to the button. */}
+          <span aria-hidden="true" style={{
+            position: 'absolute', top: -12, bottom: -6, left: -9, right: -9,
+          }} />
+          {'\uD83D\uDCDC'}</button>
 
         {/* Main FAB */}
         <button

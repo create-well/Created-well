@@ -361,7 +361,7 @@ html.cw-no-motion *::after {
 .notion-sync-dot.online { background: #6BAF6B; box-shadow: 0 0 6px rgba(107,175,107,0.5); }
 .notion-sync-link { color: var(--cr8w-primary-text, #466F64); font-weight: 600; text-decoration: none; }
 .notion-sync-link:hover { text-decoration: underline; }
-.notion-sync-time { font-size: 0.68rem; color: var(--text-muted); margin-left: auto; opacity: 0.7; }
+.notion-sync-time { font-size: 0.68rem; color: var(--text-muted); margin-left: auto; }
 
 /* HUB VIEW */
 .hub-header { text-align: center; padding: 48px 20px 32px; }
@@ -1685,6 +1685,9 @@ a.gcc-pill-link:hover { background: var(--cr8w-card-bg, #F4F1ED); transform: tra
   letter-spacing: 0.5px;
   color: #1A73E8;
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   padding: 2px 8px;
   border: 1.5px solid rgba(26,115,232,0.3);
   border-radius: 20px;

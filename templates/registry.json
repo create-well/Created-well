@@ -181,7 +181,7 @@
         "code_target": "src/app/components/HomePanels.tsx",
         "library": "published 2026-11-03 (one of 13 changes in the CR8W Design System library publish; file renamed from 'Untitled' the same pass)",
         "mapping": "LIVE — published 2026-11-04 on Monny's YES (main chat 2026-11-03); Dev Mode verified 2026-11-04: Connected, production snippet renders. Code Connect coverage: 5/5 published library components mapped and live-verified (Button 13-6, Card 13-7, Chip 13-11 as Badge, EventCard 14-2, NavHeader 14-14). Read-surface note: the Figma MCP get_code_connect_map returns {} for these nodes (connector gap of record); Dev Mode is the verification surface.",
-        "note": "Honest-match binding: this entry is the kit's gathering-card pattern (Web UI Kit p.3), the registry home for the Figma EventCard component-set. EventCard has no 1:1 code component — its live Code Connect template resolves to a composition snippet in src/app/components/HomePanels.tsx (imports Card + Button over the CMS gatherings payload), Dev Mode verified 2026-11-04 — so the entry's status stays provisional."
+        "note": "Honest-match binding: this entry is the kit's gathering-card pattern (Web UI Kit p.3), the registry home for the Figma EventCard component-set. EventCard has no 1:1 code component — its live Code Connect template (src/code-connect/eventcard.figma.ts) resolves to a composition snippet whose example markup uses the Card primitive over the CMS gatherings payload — HomePanels.tsx itself imports neither Card nor Button — Dev Mode verified 2026-11-04 — so the entry's status stays provisional."
       },
       "canva": {
         "design": "DAHaCORjQF8",

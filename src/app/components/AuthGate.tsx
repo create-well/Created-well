@@ -14,6 +14,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { projectId } from '/utils/supabase/info';
 import { lookupUsername, registerUsername } from './api';
+import { isRecoveryHash, sessionEntry } from '../../lib/recoveryEntry';
 
 // ── Supabase browser client ───────────────────────────────────────────────────
 // SUPABASE_ANON_JWT: JWT anon key required by Supabase Auth (signIn, signUp, etc.)
@@ -181,11 +182,18 @@ export function AuthGate({ onAuthenticated }: Props) {
     // set-new-password handlers create the client on user interaction,
     // via client().
     const hasStoredSession = hasStoredSessionForRefresh();
-    const isRecoveryArrival = typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
+    const isRecoveryArrival = typeof window !== 'undefined' && isRecoveryHash(window.location.hash);
     if (!hasStoredSession && !isRecoveryArrival) {
       setCheckingSession(false);
       return;
     }
+
+    // Recovery hold: a recovery arrival carries a valid session, so the
+    // session check below must not auto-enter on it — the gate holds at
+    // the set-new-password form until the password is set. The flag is
+    // read from the URL hash synchronously, before the client can
+    // consume it, and the PASSWORD_RECOVERY event raises it too.
+    let recoveryPending = isRecoveryArrival;
 
     // Listen for PASSWORD_RECOVERY: fires when user arrives via a reset-password email link.
     // SIGNED_OUT fires when GoTrueClient's internal token refresh fails (e.g. stale/revoked
@@ -193,6 +201,7 @@ export function AuthGate({ onAuthenticated }: Props) {
     const { data: { subscription } } = client().auth.onAuthStateChange((event) => {
       if (!active) return;
       if (event === 'PASSWORD_RECOVERY') {
+        recoveryPending = true;
         setCheckingSession(false);
         setMode('newpassword');
       }
@@ -221,9 +230,21 @@ export function AuthGate({ onAuthenticated }: Props) {
         return;
       }
       const session = data.session;
-      if (session) {
-        const key = session.user?.user_metadata?.cr8w_profile ?? getStoredProfile() ?? 'monny';
-        const userEmail = session.user?.email ?? '';
+      const entry = sessionEntry(!!session, recoveryPending);
+      if (entry === 'set-new-password') {
+        // Recovery session: hold at the form. Storing the profile/email
+        // mirror here is harmless and lets the post-set entry reuse it.
+        const key = session!.user?.user_metadata?.cr8w_profile ?? getStoredProfile() ?? 'monny';
+        const userEmail = session!.user?.email ?? '';
+        localStorage.setItem('cr8w_user_profile', key);
+        localStorage.setItem('cr8w_user_email', userEmail);
+        if (isAdmin(userEmail)) localStorage.setItem('cr8w_is_admin', 'true');
+        else localStorage.removeItem('cr8w_is_admin');
+        setMode('newpassword');
+        setCheckingSession(false);
+      } else if (entry === 'enter') {
+        const key = session!.user?.user_metadata?.cr8w_profile ?? getStoredProfile() ?? 'monny';
+        const userEmail = session!.user?.email ?? '';
         localStorage.setItem('cr8w_user_profile', key);
         localStorage.setItem('cr8w_user_email', userEmail);
         if (isAdmin(userEmail)) localStorage.setItem('cr8w_is_admin', 'true');

@@ -92,6 +92,11 @@ export function PersonView({
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   const stationList = stations.length > 0 ? stations : STATIONS_DEFAULT;
+  // This person's PEOPLE record, for the detail-only Description
+  // below: matched by owner slug, then by display name.
+  const personRecord =
+    stationList.find(s => s.owner === person) ||
+    stationList.find(s => s.name.trim().toLowerCase() === p.name.trim().toLowerCase());
 
   const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
   const personEvents = CALENDAR_EVENTS
@@ -597,6 +602,17 @@ export function PersonView({
               ) : <div key={i} className="funnel-arrow">→</div>)}
             </div>
           </div>
+
+          {/* Description — the PEOPLE Description prose, in full.
+              Detail view only: member cards render nothing from it
+              (UX ruling, register 1346). Until the data cleanup
+              lands, this is where its live to-do stays reachable. */}
+          {personRecord?.descriptionFull ? (
+          <div className="well-section">
+            <h3 className="well-section-title">Description</h3>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', lineHeight: 1.55, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{personRecord.descriptionFull}</p>
+          </div>
+          ) : null}
 
           {/* Stations */}
           {stationList.length > 0 && (

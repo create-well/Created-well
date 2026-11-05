@@ -116,6 +116,7 @@ export const GLOSSARY = [
 export interface Station {
   id: number; emoji: string; name: string; status: string;
   description: string; owner: string;
+  descriptionFull?: string;
 }
 
 export const STATIONS_DEFAULT: Station[] = [];

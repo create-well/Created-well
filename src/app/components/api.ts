@@ -274,6 +274,10 @@ export interface Station {
   id: number; emoji: string; name: string; status: string;
   description: string; owner: string; created_at?: string;
   notionPageId?: string;
+  // PEOPLE Description prose in full (normalizePerson). Detail
+  // views only — member cards render nothing from it (UX ruling,
+  // register 1346).
+  descriptionFull?: string;
 }
 
 export interface ForumPost {

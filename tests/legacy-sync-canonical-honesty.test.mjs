@@ -54,6 +54,7 @@ test('GET /sync serves KV-owned slices only and names unavailable canonical slic
       { key: 'cr8w_coflow_dates', value: JSON.stringify([{ id: 4, theme: 'stale mirror flow' }]) },
       { key: 'cr8w_messages', value: JSON.stringify([{ id: 5, author: 'monny', content: 'KV-owned message' }]) },
       { key: 'cr8w_calendar_events', value: JSON.stringify([{ id: 'evt-1', title: 'KV-owned event' }]) },
+      { key: 'cr8w_decisions', value: JSON.stringify([{ id: 9, question: 'KV-owned decision', status: 'pending' }]) },
     ],
   };
   const res = {
@@ -78,4 +79,5 @@ test('GET /sync serves KV-owned slices only and names unavailable canonical slic
   assert.deepEqual(res.body.canonicalSlicesUnavailable, ['tasks', 'stations', 'forum', 'coflowDates']);
   assert.equal(res.body.messages[0].content, 'KV-owned message');
   assert.equal(res.body.calendarEvents[0].title, 'KV-owned event');
+  assert.equal(res.body.decisions[0].question, 'KV-owned decision');
 });

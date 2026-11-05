@@ -123,11 +123,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ── Sync ──────────────────────────────────────────────────────────────────
     if (resource === 'sync' && method === 'GET') {
+      // Legacy fallback honesty: this route serves only KV-owned
+      // collections. Tasks, stations, forum, and coflow dates are
+      // Notion-canonical; their KV rows are write mirrors and can go
+      // stale when Notion is edited directly, so they are deliberately
+      // not served here. The response names the unavailable canonical
+      // slices instead of dressing a mirror up as the source.
       const SYNC_KEYS = [
-        'cr8w_tasks', 'cr8w_stations', 'cr8w_forum', 'cr8w_messages',
+        'cr8w_messages',
         'cr8w_braindumps', 'cr8w_announcements', 'cr8w_forum_replies',
         'cr8w_workshops', 'cr8w_workshop_programs', 'cr8w_workshop_resources',
-        'cr8w_coflow_dates', 'cr8w_coflow_checkins', 'cr8w_well_notes',
+        'cr8w_coflow_checkins', 'cr8w_well_notes',
         'cr8w_calendar_events',
       ];
       const sb = supabase();
@@ -136,9 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const map: Record<string, any[]> = {};
       for (const row of data ?? []) map[row.key] = parseList(row.value, row.key);
       res.json({
-        tasks: map['cr8w_tasks'] ?? [],
-        stations: map['cr8w_stations'] ?? [],
-        forum: map['cr8w_forum'] ?? [],
+        canonicalSlicesUnavailable: ['tasks', 'stations', 'forum', 'coflowDates'],
         messages: map['cr8w_messages'] ?? [],
         braindumps: map['cr8w_braindumps'] ?? [],
         announcements: map['cr8w_announcements'] ?? [],
@@ -146,7 +150,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         workshops: map['cr8w_workshops'] ?? [],
         workshopPrograms: map['cr8w_workshop_programs'] ?? [],
         workshopResources: map['cr8w_workshop_resources'] ?? [],
-        coflowDates: map['cr8w_coflow_dates'] ?? [],
         coflowCheckins: map['cr8w_coflow_checkins'] ?? [],
         wellNotes: map['cr8w_well_notes'] ?? [],
         calendarEvents: map['cr8w_calendar_events'] ?? [],

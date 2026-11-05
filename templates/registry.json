@@ -178,10 +178,10 @@
         "nodeId": "14-2",
         "url": "https://www.figma.com/design/6GpuVqt4LiguAOdOwcS8OT/CR8W-Design-System?node-id=14-2",
         "template": "src/code-connect/eventcard.figma.ts",
-        "code_target": null,
+        "code_target": "src/app/components/HomePanels.tsx",
         "library": "published 2026-11-03 (one of 13 changes in the CR8W Design System library publish; file renamed from 'Untitled' the same pass)",
-        "mapping": "NOT live — Code Connect publish is gated on Monny's named YES + her Secure Vault FIGMA_ACCESS_TOKEN (Code Connect: Write + File content: Read). This binding is staged metadata; it claims no live Figma mapping.",
-        "note": "Honest-match binding: this entry is the kit's gathering-card pattern (Web UI Kit p.3), the registry home for the Figma EventCard component-set. EventCard has no 1:1 code component — it is a composition rendered inside HomePanels / CommunityEventsView from the CMS gatherings payload — so code_target is null and the entry's status stays provisional."
+        "mapping": "LIVE — published 2026-11-04 on Monny's YES (main chat 2026-11-03); Dev Mode verified 2026-11-04: Connected, production snippet renders. Code Connect coverage: 5/5 published library components mapped and live-verified (Button 13-6, Card 13-7, Chip 13-11 as Badge, EventCard 14-2, NavHeader 14-14). Read-surface note: the Figma MCP get_code_connect_map returns {} for these nodes (connector gap of record); Dev Mode is the verification surface.",
+        "note": "Honest-match binding: this entry is the kit's gathering-card pattern (Web UI Kit p.3), the registry home for the Figma EventCard component-set. EventCard has no 1:1 code component — its live Code Connect template resolves to a composition snippet in src/app/components/HomePanels.tsx (imports Card + Button over the CMS gatherings payload), Dev Mode verified 2026-11-04 — so the entry's status stays provisional."
       }
     },
     {
@@ -245,7 +245,8 @@
       },
       "kit_source_note": "The wording family NOT CONNECTED -> VERIFYING -> LIVE -> UNREACHABLE (plus WRITES DISABLED as a companion chip state), 'never red'. Evidence: the filed overview capture's text layer and the 2026-10-30 examination of the OS Frontend Spec canvas; the native OS Spec PDF is image-only, so no native text layer carries the family.",
       "notion_view": null,
-      "status": "capture-only"
+      "status": "capture-only",
+      "notion_view_note": "No Notion view: a wording family, not a content pattern — no OS source or view mirrors it. Named-unbound 2026-11-05 (registry completion pass)."
     },
     {
       "component": "src/app/components/ViewShell.tsx",
@@ -283,7 +284,7 @@
         "template": "src/code-connect/navheader.figma.ts",
         "code_target": "src/app/components/TopNav.tsx",
         "library": "published 2026-11-03 (one of 13 changes in the CR8W Design System library publish; file renamed from 'Untitled' the same pass)",
-        "mapping": "NOT live — Code Connect publish is gated on Monny's named YES + her Secure Vault FIGMA_ACCESS_TOKEN (Code Connect: Write + File content: Read). This binding is staged metadata; it claims no live Figma mapping.",
+        "mapping": "LIVE — published 2026-11-04 on Monny's YES (main chat 2026-11-03); Dev Mode verified 2026-11-04: Connected, production snippet renders. Code Connect coverage: 5/5 published library components mapped and live-verified (Button 13-6, Card 13-7, Chip 13-11 as Badge, EventCard 14-2, NavHeader 14-14). Read-surface note: the Figma MCP get_code_connect_map returns {} for these nodes (connector gap of record); Dev Mode is the verification surface.",
         "note": "Honest-match binding: NavHeader binds to TopNav.tsx, a composed part of this shell entry (see component_note — the shell as built is ViewShell.tsx composed with TopNav.tsx and RootLayout.tsx). The entry's primary component stays ViewShell.tsx; this binding records the NavHeader leg only."
       }
     },
@@ -297,7 +298,77 @@
       },
       "kit_source_note": "PROVISIONAL — the Mobile Kit native file is NOT VERIFIED on this VM (see sources). Screen inventory as cross-checked from the Web UI Kit deck, page 1 ('Mobile — Six Core Screens') and page 6 ('05 — Mobile'): 01 Home, 02 Gatherings, 03 Event Detail, 04 Podcast, 05 Manifesto, plus a sixth screen not fully legible in the filed text. Mobile rules from the same pages: desktop columns become a stack, don't shrink; one column; the RSVP button stays in the thumb zone. The Mobile canvas itself (10 pp) additionally carries mobile foundations/components, the RSVP flow, and Notion + Framer configs per the inventory record — that layer rests on the overview capture only.",
       "notion_view": null,
-      "status": "provisional"
+      "status": "provisional",
+      "notion_view_note": "No Notion view: screens are surface structure, not content — no CONTENT view mirrors them. Named-unbound 2026-11-05 (registry completion pass). Entry stays provisional under A-18/D2."
+    },
+    {
+      "id": "ui-button",
+      "kit_source": {
+        "canvas": "CR8W Design System (Figma library)",
+        "page": "Button component set"
+      },
+      "kit_source_note": "Primitive binding added 2026-11-05 (registry completion pass). The registry's entries were page patterns, which left the published library primitives (Button, Card, Chip) with no registry home — the open design-kit call from the 2026-11-03 Code Connect ship. Source of record for these three is the published Figma library, not a Kimi canvas.",
+      "component": "src/app/components/ui/button.tsx",
+      "component_note": "Bound firsthand against the tree at the completion pass: src/app/components/ui/button.tsx exists and is the Dev Mode snippet target for the Figma Button mapping (1 of 1 connected, 2026-11-04).",
+      "notion_view": null,
+      "notion_view_note": "No Notion view: a UI primitive, not a page pattern. Named-unbound 2026-11-05. (Its CONTENT mirror row carries metadata only, per D3.)",
+      "status": "verified",
+      "figma": {
+        "component": "Button",
+        "fileKey": "6GpuVqt4LiguAOdOwcS8OT",
+        "nodeId": "13-6",
+        "url": "https://www.figma.com/design/6GpuVqt4LiguAOdOwcS8OT/CR8W-Design-System?node-id=13-6",
+        "template": "src/code-connect/button.figma.ts",
+        "code_target": "src/app/components/ui/button.tsx",
+        "library": "published 2026-11-03 (CR8W Design System library publish; file renamed from 'Untitled' the same pass)",
+        "mapping": "LIVE — published 2026-11-04 on Monny's YES (main chat 2026-11-03); Dev Mode verified 2026-11-04: Connected, production snippet renders. Code Connect coverage: 5/5 published library components mapped and live-verified (Button 13-6, Card 13-7, Chip 13-11 as Badge, EventCard 14-2, NavHeader 14-14). Read-surface note: the Figma MCP get_code_connect_map returns {} for these nodes (connector gap of record); Dev Mode is the verification surface."
+      }
+    },
+    {
+      "id": "ui-card",
+      "kit_source": {
+        "canvas": "CR8W Design System (Figma library)",
+        "page": "Card component set"
+      },
+      "kit_source_note": "Primitive binding added 2026-11-05 (registry completion pass). The registry's entries were page patterns, which left the published library primitives (Button, Card, Chip) with no registry home — the open design-kit call from the 2026-11-03 Code Connect ship. Source of record for these three is the published Figma library, not a Kimi canvas.",
+      "component": "src/app/components/ui/card.tsx",
+      "component_note": "Bound firsthand against the tree at the completion pass: src/app/components/ui/card.tsx exists and is the Dev Mode snippet target for the Figma Card mapping (snippet renders, 2026-11-04).",
+      "notion_view": null,
+      "notion_view_note": "No Notion view: a UI primitive, not a page pattern. Named-unbound 2026-11-05. (Its CONTENT mirror row carries metadata only, per D3.)",
+      "status": "verified",
+      "figma": {
+        "component": "Card",
+        "fileKey": "6GpuVqt4LiguAOdOwcS8OT",
+        "nodeId": "13-7",
+        "url": "https://www.figma.com/design/6GpuVqt4LiguAOdOwcS8OT/CR8W-Design-System?node-id=13-7",
+        "template": "src/code-connect/card.figma.ts",
+        "code_target": "src/app/components/ui/card.tsx",
+        "library": "published 2026-11-03 (CR8W Design System library publish; file renamed from 'Untitled' the same pass)",
+        "mapping": "LIVE — published 2026-11-04 on Monny's YES (main chat 2026-11-03); Dev Mode verified 2026-11-04: Connected, production snippet renders. Code Connect coverage: 5/5 published library components mapped and live-verified (Button 13-6, Card 13-7, Chip 13-11 as Badge, EventCard 14-2, NavHeader 14-14). Read-surface note: the Figma MCP get_code_connect_map returns {} for these nodes (connector gap of record); Dev Mode is the verification surface."
+      }
+    },
+    {
+      "id": "ui-chip",
+      "kit_source": {
+        "canvas": "CR8W Design System (Figma library)",
+        "page": "Chip component set"
+      },
+      "kit_source_note": "Primitive binding added 2026-11-05 (registry completion pass). The registry's entries were page patterns, which left the published library primitives (Button, Card, Chip) with no registry home — the open design-kit call from the 2026-11-03 Code Connect ship. Source of record for these three is the published Figma library, not a Kimi canvas.",
+      "component": "src/app/components/ui/badge.tsx",
+      "component_note": "Bound firsthand against the tree at the completion pass: the Figma Chip component-set ships in code as Badge — src/app/components/ui/badge.tsx is its Dev Mode snippet target (snippet renders, 2026-11-04). The name delta (Chip in Figma, Badge in code) is recorded here, not smoothed over.",
+      "notion_view": null,
+      "notion_view_note": "No Notion view: a UI primitive, not a page pattern. Named-unbound 2026-11-05. (Its CONTENT mirror row carries metadata only, per D3.)",
+      "status": "verified",
+      "figma": {
+        "component": "Chip",
+        "fileKey": "6GpuVqt4LiguAOdOwcS8OT",
+        "nodeId": "13-11",
+        "url": "https://www.figma.com/design/6GpuVqt4LiguAOdOwcS8OT/CR8W-Design-System?node-id=13-11",
+        "template": "src/code-connect/chip.figma.ts",
+        "code_target": "src/app/components/ui/badge.tsx",
+        "library": "published 2026-11-03 (CR8W Design System library publish; file renamed from 'Untitled' the same pass)",
+        "mapping": "LIVE — published 2026-11-04 on Monny's YES (main chat 2026-11-03); Dev Mode verified 2026-11-04: Connected, production snippet renders. Code Connect coverage: 5/5 published library components mapped and live-verified (Button 13-6, Card 13-7, Chip 13-11 as Badge, EventCard 14-2, NavHeader 14-14). Read-surface note: the Figma MCP get_code_connect_map returns {} for these nodes (connector gap of record); Dev Mode is the verification surface."
+      }
     }
   ]
 }

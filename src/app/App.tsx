@@ -13,6 +13,19 @@ import { GCAL_CLIENT_ID, GCAL_REDIRECT_URI } from "./components/data";
 // ── Dev bypass (VITE_DEV_BYPASS) ─────────────────────────────────────────────
 // Set in .env.local to skip the auth gate during local development.
 // Value: 'true' → monny profile; or any profile key: sunshine/bingle/omar/pia/event-support
+// ── Supabase anon key (env only) ─────────────────────────────────────────────
+// The GCal OAuth token exchange authenticates with the anon key.
+// It resolves from env like every other client key (registers
+// 1323/1340); a missing var fails the boot by name rather than
+// falling back to the generated file's literal.
+const SUPABASE_ANON_KEY: string = (() => {
+  const v = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  if (!v) {
+    throw new Error('VITE_SUPABASE_ANON_KEY is not set — the GCal token exchange cannot authenticate without it.');
+  }
+  return v;
+})();
+
 const _VALID_PROFILES = ['sunshine','monny','bingle','omar','pia','event-support'];
 const DEV_BYPASS_PROFILE = (() => {
   const v = (import.meta.env.VITE_DEV_BYPASS as string | undefined) ?? '';
@@ -49,7 +62,7 @@ const DEV_BYPASS_PROFILE = (() => {
     localStorage.setItem("gcal_token_fresh", "pending");
 
     import("/utils/supabase/info").then(
-      ({ projectId, publicAnonKey }) => {
+      ({ projectId }) => {
         const host = window.location.hostname;
         const isFirstPartyHost =
           host.endsWith(".vercel.app") ||
@@ -74,7 +87,7 @@ const DEV_BYPASS_PROFILE = (() => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${publicAnonKey}`,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({
             code,

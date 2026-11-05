@@ -410,7 +410,7 @@
       "notion_view_note": "View name settled of record 2026-11-05 (UI lane, L2 completion): 'story features' on CONTENT. The view itself does not exist in Notion yet; creating it in the Notion UI is a named step on the merge-back path, not claimed here. Fields: Eyebrow, Title, Dek, Image, Pull quote, Body, CTA.",
       "repo_binding": {
         "kind": "cms-data-route",
-        "note": "Binds to the same CMS data leg as the other public content templates: the public content payload carries the fields this template renders. Data leg only until the repo component is built.",
+        "note": "Binds to the same CMS data leg as the other public content templates: api/public-content.ts serves the payload; after the 2026-11-05 field reduction the payload carries six of this template's seven fields (see cms_carried_fields / not_cms_carried). Data leg only until the repo component is built.",
         "paths": [
           "api/public-content.ts",
           "src/lib/publicContent.ts",
@@ -433,7 +433,40 @@
           "CTA"
         ],
         "note": "Companion Canva draft (Story Feature — CMS Template). Placeholders are visible text, not yet bound as data fields: autofill stays inert until the fields are bound in the Canva editor (Monny's hands, ACTION of record). Known deviation: the pull quote slot lost its brackets in generation; reported, not re-generated. Wiring of record: design-handoff-portable/canva-cms-wiring.md."
-      }
+      },
+      "cms_carried_fields": [
+        {
+          "field": "Title",
+          "payload": "name"
+        },
+        {
+          "field": "CTA",
+          "payload": "link"
+        },
+        {
+          "field": "Eyebrow",
+          "payload": "tag"
+        },
+        {
+          "field": "(story type)",
+          "payload": "contentType"
+        },
+        {
+          "field": "(publish date)",
+          "payload": "publishDate"
+        },
+        {
+          "field": "(surface)",
+          "payload": "where"
+        }
+      ],
+      "not_cms_carried": [
+        "Dek",
+        "Image",
+        "Pull quote",
+        "Body"
+      ],
+      "field_reduction_note": "REDUCED 2026-11-05 (allowlist call of record, register line 1170): the CMS connector's six-field allowlist (name, link, contentType, publishDate, where, tag) does not move. This entry's CMS-carried fields are trimmed to the six above, each riding its named payload slot; the payload carries the pointer to the story, not its body. Dek, Image, Pull quote, and Body are NOT CMS-carried: they live in the code template and the Canva companion only. content_fields keeps the template's full seven-field contract, unchanged."
     }
   ]
 }

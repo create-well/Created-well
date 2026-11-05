@@ -108,19 +108,19 @@ export const sync = () => req<SyncData>('GET', '/sync');
 export const getTasks = () => req<Task[]>('GET', '/tasks');
 export const createTask = (t: Omit<Task, 'id' | 'created_at'>) => req<Task>('POST', '/tasks', t);
 export const updateTask = (id: number | string, t: Partial<Task>) => req<Task>('PUT', `/tasks/${id}`, t);
-export const deleteTask = (id: number) => req<{ ok: boolean }>('DELETE', `/tasks/${id}`);
+export const deleteTask = (id: number | string) => req<{ ok: boolean }>('DELETE', `/tasks/${id}`);
 
 // Stations
 export const getStations = () => req<Station[]>('GET', '/stations');
 export const createStation = (s: Omit<Station, 'id' | 'created_at'>) => req<Station>('POST', '/stations', s);
 export const updateStation = (id: number | string, s: Partial<Station>) => req<Station>('PUT', `/stations/${id}`, s);
-export const deleteStation = (id: number) => req<{ ok: boolean }>('DELETE', `/stations/${id}`);
+export const deleteStation = (id: number | string) => req<{ ok: boolean }>('DELETE', `/stations/${id}`);
 
 // Forum
 export const getForum = () => req<ForumPost[]>('GET', '/forum');
 export const createForumPost = (p: Omit<ForumPost, 'id' | 'created_at'>) => req<ForumPost>('POST', '/forum', p);
 export const updateForumPost = (id: number | string, p: Partial<ForumPost>) => req<ForumPost>('PUT', `/forum/${id}`, p);
-export const deleteForumPost = (id: number) => req<{ ok: boolean }>('DELETE', `/forum/${id}`);
+export const deleteForumPost = (id: number | string) => req<{ ok: boolean }>('DELETE', `/forum/${id}`);
 
 // Forum Replies
 export const getForumReplies = (postId: number) => req<ForumReply[]>('GET', `/forum/${postId}/replies`);
@@ -167,7 +167,7 @@ export const deleteWorkshopResource = (id: number) => req<{ ok: boolean }>('DELE
 export const getCoFlowDates = () => req<CoFlowDate[]>('GET', '/coflow-dates');
 export const createCoFlowDate = (d: Omit<CoFlowDate, 'id' | 'created_at'>) => req<CoFlowDate>('POST', '/coflow-dates', d);
 export const updateCoFlowDate = (id: number | string, d: Partial<CoFlowDate>) => req<CoFlowDate>('PUT', `/coflow-dates/${id}`, d);
-export const deleteCoFlowDate = (id: number) => req<{ ok: boolean }>('DELETE', `/coflow-dates/${id}`);
+export const deleteCoFlowDate = (id: number | string) => req<{ ok: boolean }>('DELETE', `/coflow-dates/${id}`);
 
 // CoFlow Check-ins
 export const getCoFlowCheckins = () => req<CoFlowCheckin[]>('GET', '/coflow-checkins');

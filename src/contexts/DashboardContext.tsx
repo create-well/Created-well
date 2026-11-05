@@ -321,8 +321,9 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
       }
     },
     async deleteTask(id: number) {
+      const prior = tasks.find(t => t.id === id);
       try {
-        await api.deleteTask(id);
+        await api.deleteTask(writeAddress(prior, id));
         setTasks(prev => prev.filter(t => t.id !== id));
         setFailedMoveDelete(prev => prev === id ? null : prev);
       } catch (e) {
@@ -371,7 +372,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     async deleteStation(id: number) {
       try {
         setStations(prev => prev.filter(s => s.id !== id));
-        await api.deleteStation(id);
+        await api.deleteStation(writeAddress(stations.find(s => s.id === id), id));
       } catch (e) {
         setStations(stations);
         saveFailed(e, 'Delete station error:');
@@ -405,7 +406,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     async deleteForumPost(id: number) {
       try {
         setForum(prev => prev.filter(p => p.id !== id));
-        await api.deleteForumPost(id);
+        await api.deleteForumPost(writeAddress(forum.find(p => p.id === id), id));
       } catch (e) {
         setForum(forum);
         saveFailed(e, 'Delete forum post error:');
@@ -608,7 +609,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
       try {
         const d8 = coFlowDates.find(d => d.id === id);
         setCoFlowDates(prev => prev.filter(d => d.id !== id));
-        await api.deleteCoFlowDate(id);
+        await api.deleteCoFlowDate(writeAddress(d8, id));
         if (d8) {
           const dateLabel = new Date(d8.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
           sendSystemMessage(`[UPDATE] ❌ behind h0es doors on ${dateLabel} has been cancelled.`);

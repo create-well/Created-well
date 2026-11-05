@@ -490,6 +490,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (method === 'DELETE' && id) {
         const list = await getList(kvKey);
         const target = list.find((x: any) => String(x.id) === String(id));
+        // RR-004 DELETE follow-on: the dual-write resources may also be
+        // addressed by Notion page id. A Notion-sourced record with no
+        // KV shadow archives directly on its page; no shadow is
+        // required, and the outcome is reported truthfully.
+        if (!target) {
+          const cfg = NOTION_RESOURCES[resource];
+          if (cfg && isNotionPageId(id)) {
+            if (!process.env[cfg.dbIdEnvVar] || !process.env.NOTION_SECRET) {
+              res.status(502).json({ error: 'Notion archive failed', notion_error: 'notion_not_configured' }); return;
+            }
+            try {
+              await notionArchive(id);
+            } catch (err: any) {
+              console.error(`[_notionWriter] archive failed for ${resource}:`, err);
+              res.status(502).json({ error: 'Notion archive failed', notion_error: 'notion_write_failed' }); return;
+            }
+            res.json({ ok: true, id, notionPageId: id, notion_sync: 'ok' }); return;
+          }
+        }
         // The dashboard can include Notion-only Moves without a KV shadow.
         // Without a trusted stored target, do not report a canonical deletion.
         if (resource === 'tasks' && !target) {

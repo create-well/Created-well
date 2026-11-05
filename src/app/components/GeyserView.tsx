@@ -50,8 +50,6 @@ interface GeyserViewProps {
   onDeleteStation: (id: number) => void;
 }
 
-const statusLabels: Record<string, string> = { in_progress: 'In Progress', planning: 'Planning', done: 'Done' };
-const statusClasses: Record<string, string> = { in_progress: 'journey-status-active', planning: 'journey-status-planning', done: 'journey-status-done' };
 const statusColors: Record<string, { bg: string; color: string; dot: string }> = {
   'Confirmed': { bg: '#E0F0E0', color: '#3A7A3A', dot: '#6BAF6B' },
   'Planning': { bg: '#FFF3D6', color: '#8A6A20', dot: '#D4A771' },
@@ -622,8 +620,8 @@ export function GeyserView({
                       onChange={e => onUpdateTaskStatus(task.id, e.target.value as Task['status'])}
                       style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
                     >
-                      <option value="todo">To Do</option>
-                      <option value="in_progress">In Progress</option>
+                      <option value="todo">Next</option>
+                      <option value="in_progress">Now</option>
                       <option value="done">Done</option>
                       <option value="blocked">Blocked</option>
                       <option value="dropped">Dropped</option>
@@ -654,8 +652,8 @@ export function GeyserView({
                         onChange={e => onUpdateTaskStatus(task.id, e.target.value as Task['status'])}
                         style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
                       >
-                        <option value="todo">To Do</option>
-                        <option value="in_progress">In Progress</option>
+                        <option value="todo">Next</option>
+                        <option value="in_progress">Now</option>
                         <option value="done">Done</option>
                         <option value="blocked">Blocked</option>
                         <option value="dropped">Dropped</option>

@@ -15,25 +15,23 @@ import {
   type RunHistoryDisplay,
 } from '../../lib/runHistory';
 
-// Hub CMS database URLs — these are the four DBs the dashboard reads/writes.
-// Distinct from the operational five (PEOPLE/FLOWS/MOVES/MONEY/CONTENT) which
-// are the team's source of truth; the hub DBs are the dashboard-specific cache layer.
-// IDs sourced from CR8W — API ID Registry (last verified 2026-09-18).
+// Source database URLs — the databases of record behind the synced
+// sources. Targets verified firsthand by the API lane 2026-11-05: the
+// previous targets were a parallel same-titled database generation,
+// not the databases behind the sync.
+// KV-owned collections (messages, check-ins, workshops, well notes,
+// brain dumps, announcements) have no Notion database at all, so they
+// carry NO entry here (exec decision, register line 1168): inside this
+// block, any target would assert a database that does not exist.
 const NOTION_DB_LINKS: Record<string, string> = {
-  // MOVES hub (DB: 49faf111…)  — tasks, stations, forum posts
-  tasks:         'https://app.notion.com/p/49faf1111bbe43458c3e6a4dcec63b5c',
-  stations:      'https://app.notion.com/p/49faf1111bbe43458c3e6a4dcec63b5c',
-  forum:         'https://app.notion.com/p/49faf1111bbe43458c3e6a4dcec63b5c',
-  // PEOPLE hub (DB: 81fc482d…)  — messages, check-ins
-  messages:      'https://app.notion.com/p/81fc482da44d43cb9c426952654944ab',
-  checkins:      'https://app.notion.com/p/81fc482da44d43cb9c426952654944ab',
-  // FLOWS hub (DB: 8d9ebf0c…)   — coflow dates (Type: Podyap/Workshop/…), workshops
-  workshops:     'https://app.notion.com/p/8d9ebf0c04cb47219ca2e3942cee6212',
-  coFlowDates:   'https://app.notion.com/p/8d9ebf0c04cb47219ca2e3942cee6212',
-  // CONTENT hub (DB: 08a0e011…) — well notes, brain dumps, announcements
-  wellNotes:     'https://app.notion.com/p/08a0e011142a4512a3dc8075800db7db',
-  brainDumps:    'https://app.notion.com/p/08a0e011142a4512a3dc8075800db7db',
-  announcements: 'https://app.notion.com/p/08a0e011142a4512a3dc8075800db7db',
+  // MOVES db of record (0978d7ba…) — tasks
+  tasks:         'https://app.notion.com/p/0978d7ba16924fee8431bffd28eacce0',
+  // PEOPLE db of record (4b2a211c…) — stations
+  stations:      'https://app.notion.com/p/4b2a211c1dbc4c21af7953dfd6e0ff21',
+  // CONTENT db of record (b9aa570c…) — forum posts
+  forum:         'https://app.notion.com/p/b9aa570c4072489e987ec3522a6a2b07',
+  // FLOWS db of record (3cd37e75…) — coflow dates (Type: Podyap/Workshop/…)
+  coFlowDates:   'https://app.notion.com/p/3cd37e7529604bc8b07d76d0c0089fd7',
 };
 
 const CONTENT_CHANNELS = [
@@ -51,7 +49,7 @@ const ROUTE_ARCHITECTURE = [
   { path: '/',          label: 'This Week at the Well', emoji: '💧',
     sources: 'CONTENT hub (brain dumps · well notes · announcements) + FLOWS hub' },
   { path: '/moves',     label: 'Moves: Now',            emoji: '⛲️',
-    sources: 'MOVES hub (tasks, stations, forum) — Status: Not Started / In Progress / Done / Blocked' },
+    sources: 'MOVES hub (tasks) · PEOPLE hub (stations) · CONTENT hub (forum) — Status: Now / Next / Done / Blocked / Dropped' },
   { path: '/care',      label: 'Care Loop',             emoji: '🫧',
     sources: 'PEOPLE hub (messages, check-ins, well notes)' },
   { path: '/flows',     label: 'Flows',                 emoji: '🛠️',
@@ -61,9 +59,9 @@ const ROUTE_ARCHITECTURE = [
   { path: '/workshops', label: 'Workshops',             emoji: '🎨',
     sources: 'FLOWS hub — Type: Workshop · MOVES hub (workshop tasks)' },
   { path: '/money',     label: 'Money, Real Only',      emoji: '💰',
-    sources: 'MONEY DB — Stage: Possible → Committed → Invoiced → Received → Paid (read-only)' },
+    sources: 'MONEY DB — Stage: Possible → Committed → Invoiced → Received → Paid; dashboard read + quick-log create (POST /money, Received/Paid only)' },
   { path: '/decisions', label: 'Decision Queue',        emoji: '⚡',
-    sources: 'pending — not yet connected to Notion' },
+    sources: 'cr8w_decisions KV resource — dashboard read/write (no Notion counterpart, by design)' },
   { path: '/system',    label: 'System Health',         emoji: '🔧',
     sources: 'all hub collections · build info · API ID Registry' },
 ];
@@ -463,15 +461,15 @@ export function SystemPage() {
           borderRadius: 12, padding: '4px 16px',
         }}>
           <DataCountRow label="Tasks"        count={data.tasks.length}          emoji="⛲️" internalPath="/moves"  notionHref={NOTION_DB_LINKS.tasks} source="MOVES hub" />
-          <DataCountRow label="Stations"     count={data.stations.length}       emoji="🗂️" internalPath="/moves"  notionHref={NOTION_DB_LINKS.stations} source="MOVES hub" />
-          <DataCountRow label="Forum posts"  count={data.forum.length}          emoji="💬" internalPath="/moves"  notionHref={NOTION_DB_LINKS.forum} source="MOVES hub" />
-          <DataCountRow label="Messages"     count={data.messages.length}       emoji="📨" internalPath="/care"   notionHref={NOTION_DB_LINKS.messages} source="PEOPLE hub" />
-          <DataCountRow label="Workshops"    count={data.workshops.length}      emoji="🛠️" internalPath="/flows"  notionHref={NOTION_DB_LINKS.workshops} source="FLOWS hub" />
+          <DataCountRow label="Stations"     count={data.stations.length}       emoji="🗂️" internalPath="/moves"  notionHref={NOTION_DB_LINKS.stations} source="PEOPLE hub" />
+          <DataCountRow label="Forum posts"  count={data.forum.length}          emoji="💬" internalPath="/moves"  notionHref={NOTION_DB_LINKS.forum} source="CONTENT hub" />
+          <DataCountRow label="Messages"     count={data.messages.length}       emoji="📨" internalPath="/care"   source="KV store" />
+          <DataCountRow label="Workshops"    count={data.workshops.length}      emoji="🛠️" internalPath="/flows"  source="KV store" />
           <DataCountRow label="CoFlow dates" count={data.coFlowDates.length}    emoji="🫧" internalPath="/flows"  notionHref={NOTION_DB_LINKS.coFlowDates} source="FLOWS hub" />
-          <DataCountRow label="Check-ins"    count={data.coFlowCheckins.length} emoji="✅" internalPath="/care"   notionHref={NOTION_DB_LINKS.checkins} source="PEOPLE hub" />
-          <DataCountRow label="Well notes"   count={data.wellNotes.length}      emoji="💧" internalPath="/"       notionHref={NOTION_DB_LINKS.wellNotes} source="CONTENT hub" />
-          <DataCountRow label="Brain dumps"  count={data.brainDumps.length}     emoji="🧠" internalPath="/"       notionHref={NOTION_DB_LINKS.brainDumps} source="CONTENT hub" />
-          <DataCountRow label="Announcements" count={data.announcements.length} emoji="📢" internalPath="/"       notionHref={NOTION_DB_LINKS.announcements} source="CONTENT hub" />
+          <DataCountRow label="Check-ins"    count={data.coFlowCheckins.length} emoji="✅" internalPath="/care"   source="KV store" />
+          <DataCountRow label="Well notes"   count={data.wellNotes.length}      emoji="💧" internalPath="/"       source="KV store" />
+          <DataCountRow label="Brain dumps"  count={data.brainDumps.length}     emoji="🧠" internalPath="/"       source="KV store" />
+          <DataCountRow label="Announcements" count={data.announcements.length} emoji="📢" internalPath="/"       source="KV store" />
         </div>
 
         {/* Public release verification (G-11 Consumer 1) */}

@@ -320,7 +320,8 @@ export function normalizeMove(page: NotionPage, ownerSlugs?: ReadonlyMap<string,
 //   Interest Signal : Select
 //
 // Station is an imperfect mapping but the closest existing type.
-// emoji defaults to '👤'. description surfaces Roles as a comma-joined string.
+// emoji defaults to '👤'. description surfaces Roles as a comma-joined string
+// (structured only — Description prose rides descriptionFull, detail views only).
 // status maps Pathway Stage. owner maps the Notion-user Owner.
 
 export function normalizePerson(page: NotionPage): Station {
@@ -333,9 +334,14 @@ export function normalizePerson(page: NotionPage): Station {
 
   const roles = getMultiSelect(pick(p, 'Roles')).join(', ');
   const pathwayStage = getSelect(pick(p, 'Pathway Stage', 'Stage', 'Status', 'State'));
-  const description =
-    roles ||
-    getText(pick(p, 'Description', 'Bio', 'Notes', 'About'));
+  // Card field = the structured Roles string only. The raw
+  // Description prose NEVER falls through to it: member cards
+  // render nothing from Description (UX ruling, register 1346 —
+  // the prose is provenance plus a live to-do, not a person fact).
+  // The prose rides descriptionFull instead, carried in full by
+  // the detail view until the data cleanup lands.
+  const description = roles;
+  const descriptionFull = getText(pick(p, 'Description', 'Bio', 'Notes', 'About'));
 
   return {
     id:           stableId(page.id),
@@ -344,6 +350,7 @@ export function normalizePerson(page: NotionPage): Station {
     name:         getText(pick(p, 'Name', 'Title')) || 'Untitled',
     status:       pathwayStage || getSelect(pick(p, 'Status', 'State')) || 'active',
     description,
+    descriptionFull,
     owner:        ownerRaw.toLowerCase(),
     created_at:   page.created_time,
   };

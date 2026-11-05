@@ -476,8 +476,6 @@ export function getDaysToLaunch() {
 }
 
 /** Community gathering types sourced from FLOWS database Type select field. */
-export const COMMUNITY_EVENT_TYPES = ['Yapcast', 'Playdate', 'Book Club', 'Workshop'] as const;
-export type CommunityEventType = typeof COMMUNITY_EVENT_TYPES[number];
 
 /**
  * Returns days until the next upcoming community event.

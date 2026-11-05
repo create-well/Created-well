@@ -301,7 +301,7 @@ export interface DecisionRecord {
   question: string;
   context: string;
   urgency: 'now' | 'this-week' | 'when-clear';
-  status: 'pending' | 'decided' | 'deferred';
+  status: 'pending' | 'decided';
   answer?: string;
   decided_at?: string;
   created_at?: string;

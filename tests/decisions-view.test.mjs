@@ -59,3 +59,9 @@ test('the page reads the payload slice and holds no local decision state', async
   assert.match(page, /padding: '24px 16px 96px'/);
   assert.match(page, /How Monica decides/);
 });
+
+test('the record type admits no deferred status (defer is an urgency, never a status)', async () => {
+  const api = await readFile(new URL('../src/app/components/api.ts', import.meta.url), 'utf8');
+  assert.match(api, /status: 'pending' \| 'decided';/);
+  assert.doesNotMatch(api, /'pending' \| 'decided' \| 'deferred'/);
+});

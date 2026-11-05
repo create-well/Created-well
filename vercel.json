@@ -9,6 +9,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/api/server/:path*",
+      "destination": "/api/server?path=:path*"
+    },
+    {
       "source": "/favicon.ico",
       "destination": "/favicon.svg"
     },

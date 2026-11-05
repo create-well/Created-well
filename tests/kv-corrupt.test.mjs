@@ -23,6 +23,9 @@ const hooks = registerHooks({ resolve(specifier, context, next) {
   if (context.parentURL?.endsWith('/api/server.ts') && specifier === './_notionWriter.js') return {
     shortCircuit: true, url: new URL('../api/_notionWriter.ts', import.meta.url).href
   };
+  if (context.parentURL?.endsWith('/api/server.ts') && specifier === '../src/lib/notionNormalizer.js') return {
+    shortCircuit: true, url: new URL('../src/lib/notionNormalizer.ts', import.meta.url).href
+  };
   return next(specifier, context);
 }});
 const { default: handler } = await import('../api/server.ts');

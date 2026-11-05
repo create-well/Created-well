@@ -13,7 +13,8 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive } from './_notionWriter.js';
+import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive, createMoneyPage, validateMoneyCreate } from './_notionWriter.js';
+import { normalizeMoney } from '../src/lib/notionNormalizer.js';
 import { applyCors, requireSession, requireSessionOrCron } from './_auth.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
@@ -377,6 +378,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.error(`[_notionWriter] ${action} failed for ${resource}:`, err);
         return { ok: false, error: err?.message || String(err) };
       }
+    }
+
+    // ── MONEY quick log (M-1b): POST-only, Notion-canonical, no KV shadow ──
+    // MONEY rows live only in Notion; the dashboard reads them through
+    // the sync payload. A create writes exactly one MONEY page and
+    // returns it in MoneyRecord shape (plus direction + stage, which
+    // the read projection also supplies). Other methods fall through
+    // to the 404 below — there is no money list endpoint here.
+    if (resource === 'money' && method === 'POST' && !id) {
+      const validation = validateMoneyCreate(await body(req));
+      if (!validation.ok) { res.status(400).json({ error: validation.error }); return; }
+      try {
+        const page = await createMoneyPage(validation.value);
+        const record = normalizeMoney(page as unknown as Parameters<typeof normalizeMoney>[0]);
+        res.status(201).json({ ...record, direction: validation.value.direction, stage: validation.value.stage });
+      } catch (err) {
+        // Truthful outcome: nothing is stored anywhere on a failed write.
+        console.error('[money] Notion create failed:', err instanceof Error ? err.message : 'unknown error');
+        res.status(502).json({ error: 'Notion write failed; nothing was stored', notion_error: 'notion_write_failed' });
+      }
+      return;
     }
 
     // ── Generic list CRUD (GET all / POST new / PUT :id / DELETE :id) ─────────

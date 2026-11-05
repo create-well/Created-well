@@ -3,7 +3,7 @@ import {
   PERSONS, WELLSHEET_PROMPTS, CALENDAR_EVENTS, GLOSSARY, MILESTONES, STATIONS_DEFAULT,
   HD_PROFILES, GOOGLE_ACCOUNTS, MBODY_PRACTICES,
   getDaysToLaunch, formatDate, formatEventDate, formatTimestamp, getEventColor, truncate, capitalize, getDayOfYear,
-  type ActionItem, type MomentumItem, type NoteItem, type Station
+  type ActionItem, type NoteItem, type Station
 } from './data';
 import { parseDateValue, DATE_NOT_SET, calendarDayDiff } from '../../lib/dateLabel';
 
@@ -13,12 +13,10 @@ interface PersonViewProps {
   person: string;
   onNavigate: (view: string) => void;
   actionItems: ActionItem[];
-  momentumItems: MomentumItem[];
   wellNotes: NoteItem[];
   stations: Station[];
   onAddTask: () => void;
   onUpdateTaskStatus: (id: number, status: ActionItem['status']) => void;
-  onAddMomentum: (content: string, person: string) => void;
   onAddNote: (content: string, author: string) => void;
 }
 
@@ -63,14 +61,13 @@ function firstSentence(text: string): string {
 }
 
 export function PersonView({
-  person, onNavigate, actionItems, momentumItems, wellNotes, stations,
-  onAddTask, onUpdateTaskStatus, onAddMomentum, onAddNote
+  person, onNavigate, actionItems, wellNotes, stations,
+  onAddTask, onUpdateTaskStatus, onAddNote
 }: PersonViewProps) {
   const [activeTab, setActiveTab] = useState<PersonTab>('flow');
   const [filter, setFilter] = useState('active');
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
-  const [sparkInput, setSparkInput] = useState('');
   const [noteInput, setNoteInput] = useState('');
   const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set());
   const [showHDCalc, setShowHDCalc] = useState(false);
@@ -86,7 +83,6 @@ export function PersonView({
   if (!p) return null;
 
   const personItems = actionItems.filter(i => i.person === person);
-  const personMomentum = momentumItems.filter(i => i.person === person);
 
   const prompts = WELLSHEET_PROMPTS[person] || [];
   const dayOfYear = getDayOfYear(new Date());
@@ -118,12 +114,6 @@ export function PersonView({
   function switchTab(tab: PersonTab) {
     setTabTransition(false);
     setTimeout(() => { setActiveTab(tab); setTabTransition(true); }, 80);
-  }
-
-  function addSpark() {
-    if (!sparkInput.trim()) return;
-    onAddMomentum(sparkInput.trim(), person);
-    setSparkInput('');
   }
 
   function addNote() {
@@ -215,7 +205,6 @@ export function PersonView({
   const gcalSrc = GOOGLE_ACCOUNTS[person]?.calendarSrc;
   const gcalUrl = gcalSrc ? `https://calendar.google.com/calendar/embed?src=${gcalSrc}&ctz=America%2FLos_Angeles&mode=AGENDA&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0&color=%23C25B38` : null;
 
-  const sparkTitle = person === 'sunshine' ? '💡 Sparked Ideas' : person === 'monny' ? '💡 Sacral Downloads' : '💡 Distilled Insights';
   const hdRoleLine = hd ? `${p.name} · ${hd.type} ${hd.profile} · ${hd.authority} Authority` : `${p.name} · ${p.role}`;
   const flowReminder = firstSentence(p.energyReminder.text);
 
@@ -273,36 +262,6 @@ export function PersonView({
           {dueSoon.length === 0 && clarityQueue.length === 0 && (
             <span className="flow-all-clear">All clear for now 🌿</span>
           )}
-        </div>
-
-        {/* Sparks — max 3 */}
-        <div className="flow-section">
-          <div className="flow-section-label">{sparkTitle}</div>
-          <div className="spark-list">
-            {personMomentum.length === 0 ? (
-              <div className="flow-empty">Capture a spark below ✨</div>
-            ) : personMomentum.slice(0, 3).map(m => (
-              <div key={m.id} className="spark-item">
-                {m.content}
-                <div className="spark-item-time">{formatTimestamp(m.created_at)}</div>
-              </div>
-            ))}
-          </div>
-          <div className="spark-input-wrap">
-            <input
-              type="text"
-              className="spark-input"
-              placeholder="Capture a spark, download, or insight..."
-              value={sparkInput}
-              onChange={e => setSparkInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') addSpark(); }}
-            />
-            <button
-              className="spark-btn"
-              onClick={addSpark}
-              style={{ '--person-color': p.color } as React.CSSProperties}
-            >Spark ✨</button>
-          </div>
         </div>
 
         {/* Coming Up — next 2 events */}

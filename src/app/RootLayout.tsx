@@ -138,12 +138,10 @@ export function RootLayout() {
               person={ui.activePerson}
               onNavigate={() => ui.setActivePerson(null)}
               actionItems={data.tasks}
-              momentumItems={[]}
               wellNotes={data.forum.map(f => ({ id: f.id, author: f.author, content: f.content, created_at: f.created_at }))}
               stations={data.stations}
               onAddTask={() => setShowAddTask(true)}
               onUpdateTaskStatus={actions.updateTaskStatus}
-              onAddMomentum={() => {}}
               onAddNote={(content: string, author: string) => actions.addForumPost({ author, content })}
             />
           </div>

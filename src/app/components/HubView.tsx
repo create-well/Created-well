@@ -40,7 +40,6 @@ interface HubViewProps {
   onAddBrainDump: (dump: Omit<BrainDump, 'id' | 'created_at'>) => void;
   onDeleteBrainDump: (id: number) => void;
   onUpdateBrainDump: (id: number, updates: Partial<BrainDump>) => Promise<void>;
-  syncTime: string;
   activeUser?: string;
   wellNotes: WellNote[];
   onAddWellNote: (content: string) => void;
@@ -346,7 +345,7 @@ function getGreeting() {
   return 'Good evening';
 }
 
-export function HubView({ onNavigate, onNavigateGeyserStations, announcements, brainDumps, onAddBrainDump, onDeleteBrainDump, onUpdateBrainDump, syncTime, activeUser, wellNotes, onAddWellNote, onLandWellNote, workshops = [], coFlowDates = [], coFlowCheckins = [], actionItems = [], stations = [] }: HubViewProps) {
+export function HubView({ onNavigate, onNavigateGeyserStations, announcements, brainDumps, onAddBrainDump, onDeleteBrainDump, onUpdateBrainDump, activeUser, wellNotes, onAddWellNote, onLandWellNote, workshops = [], coFlowDates = [], coFlowCheckins = [], actionItems = [], stations = [] }: HubViewProps) {
   const [showSynergy, setShowSynergy] = useState(false);
   const [openSynergySections, setOpenSynergySections] = useState<Set<string>>(new Set());
   const [showAllDumps, setShowAllDumps] = useState(false);

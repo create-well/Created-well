@@ -36,10 +36,6 @@ export function ThisWeekPage() {
     navigate('/moves');
   }
 
-  const syncTime = data.lastSynced
-    ? 'Synced ' + data.lastSynced.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-    : '';
-
   const forumNotesForView = data.forum.map(f => ({
     id: f.id, author: f.author, content: f.content, created_at: f.created_at,
   }));
@@ -59,8 +55,7 @@ export function ThisWeekPage() {
         onAddBrainDump={actions.addBrainDump}
         onDeleteBrainDump={actions.deleteBrainDump}
         onUpdateBrainDump={actions.updateBrainDump}
-        syncTime={syncTime}
-        activeUser={ui.chatActiveUser}
+                activeUser={ui.chatActiveUser}
         wellNotes={data.wellNotes}
         onAddWellNote={actions.addWellNote}
         onLandWellNote={actions.landWellNote}

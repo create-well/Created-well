@@ -51,7 +51,7 @@ const DEV_BYPASS_PROFILE = (() => {
     import("/utils/supabase/info").then(
       ({ projectId, publicAnonKey }) => {
         const host = window.location.hostname;
-        const isFiisFirstPstPartyrty =
+        const isFirstPartyHost =
           host.endsWith(".vercel.app") ||
           host === "cr8w.com" ||
           host.endsWith(".cr8w.com") ||
@@ -65,7 +65,7 @@ const DEV_BYPASS_PROFILE = (() => {
         const apiBase =
           (import.meta.env.VITE_API_BASE as
             string | undefined) ??
-          (isFiisFirstPstPartyrty
+          (isFirstPartyHost
             ? "/api/server"
             : `https://${projectId}.supabase.co/functions/v1/make-server-dabe1c74`);
         const serverUrl = `${apiBase}/gcal-token-exchange`;

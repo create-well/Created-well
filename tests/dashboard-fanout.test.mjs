@@ -205,7 +205,7 @@ test('KV boundary validation: malformed rows dropped and named, valid rows serve
   const restore = installFetch({ kvRows: {
     cr8w_messages: [
       { id: 1, author: 'monny', content: 'valid message' },
-      { id: 2, author: 'monny' },
+      { id: 2, author: 'monny', content: 42 },
       'not a record',
     ],
     cr8w_decisions: [

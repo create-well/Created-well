@@ -138,6 +138,7 @@ export const updateMessage = (id: number, updates: Partial<Message>) => req<Mess
 // Brain Dumps
 export const getBrainDumps = () => req<BrainDump[]>('GET', '/braindumps');
 export const createBrainDump = (d: Omit<BrainDump, 'id' | 'created_at'>) => req<BrainDump>('POST', '/braindumps', d);
+export const updateBrainDump = (id: number, updates: Partial<BrainDump>) => req<BrainDump>('PUT', `/braindumps/${id}`, updates);
 export const deleteBrainDump = (id: number) => req<{ ok: boolean }>('DELETE', `/braindumps/${id}`);
 
 // Announcements
@@ -293,6 +294,9 @@ export interface Message {
 
 export interface BrainDump {
   id: number; author: string; content: string; tags?: string; drive_link?: string; created_at?: string;
+  /** Fix 3: these flags ride the record (they were localStorage-only sets). */
+  sent_to_playground?: boolean;
+  archived?: boolean;
 }
 
 export interface Announcement {

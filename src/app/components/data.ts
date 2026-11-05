@@ -293,6 +293,9 @@ export interface NoteItem {
 
 export interface BrainDump {
   id: number; author: string; content: string; tags?: string; drive_link?: string; created_at?: string;
+  /** Fix 3: mirrors api.ts — these flags ride the record, not localStorage. */
+  sent_to_playground?: boolean;
+  archived?: boolean;
 }
 
 export interface Announcement {

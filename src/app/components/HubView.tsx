@@ -1892,9 +1892,6 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
             {Object.entries(PERSONS).map(([key, p]) => {
               const isExpanded = expandedProfileKey === key;
               const meta = PROFILE_META[key];
-              // Energy battery from arrive state
-              const arriveVal = localStorage.getItem('arriveState');
-              const energyLevel = arriveVal === 'fired' ? 3 : arriveVal === 'flowing' ? 2 : arriveVal === 'foggy' ? 1 : 0;
               return (
                 <div key={key} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <button
@@ -1983,29 +1980,6 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                         />
                       </div>
 
-                      {/* Energy battery — 3 segments */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                        <span style={{
-                          fontFamily: 'var(--font-label)', fontSize: '0.56rem', fontWeight: 700,
-                          color: 'var(--text-muted, #8A7D72)', textTransform: 'uppercase', letterSpacing: '0.03em',
-                        }}>energy</span>
-                        <div style={{ display: 'flex', gap: 3 }}>
-                          {[1, 2, 3].map(seg => (
-                            <div key={seg} style={{
-                              width: 22, height: 10, borderRadius: 3,
-                              border: `1.5px solid ${energyLevel >= seg ? p.color : '#D5D0CB'}`,
-                              background: energyLevel >= seg ? `${p.color}50` : 'transparent',
-                              transition: 'all 0.2s',
-                            }} />
-                          ))}
-                        </div>
-                        <span style={{
-                          fontFamily: 'var(--font-label)', fontSize: '0.52rem',
-                          color: 'var(--text-muted, #8A7D72)', fontStyle: 'italic',
-                        }}>
-                          {energyLevel === 3 ? 'fired up' : energyLevel === 2 ? 'flowing' : energyLevel === 1 ? 'foggy' : 'not set'}
-                        </span>
-                      </div>
 
                       {/* Craft one-liner */}
                       <div style={{

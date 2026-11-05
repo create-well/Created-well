@@ -67,5 +67,5 @@ for(const method of ['POST','PUT','DELETE'])test(`${method} provider failure ret
 test('client source contract awaits deletion confirmation before removal',async()=>{
   const s=await readFile(new URL('../src/contexts/DashboardContext.tsx',import.meta.url),'utf8');
   const start=s.indexOf('async deleteTask(id: number)');const action=s.slice(start,s.indexOf('// Stations',start));
-  assert.match(action,/await api\.deleteTask\(id\);\s*setTasks\(prev => prev\.filter\(t => t\.id !== id\)\)/);
+  assert.match(action,/await api\.deleteTask\((?:id|writeAddress\(prior, id\))\);\s*setTasks\(prev => prev\.filter\(t => t\.id !== id\)\)/);
 });

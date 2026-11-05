@@ -15,6 +15,7 @@ import { localDateString } from '../lib/dateLabel';
 import { MoveDeleteNotice } from '../app/components/MoveDeleteNotice';
 import { makeContentFlowSnapshot, snapshotFromDashboard } from '../lib/contentFlowSnapshot';
 import { dashboardStatusForSnapshot, sourceStatusesFromDashboard, uniformCanonicalStatus } from '../lib/canonicalSourceStatus';
+import { canonicalOnLoad } from '../lib/canonicalFallback';
 
 const DashboardCtx = createContext<DashboardContextValue | null>(null);
 
@@ -165,8 +166,12 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         // carries it; a fallback load clears it, never a stale count.
         setPeopleCare(usedFallback ? null : (data.peopleCare ?? null));
         setOpenAsksCare(usedFallback ? null : (data.openAsksCare ?? null));
-        setTasks(data.tasks || []);
-        setStations(data.stations || []);
+        // Canonical slices (tasks, stations, coflowDates, money): the
+        // fallback response omits them, so a fallback load holds the
+        // last-good in-memory values instead of blanking them — the
+        // protection forum already had, extended to the canonical set.
+        setTasks(canonicalOnLoad(usedFallback, data.tasks, tasks));
+        setStations(canonicalOnLoad(usedFallback, data.stations, stations));
         // Capture from the primary response, before mutable optimistic forum state.
         const contentSnapshot = snapshotFromDashboard(data, usedFallback);
         const sourceStatuses = sourceStatusesFromDashboard(data, usedFallback);
@@ -182,10 +187,10 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setWorkshops(data.workshops || []);
         setWorkshopPrograms(data.workshopPrograms || []);
         setWorkshopResources(data.workshopResources || []);
-        setCoFlowDates(data.coflowDates || []);
+        setCoFlowDates(canonicalOnLoad(usedFallback, data.coflowDates, coFlowDates));
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
-        setMoney(data.money || []);
+        setMoney(canonicalOnLoad(usedFallback, data.money, money));
         setSyncStatus(dashboardStatusForSnapshot(sourceStatuses, contentSnapshot.status));
         const receivedAt = Date.now();
         setLastSynced(new Date(receivedAt));

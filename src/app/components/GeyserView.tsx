@@ -313,6 +313,9 @@ export function GeyserView({
       <div className="geyser-tab-content">
         <div className="geyser-section">
           <h3 className="geyser-section-title">🗺️ Guest Journey Map</h3>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 10 }}>
+            Reference map — the standing shape of a guest's path. Not wired to live event data.
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {GUEST_JOURNEY.map((stage: any, i: number) => (
               <div key={i} className="card" style={{ borderLeft: `3px solid ${stage.color || 'var(--cr8w-primary)'}` }}>

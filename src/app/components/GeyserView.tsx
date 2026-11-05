@@ -226,24 +226,24 @@ export function GeyserView({
         )}
 
         <div className="geyser-stats-grid">
-          <a href="https://drive.google.com/drive/folders/1d9OyYZusS0yyYsfwtjLkz1ss0KYPzl5a" target="_blank" rel="noopener noreferrer" className="geyser-stat-card">
+          <div className="geyser-stat-card">
             <div className="geyser-stat-num">—</div>
             <div className="geyser-stat-label">Sponsorship<br />Raised</div>
             <div className="geyser-stat-sub">tracking in progress</div>
-            <span className="geyser-stat-action">CW Drive ↗</span>
-          </a>
-          <button className="geyser-stat-card" onClick={() => setActiveTab('stations')} style={{ textAlign: 'center', cursor: 'pointer', color: 'inherit', fontFamily: 'inherit' }}>
+            <a href="https://drive.google.com/drive/folders/1d9OyYZusS0yyYsfwtjLkz1ss0KYPzl5a" target="_blank" rel="noopener noreferrer" className="geyser-stat-action">CW Drive ↗</a>
+          </div>
+          <div className="geyser-stat-card">
             <div className="geyser-stat-num">{confirmedStations}</div>
             <div className="geyser-stat-label">Stations<br />Confirmed</div>
             <div className="geyser-stat-sub">of {stationList.length} total</div>
-            <span className="geyser-stat-action">View Stations →</span>
-          </button>
-          <button className="geyser-stat-card urgent" onClick={() => setActiveTab('tasks')} style={{ textAlign: 'center', cursor: 'pointer', color: 'inherit', fontFamily: 'inherit' }}>
+            <button type="button" className="geyser-stat-action" onClick={() => setActiveTab('stations')}>View Stations →</button>
+          </div>
+          <div className="geyser-stat-card urgent">
             <div className="geyser-stat-num">{highPriority}</div>
             <div className="geyser-stat-label">High Priority<br />Open Moves</div>
             <div className="geyser-stat-sub">need energy</div>
-            <span className="geyser-stat-action">View Moves →</span>
-          </button>
+            <button type="button" className="geyser-stat-action" onClick={() => setActiveTab('tasks')}>View Moves →</button>
+          </div>
         </div>
 
         {/* Well Notes */}

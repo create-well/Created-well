@@ -181,6 +181,11 @@ export function NotesFromTheWell({ wellNotes, onAddNote, onLandNote }: Props) {
           <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.68rem', fontWeight: 700, color: '#8BB5C4', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             the spring
           </div>
+          {currentNote && currentNote.id < 0 && (
+            <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.62rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
+              \uD83C\uDF31 seed note — starter words from the well, not a community drop
+            </div>
+          )}
           <div style={{
             fontFamily: "var(--font-label)",
             fontSize: '1rem',

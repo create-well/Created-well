@@ -155,8 +155,9 @@ export function freshnessLabel(ageMs: number): Freshness {
 // writes through after a successful revalidation, so a cold instance
 // during a Notion outage serves the stored last-good instead of a 503.
 // The in-memory manifest remains the serving source on every request;
-// the store is read only while the cache is empty, never per request,
-// and every store failure degrades to exact Phase 1 behavior.
+// the store is read only while the cache is empty, never per request;
+// a failed or timed-out store read is retried exactly once (register
+// 1502), and a persistent failure degrades to exact Phase 1 behavior.
 export interface ManifestStore {
   read: () => Promise<CmsManifest | null>;
   write: (manifest: CmsManifest) => Promise<void>;
@@ -235,23 +236,58 @@ export function createManifestCache(
       if (manifest || !store) return Promise.resolve(false);
       if (!hydrating) {
         hydrating = (async () => {
+          // One store-read attempt with a discriminated outcome: a hit,
+          // a definitive empty (null), a thrown failure, or a timeout.
+          // The timeout resolves to a symbol so a slow read is never
+          // mistaken for an empty store.
+          const TIMED_OUT = Symbol("hydrate-timeout");
+          const attempt = async (): Promise<
+            | { kind: "hit"; stored: CmsManifest }
+            | { kind: "empty" }
+            | { kind: "error"; message: string }
+            | { kind: "timeout" }
+          > => {
+            try {
+              const timeout = new Promise<typeof TIMED_OUT>((resolve) => {
+                const t = setTimeout(() => resolve(TIMED_OUT), hydrateTimeoutMs);
+                (t as { unref?: () => void }).unref?.();
+              });
+              const result = await Promise.race([store.read(), timeout]);
+              if (result === TIMED_OUT) return { kind: "timeout" };
+              return result ? { kind: "hit", stored: result } : { kind: "empty" };
+            } catch (err) {
+              return {
+                kind: "error",
+                message: err instanceof Error ? err.message : "unknown error",
+              };
+            }
+          };
           try {
-            const read = store.read();
-            const timeout = new Promise<null>((resolve) => {
-              const t = setTimeout(() => resolve(null), hydrateTimeoutMs);
-              (t as { unref?: () => void }).unref?.();
-            });
-            const stored = await Promise.race([read, timeout]);
-            if (stored && !manifest) {
-              manifest = stored;
+            // Retry-once (register 1502): a FAILED or TIMED-OUT store
+            // read is retried exactly once inside the same hydration,
+            // and the retry is logged with its leg so a degraded frame
+            // names which leg failed. An EMPTY store is a definitive
+            // answer and is never retried; a failed revalidation is the
+            // handler's leg, not this one. Worst case added latency is
+            // one extra read plus one extra hydrate timeout.
+            let outcome = await attempt();
+            if (outcome.kind === "error" || outcome.kind === "timeout") {
+              console.error(
+                outcome.kind === "error"
+                  ? `[cms] manifest store read failed: ${outcome.message}; retrying once`
+                  : "[cms] manifest store read timed out; retrying once",
+              );
+              outcome = await attempt();
+              if (outcome.kind === "error") {
+                console.error(`[cms] manifest store read failed: ${outcome.message}`);
+              } else if (outcome.kind === "timeout") {
+                console.error("[cms] manifest store read timed out");
+              }
+            }
+            if (outcome.kind === "hit" && !manifest) {
+              manifest = outcome.stored;
               return true;
             }
-            return false;
-          } catch (err) {
-            console.error(
-              "[cms] manifest store read failed:",
-              err instanceof Error ? err.message : "unknown error",
-            );
             return false;
           } finally {
             hydrating = null;

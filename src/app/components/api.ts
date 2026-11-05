@@ -371,6 +371,10 @@ export type FlowType = 'Podyap' | 'Workshop' | 'Book Club' | 'Open Studio' | 'Po
 export interface CoFlowDate {
   id: number;
   notionPageId?: string;
+  /** The FLOWS row's own Name (its Title property) — the record's
+      real name, carried so surfaces render the session as itself
+      instead of a class synonym (register 1378). */
+  title?: string;
   date: string;
   timeRange: string;
   startTime?: string;

@@ -53,6 +53,11 @@ test('agenda: co-flow rows ride by status; malformed rows skip', () => {
   ], NOW);
   assert.equal(days.length, 1);
   assert.equal(days[0].rows.length, 1);
-  assert.equal(days[0].rows[0].tag, 'BHD');
+  // Amended by the register-1378 packet: the FE-12-era pin
+  // asserted the class tag 'BHD' for every co-flow row — the
+  // hardcoded synonym the vocabulary fix retires. The row now
+  // carries its own record's word (here the theme, standing as
+  // both its name and its tag).
+  assert.equal(days[0].rows[0].tag, 'spooky');
   assert.match(days[0].rows[0].title, /spooky/);
 });

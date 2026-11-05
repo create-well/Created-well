@@ -34,9 +34,45 @@ export type AgendaRow = {
   title: string;
   time: string;
   location?: string;
-  tag: 'CR8W' | 'BHD';
+  /** The record's own type word ('CR8W' for calendar rows; a
+      co-flow row carries its own flowType or theme). Never a class
+      synonym: 'BHD' appears only when a record's own data says so
+      (register 1378). Empty renders no badge. */
+  tag: string;
   sortAt: number;
 };
+
+/** A co-flow session's own name, from its record: the FLOWS Name
+ * first, then its theme, then its type. The class fallback names
+ * the data class itself, never a synonym for one member of it. */
+export function coFlowTitle(cf: CoFlowDate): string {
+  return cf.title || cf.theme || cf.flowType || 'Co-flow session';
+}
+
+function normTitle(t: string): string {
+  return t.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function titleTokens(t: string): Set<string> {
+  return new Set(normTitle(t).split(' ').filter(w => w.length >= 4));
+}
+
+/** Start-of-session in minutes since midnight, from a free-text
+ * start ('6:00 PM', '18:00', '6 PM'); null when absent or
+ * unparseable, in which case the time signal simply does not
+ * participate in dedupe. */
+export function startMinutes(raw?: string): number | null {
+  if (!raw) return null;
+  const m = raw.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
+  if (!m) return null;
+  let h = Number(m[1]);
+  const mins = m[2] ? Number(m[2]) : 0;
+  const ap = m[3]?.toLowerCase();
+  if (ap === 'pm' && h < 12) h += 12;
+  if (ap === 'am' && h === 12) h = 0;
+  if (h > 23 || mins > 59) return null;
+  return h * 60 + mins;
+}
 
 export type AgendaDay = { key: string; rel: string; label: string; rows: AgendaRow[] };
 
@@ -48,15 +84,36 @@ export function buildAgenda(
   const todayIdx = dayIndex(now);
   const lastIdx = todayIdx + AGENDA_WINDOW_DAYS - 1;
   const byDay = new Map<string, { idx: number; rows: AgendaRow[] }>();
-  const seen = new Set<string>();
+  // Dedupe on keys that can actually match (register 1378): the
+  // old key was day + the exact rendered title, and the co-flow
+  // side rendered a synthesized title no calendar title could
+  // ever equal, so a gathering in both sources rendered twice.
+  // Now: day + normalized title, OR day + start time when the two
+  // titles also share a real word (the same gathering named
+  // slightly differently on each side). A row registers both keys.
+  const seenTitles = new Set<string>();
+  const seenTimes = new Map<string, Set<string>>();
 
-  const add = (d: Date, row: AgendaRow) => {
+  const add = (d: Date, row: AgendaRow, minutes: number | null) => {
     const idx = dayIndex(d);
     if (idx < todayIdx || idx > lastIdx) return;
     const key = localKey(d);
-    const dedupe = `${key}::${row.title.trim().toLowerCase()}`;
-    if (seen.has(dedupe)) return;
-    seen.add(dedupe);
+    const titleKey = `${key}::${normTitle(row.title)}`;
+    if (seenTitles.has(titleKey)) return;
+    if (minutes !== null) {
+      const prior = seenTimes.get(`${key}::${minutes}`);
+      if (prior) {
+        const mine = titleTokens(row.title);
+        if ([...mine].some(t => prior.has(t))) return;
+      }
+    }
+    seenTitles.add(titleKey);
+    if (minutes !== null) {
+      const tk = `${key}::${minutes}`;
+      const set = seenTimes.get(tk) ?? new Set<string>();
+      for (const t of titleTokens(row.title)) set.add(t);
+      seenTimes.set(tk, set);
+    }
     const bucket = byDay.get(key) ?? { idx, rows: [] };
     bucket.rows.push(row);
     byDay.set(key, bucket);
@@ -81,23 +138,24 @@ export function buildAgenda(
       location: ev.location || undefined,
       tag: 'CR8W',
       sortAt: start.getTime(),
-    });
+    }, ev.start.includes('T') ? start.getHours() * 60 + start.getMinutes() : null);
   }
 
-  // Co-flow dates (behind h0es doors), deduped against the
-  // calendar rows by day + title inside add().
+  // Co-flow dates, deduped against the calendar rows inside
+  // add(). Each renders under its own record's name and type —
+  // the class is not a synonym for any one of its sessions.
   for (const cf of coFlowDates) {
     if (cf.status !== 'scheduled' && cf.status !== 'happened') continue;
     const d = parseDateValue(cf.date);
     if (!d) continue;
     add(d, {
       key: `cf-${cf.id}`,
-      title: cf.theme ? `behind h0es doors — "${cf.theme}"` : 'behind h0es doors',
-      time: cf.startTime && cf.endTime ? `${cf.startTime} – ${cf.endTime}` : cf.timeRange || '',
+      title: coFlowTitle(cf),
+      time: cf.startTime && cf.endTime ? `${cf.startTime} \u2013 ${cf.endTime}` : cf.timeRange || '',
       location: cf.location || undefined,
-      tag: 'BHD',
+      tag: cf.flowType || cf.theme || '',
       sortAt: d.getTime(),
-    });
+    }, startMinutes(cf.startTime));
   }
 
   return [...byDay.entries()]

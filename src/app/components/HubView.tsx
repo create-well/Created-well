@@ -13,6 +13,7 @@ import CalendarAgenda from './CalendarAgenda';
 import type { Task, Station, WellNote, Workshop, CoFlowDate, CoFlowCheckin, InviteCounts, CalendarEventKV } from './api';
 import * as api from './api';
 import { milestoneLabel } from '../../lib/nextUpLabel';
+import { coFlowTitle, startMinutes } from '../../lib/calendarAgenda';
 import { shortDateLabel, calendarDayDiff, localDateString, parseDateValue } from '../../lib/dateLabel';
 
 // ── Wellshop category → workshop tag matching ────────────────────────────────
@@ -1432,6 +1433,9 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
               time: string;
               location?: string;
               type: 'bhd' | 'cr8w' | 'personal' | 'launch';
+              /** A co-flow record's own type word, shown as the
+                  badge instead of a class label (register 1378). */
+              badgeLabel?: string;
               persons: string[];
               // BHD-specific enrichment from coFlowDates
               coFlowDate?: CoFlowDate;
@@ -1446,12 +1450,14 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
               .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime())
               .slice(0, 8)
               .map((e, i) => {
-                let coFlowMatch: CoFlowDate | undefined;
-                if (e.type === 'bhd') {
-                  coFlowMatch = coFlowDates.find(cf =>
-                    cf.date === e.date && (cf.status === 'scheduled' || cf.status === 'happened')
-                  );
-                }
+                // A calendar event and a co-flow record are the
+                // same gathering when the date matches AND the
+                // event's title is the record's own name.
+                const coFlowMatch: CoFlowDate | undefined = coFlowDates.find(cf =>
+                  cf.date === e.date &&
+                  (cf.status === 'scheduled' || cf.status === 'happened') &&
+                  coFlowTitle(cf).trim().toLowerCase() === e.title.trim().toLowerCase()
+                );
                 const checkins = coFlowMatch
                   ? coFlowCheckins.filter(c => c.weekOf === coFlowMatch!.date)
                   : [];
@@ -1502,22 +1508,49 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
             const dedupedKv = kvEvents.filter(e => !seenKeys.has(`${e.dateStr}::${e.title}`));
             const calEvents = [...staticCalEvents, ...dedupedKv];
 
-            // Also add any coFlowDates that don't overlap with calendar BHD events
-            const calBhdDates = new Set(calEvents.filter(e => e.type === 'bhd').map(e => e.dateStr));
+            // Add co-flow dates the calendar does not already
+            // carry. The match keys can actually match (register
+            // 1378): same date AND (the record's own name equals
+            // the event title, OR same start time with a shared
+            // real word in the titles). The old gate keyed on
+            // 'bhd'-typed calendar events only — a class the KV
+            // events never join — so every mirrored session was
+            // added again under a synthesized name.
+            const normT = (t: string) => t.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+            const tokensOf = (t: string) => new Set(normT(t).split(' ').filter(w => w.length >= 4));
+            const calByDate = new Map<string, { title: string; tokens: Set<string>; minutes: number | null }[]>();
+            for (const e of calEvents) {
+              const mins = (e.date.getHours() || e.date.getMinutes())
+                ? e.date.getHours() * 60 + e.date.getMinutes() : null;
+              const list = calByDate.get(e.dateStr) ?? [];
+              list.push({ title: e.title, tokens: tokensOf(e.title), minutes: mins });
+              calByDate.set(e.dateStr, list);
+            }
             const extraCoFlow: UpcomingEvent[] = coFlowDates
-              .filter(cf => !calBhdDates.has(cf.date) && (cf.status === 'scheduled' || cf.status === 'happened'))
+              .filter(cf => (cf.status === 'scheduled' || cf.status === 'happened'))
               .filter(cf => new Date(cf.date + 'T00:00:00') >= todayDate)
+              .filter(cf => {
+                const title = coFlowTitle(cf);
+                const mine = tokensOf(title);
+                const mins = startMinutes(cf.startTime);
+                const same = (calByDate.get(cf.date) ?? []).some(e =>
+                  normT(e.title) === normT(title) ||
+                  (mins !== null && e.minutes === mins && [...mine].some(t => e.tokens.has(t)))
+                );
+                return !same;
+              })
               .map((cf, i) => {
                 const checkins = coFlowCheckins.filter(c => c.weekOf === cf.date);
                 return {
                   key: `cf-${cf.id}`,
                   date: new Date(cf.date + 'T00:00:00'),
                   dateStr: cf.date,
-                  title: cf.theme ? `behind h0es doors — "${cf.theme}"` : 'behind h0es doors',
-                  time: cf.startTime && cf.endTime ? `${cf.startTime} – ${cf.endTime}` : cf.timeRange || '',
+                  title: coFlowTitle(cf),
+                  time: cf.startTime && cf.endTime ? `${cf.startTime} \u2013 ${cf.endTime}` : cf.timeRange || '',
                   location: cf.location,
-                  type: 'bhd' as const,
-                  persons: ['sunshine', 'monny', 'bingle'],
+                  type: 'cr8w' as const,
+                  badgeLabel: cf.flowType || cf.theme || undefined,
+                  persons: cf.host ? [cf.host] : [],
                   coFlowDate: cf,
                   hasCheckin: checkins.length > 0,
                   checkinCount: checkins.length,
@@ -1576,13 +1609,15 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {allUpcoming.map((ev, idx) => {
-                    const badge = TYPE_BADGE[ev.type] || TYPE_BADGE.personal;
+                    const badge = ev.badgeLabel
+                      ? { ...TYPE_BADGE.cr8w, label: ev.badgeLabel }
+                      : TYPE_BADGE[ev.type] || TYPE_BADGE.personal;
                     const isExpanded = expandedEventIdx === idx;
                     const relDate = formatRelDate(ev.date);
                     const isToday = relDate === 'Today';
                     const isTomorrow = relDate === 'Tomorrow';
-                    const isBHD = ev.type === 'bhd';
-                    const needsCheckin = isBHD && ev.coFlowDate && !ev.hasCheckin;
+                    const isBHD = !!ev.coFlowDate;
+                    const needsCheckin = isBHD && !ev.hasCheckin;
 
                     return (
                       <div key={ev.key} style={{
@@ -1789,7 +1824,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                                 📅 Google Calendar
                               </a>
 
-                              {/* In-app PlayD8s link (BHD events only) */}
+                              {/* In-app PlayD8s link (events carrying a co-flow record) */}
                               {isBHD && (
                                 <button
                                   onClick={e => { e.stopPropagation(); onNavigate('coflow'); }}

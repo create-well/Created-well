@@ -71,12 +71,14 @@ export default function CalendarAgenda({
                     color: 'var(--text-muted)', whiteSpace: 'nowrap',
                   }}>{row.location}</span>
                 )}
-                <span style={{
-                  fontFamily: 'var(--font-label)', fontSize: '0.6rem', fontWeight: 700,
-                  letterSpacing: '0.05em', padding: '1px 6px', borderRadius: 8,
-                  border: '1px solid var(--border-soft)', color: 'var(--text-muted)',
-                  whiteSpace: 'nowrap',
-                }}>{row.tag}</span>
+                {row.tag ? (
+                  <span style={{
+                    fontFamily: 'var(--font-label)', fontSize: '0.6rem', fontWeight: 700,
+                    letterSpacing: '0.05em', padding: '1px 6px', borderRadius: 8,
+                    border: '1px solid var(--border-soft)', color: 'var(--text-muted)',
+                    whiteSpace: 'nowrap',
+                  }}>{row.tag}</span>
+                ) : null}
               </div>
             ))}
           </div>

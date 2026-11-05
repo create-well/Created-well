@@ -2056,7 +2056,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
               letterSpacing: '0.02em',
               animation: 'cw-fadeInUp 0.3s ease',
             }}>
-              🔥 open mode — your presence is fully visible
+              🔥 open mode — your name shows on what you post
             </div>
           )}
           <div className="hub-dump-input-row">

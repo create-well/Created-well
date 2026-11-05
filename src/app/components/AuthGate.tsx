@@ -18,7 +18,10 @@ import { lookupUsername, registerUsername } from './api';
 // ── Supabase browser client ───────────────────────────────────────────────────
 // SUPABASE_ANON_JWT: JWT anon key required by Supabase Auth (signIn, signUp, etc.)
 const SUPABASE_URL = `https://${projectId}.supabase.co`;
-const SUPABASE_ANON_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlydHFjeWdyaWVkdmRpanBwbnR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjMwOTEsImV4cCI6MjEwNDczOTA5MX0.tmItTHhTcsV7yLNUv7XiECJ4wY6_sA87PUIcD4hYU5Y";
+const SUPABASE_ANON_JWT = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+if (!SUPABASE_ANON_JWT) {
+  throw new Error('VITE_SUPABASE_ANON_KEY is not set — sign-in cannot start without it.');
+}
 
 // Persist on window so HMR module re-evaluations reuse the same GoTrueClient
 // and avoid the "Multiple GoTrueClient instances" warning.

@@ -1,15 +1,19 @@
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId } from '/utils/supabase/info';
 // Supabase publishable key — safe to embed (not a secret, designed for public clients).
-// Read from env var first so the literal can be rotated without a code change.
-const API_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)
-  || 'sb_publishable_9iKcrLqFPwPnKmZ4JC3RIg_C15YWSbk'
-  || publicAnonKey;
+// Env is the only source: a missing var fails the boot loudly, naming
+// itself, instead of silently serving a stale-generation key. (The
+// literal fallback matched only an older generation — removed
+// 2026-11-05, register 1323.)
+const API_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+if (!API_KEY) {
+  throw new Error('VITE_SUPABASE_PUBLISHABLE_KEY is not set — the dashboard cannot call its API without it.');
+}
 
 // Pick API base at runtime so the same build works everywhere:
 //   • VITE_API_BASE env var  → explicit override (highest priority)
 //   • dash.cr8w.com / *.vercel.app / localhost → same-origin /api/server
 //   • Figma Make preview → Supabase Edge Function (degraded — verify_jwt:true
-//     means the sb_publishable key does NOT authenticate; requests return 401)
+//     means the publishable key does NOT authenticate; requests return 401)
 function resolveApiBase(): string {
   if (import.meta.env.VITE_API_BASE) return import.meta.env.VITE_API_BASE as string;
   const host = typeof window !== 'undefined' ? window.location.hostname : '';

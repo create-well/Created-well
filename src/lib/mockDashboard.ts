@@ -17,6 +17,7 @@ export const MOCK_PAYLOAD: DashboardPayload = {
   coFlowDates: [],
   coFlowCheckins: [],
   wellNotes: [],
+  money: [],
   syncStatus: 'fresh',
   lastSynced: new Date(),
   syncFreshness: null,

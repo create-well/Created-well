@@ -1,232 +1,156 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { dateLabel, localDateString } from '../../lib/dateLabel';
+import {
+  moneyDirection, moneyTotals, recentActivity, buildMoneyPayload,
+} from '../../lib/moneyView';
+import { getSetting, setSetting } from '../components/api';
+import type { MoneyRecord } from '../components/api';
 
-interface MoneyEntry {
-  id: string;
-  label: string;
-  amount: number;
-  date: string;
-  category: 'revenue' | 'expense';
-  verified: boolean;
+const NEXT_MOVE_KEY = 'money_next_move';
+const INCOME_COLOR = '#30D158';
+const EXPENSE_COLOR = '#FF453A';
+
+function formatAmount(n: number): string {
+  return `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function EmptySection({ label }: { label: string }) {
+function ActivityRow({ record }: { record: MoneyRecord }) {
+  const direction = moneyDirection(record);
   return (
     <div style={{
-      padding: '20px 0',
-      textAlign: 'center',
-      color: 'var(--text-muted, #6B5F7A)',
-      fontFamily: 'var(--font-body)',
-      fontSize: '0.78rem',
-      lineHeight: 1.5,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '9px 14px',
       borderRadius: 10,
-      border: '1px dashed var(--border-soft, rgba(196,164,132,0.25))',
-      background: 'rgba(123,168,157,0.03)',
+      background: 'var(--cr8w-card-bg, #F4F1ED)',
+      border: '1px solid var(--border-soft, rgba(196,164,132,0.15))',
     }}>
-      No {label} tracked yet. Real numbers only.
+      <div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: 'var(--cr8w-text, #2D2438)' }}>
+          {record.name}
+        </div>
+        <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted, #6B5F7A)', marginTop: 1 }}>
+          {record.date
+            ? dateLabel(record.date, { month: 'short', day: 'numeric', year: 'numeric' })
+            : 'No date yet.'}
+          {direction && (
+            <span style={{ color: direction === 'in' ? INCOME_COLOR : EXPENSE_COLOR, fontWeight: 700 }}>
+              {' · '}{direction === 'in' ? 'Income' : 'Expense'}
+            </span>
+          )}
+        </div>
+      </div>
+      <span style={{
+        fontFamily: 'var(--font-label)',
+        fontSize: '0.88rem',
+        fontWeight: 700,
+        color: direction === 'in' ? INCOME_COLOR : direction === 'out' ? EXPENSE_COLOR : 'var(--cr8w-text, #2D2438)',
+      }}>
+        {direction === 'in' ? '+' : direction === 'out' ? '−' : ''}{formatAmount(record.amount)}
+      </span>
     </div>
   );
 }
 
-function MoneySection({
-  title, emoji, entries, category, onAdd,
-}: {
-  title: string;
-  emoji: string;
-  entries: MoneyEntry[];
-  category: 'revenue' | 'expense';
-  onAdd: (e: Omit<MoneyEntry, 'id' | 'verified'>) => void;
-}) {
-  const [adding, setAdding] = useState(false);
+export function MoneyPage() {
+  const { data, actions } = useDashboard();
+  const records = data.money || [];
+  const totals = moneyTotals(records);
+  const recent = recentActivity(records, 5);
+
+  const [direction, setDirection] = useState<'in' | 'out'>('in');
   const [label, setLabel] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(localDateString());
+  const [logging, setLogging] = useState(false);
+  const [logError, setLogError] = useState('');
+  const labelRef = useRef<HTMLInputElement>(null);
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!label.trim() || !amount) return;
-    onAdd({ label: label.trim(), amount: parseFloat(amount), date, category });
-    setLabel(''); setAmount(''); setDate(localDateString());
-    setAdding(false);
-  }
-
-  const total = entries.reduce((sum, e) => sum + e.amount, 0);
-
-  return (
-    <section style={{ marginBottom: 28 }}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 12,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: '1.1rem' }}>{emoji}</span>
-          <span style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '0.9rem',
-            fontWeight: 700,
-            color: 'var(--cr8w-text, #2D2438)',
-            letterSpacing: '-0.01em',
-          }}>
-            {title}
-          </span>
-        </div>
-        {entries.length > 0 && (
-          <span style={{
-            fontFamily: 'var(--font-label)',
-            fontSize: '0.85rem',
-            fontWeight: 700,
-            color: category === 'revenue' ? '#30D158' : '#FF453A',
-          }}>
-            {category === 'expense' ? '−' : '+'}${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-        )}
-      </div>
-
-      {entries.length === 0 && !adding && <EmptySection label={title.toLowerCase()} />}
-
-      {entries.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-          {entries.map(entry => (
-            <div key={entry.id} style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '9px 14px',
-              borderRadius: 10,
-              background: 'var(--cr8w-card-bg, #F4F1ED)',
-              border: '1px solid var(--border-soft, rgba(196,164,132,0.15))',
-            }}>
-              <div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: 'var(--cr8w-text, #2D2438)' }}>
-                  {entry.label}
-                </div>
-                <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted, #6B5F7A)', marginTop: 1 }}>
-                  {dateLabel(entry.date, { month: 'short', day: 'numeric', year: 'numeric' })}
-                </div>
-              </div>
-              <span style={{
-                fontFamily: 'var(--font-label)',
-                fontSize: '0.88rem',
-                fontWeight: 700,
-                color: category === 'revenue' ? '#30D158' : '#FF453A',
-              }}>
-                {category === 'expense' ? '−' : '+'}${entry.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {adding ? (
-        <form onSubmit={submit} style={{
-          display: 'flex', flexDirection: 'column', gap: 8,
-          padding: '12px 14px',
-          background: 'var(--cr8w-card-bg, #F4F1ED)',
-          border: '1px solid var(--cr8w-primary, #7BA89D)',
-          borderRadius: 10,
-        }}>
-          <input
-            autoFocus
-            value={label}
-            onChange={e => setLabel(e.target.value)}
-            placeholder="What is this?"
-            style={{
-              fontFamily: 'var(--font-body)', fontSize: '0.82rem',
-              border: 'none', background: 'transparent',
-              color: 'var(--cr8w-text)', outline: 'none', padding: 0,
-            }}
-          />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-              placeholder="Amount"
-              style={{
-                fontFamily: 'var(--font-label)', fontSize: '0.82rem',
-                border: '1px solid var(--border-soft, rgba(196,164,132,0.25))',
-                borderRadius: 6, background: 'transparent',
-                color: 'var(--cr8w-text)', outline: 'none', padding: '4px 8px', flex: 1,
-              }}
-            />
-            <input
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              style={{
-                fontFamily: 'var(--font-label)', fontSize: '0.78rem',
-                border: '1px solid var(--border-soft, rgba(196,164,132,0.25))',
-                borderRadius: 6, background: 'transparent',
-                color: 'var(--cr8w-text)', outline: 'none', padding: '4px 8px',
-              }}
-            />
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="submit" style={{
-              padding: '5px 14px', borderRadius: 7,
-              background: 'var(--cr8w-primary, #7BA89D)', color: '#fff',
-              fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600,
-              border: 'none', cursor: 'pointer',
-            }}>
-              Add
-            </button>
-            <button type="button" onClick={() => setAdding(false)} style={{
-              padding: '5px 14px', borderRadius: 7,
-              background: 'none', color: 'var(--text-muted)',
-              fontFamily: 'var(--font-label)', fontSize: '0.72rem',
-              border: '1px solid var(--border-soft)', cursor: 'pointer',
-            }}>
-              Cancel
-            </button>
-          </div>
-        </form>
-      ) : (
-        <button
-          onClick={() => setAdding(true)}
-          style={{
-            marginTop: entries.length > 0 ? 6 : 8,
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontFamily: 'var(--font-label)', fontSize: '0.72rem',
-            color: 'var(--cr8w-primary, #7BA89D)',
-            padding: '4px 0',
-          }}
-        >
-          + Add real {category}
-        </button>
-      )}
-    </section>
-  );
-}
-
-export function MoneyPage() {
-  const { data } = useDashboard();
-  const [entries, setEntries] = useState<MoneyEntry[]>([]);
   const [nextMove, setNextMove] = useState('');
   const [editingNextMove, setEditingNextMove] = useState(false);
+  const [savingNextMove, setSavingNextMove] = useState(false);
+  const [nextMoveError, setNextMoveError] = useState('');
 
   const state =
     data.syncStatus === 'loading' ? 'loading' :
     data.syncStatus === 'failed' ? 'failed' : 'fresh';
 
-  const revenue = entries.filter(e => e.category === 'revenue');
-  const expenses = entries.filter(e => e.category === 'expense');
-  const net = revenue.reduce((s, e) => s + e.amount, 0) - expenses.reduce((s, e) => s + e.amount, 0);
+  // Autofocus the description field on fine-pointer devices only; on
+  // touch it would open the keyboard over the page on arrival.
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches) {
+      labelRef.current?.focus();
+    }
+  }, []);
 
-  function addEntry(entry: Omit<MoneyEntry, 'id' | 'verified'>) {
-    setEntries(prev => [...prev, { ...entry, id: String(Date.now()), verified: true }]);
+  // Next Right Money Move persists in the dashboard KV store (M-1d).
+  useEffect(() => {
+    let live = true;
+    getSetting<string>(NEXT_MOVE_KEY)
+      .then(res => { if (live && typeof res.value === 'string') setNextMove(res.value); })
+      .catch(e => console.error('Load next money move error:', e));
+    return () => { live = false; };
+  }, []);
+
+  async function submitLog(e: React.FormEvent) {
+    e.preventDefault();
+    const parsed = parseFloat(amount);
+    if (!label.trim() || !amount || Number.isNaN(parsed) || logging) return;
+    setLogging(true);
+    setLogError('');
+    try {
+      await actions.addMoney(buildMoneyPayload({
+        label: label.trim(), amount: parsed, date, direction,
+      }));
+      setLabel(''); setAmount(''); setDate(localDateString());
+    } catch {
+      setLogError('That entry did not save. Check the connection and try again.');
+    } finally {
+      setLogging(false);
+    }
   }
+
+  async function saveNextMove(value: string) {
+    setSavingNextMove(true);
+    setNextMoveError('');
+    try {
+      await setSetting(NEXT_MOVE_KEY, value);
+      setNextMove(value);
+      setEditingNextMove(false);
+    } catch {
+      setNextMoveError('That did not save. Try again.');
+    } finally {
+      setSavingNextMove(false);
+    }
+  }
+
+  const segmentStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    padding: '7px 0',
+    borderRadius: 8,
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-label)',
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    background: active ? 'var(--cr8w-primary, #7BA89D)' : 'transparent',
+    color: active ? '#fff' : 'var(--text-muted, #6B5F7A)',
+  });
+
+  const fieldStyle: React.CSSProperties = {
+    fontFamily: 'var(--font-body)', fontSize: '0.82rem',
+    border: '1px solid var(--border-soft, rgba(196,164,132,0.25))',
+    borderRadius: 6, background: 'transparent',
+    color: 'var(--cr8w-text)', outline: 'none', padding: '6px 8px',
+  };
 
   return (
     <ViewShell state={state} onRetry={() => {}}>
-      <div style={{ maxWidth: 640, margin: '0 auto', padding: '24px 16px 48px' }}>
-        {/* Header */}
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: '24px 16px 96px' }}>
+        {/* Header — settled copy */}
         <div style={{ marginBottom: 28 }}>
           <div style={{
             fontFamily: 'var(--font-label)',
@@ -261,60 +185,168 @@ export function MoneyPage() {
           </p>
         </div>
 
-        {/* Net summary */}
-        {entries.length > 0 && (
+        {/* Net summary — solid card treatment, no gradient */}
+        {(totals.income > 0 || totals.expenses > 0) && (
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 16,
             padding: '16px 20px',
             borderRadius: 14,
-            background: net >= 0
-              ? 'linear-gradient(135deg, rgba(48,209,88,0.06) 0%, rgba(48,209,88,0.02) 100%)'
-              : 'linear-gradient(135deg, rgba(255,69,58,0.06) 0%, rgba(255,69,58,0.02) 100%)',
-            border: `1px solid ${net >= 0 ? 'rgba(48,209,88,0.2)' : 'rgba(255,69,58,0.2)'}`,
+            background: 'var(--cr8w-card-bg, #F4F1ED)',
+            border: `1px solid ${totals.net >= 0 ? 'rgba(48,209,88,0.2)' : 'rgba(255,69,58,0.2)'}`,
             marginBottom: 28,
           }}>
-            <div>
-              <div style={{
-                fontFamily: 'var(--font-label)', fontSize: '0.6rem', fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.08em',
-                color: 'var(--text-muted)', marginBottom: 2,
-              }}>
-                Net this period
-              </div>
-              <div style={{
-                fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800,
-                color: net >= 0 ? '#30D158' : '#FF453A',
-                letterSpacing: '-0.02em',
-              }}>
-                {net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
+            <div style={{
+              fontFamily: 'var(--font-label)', fontSize: '0.6rem', fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '0.08em',
+              color: 'var(--text-muted)', marginBottom: 2,
+            }}>
+              Net this period
             </div>
+            <div style={{
+              fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800,
+              color: totals.net >= 0 ? INCOME_COLOR : EXPENSE_COLOR,
+              letterSpacing: '-0.02em',
+            }}>
+              {totals.net >= 0 ? '+' : '−'}{formatAmount(totals.net)}
+            </div>
+            {totals.undirected > 0 && (
+              <div style={{
+                fontFamily: 'var(--font-body)', fontSize: '0.72rem',
+                color: 'var(--text-muted, #6B5F7A)', marginTop: 4,
+              }}>
+                {totals.undirected} record{totals.undirected === 1 ? '' : 's'} without a direction yet — not counted in this net.
+              </div>
+            )}
           </div>
         )}
 
-        <MoneySection
-          title="Revenue"
-          emoji="📥"
-          entries={revenue}
-          category="revenue"
-          onAdd={addEntry}
-        />
-        <MoneySection
-          title="Expenses"
-          emoji="📤"
-          entries={expenses}
-          category="expense"
-          onAdd={addEntry}
-        />
-
-        {/* Next right money move */}
+        {/* Quick Log — one card, segmented Direction toggle, one-row form */}
         <section style={{
-          marginTop: 8,
           padding: '16px 18px',
           borderRadius: 14,
-          background: 'linear-gradient(135deg, rgba(184,169,212,0.06) 0%, rgba(123,168,157,0.04) 100%)',
+          background: 'var(--cr8w-card-bg, #F4F1ED)',
+          border: '1px solid var(--border-soft, rgba(196,164,132,0.15))',
+          marginBottom: 28,
+        }}>
+          <div style={{
+            fontFamily: 'var(--font-label)', fontSize: '0.6rem', fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.1em',
+            color: 'var(--text-muted)', marginBottom: 10,
+          }}>
+            Quick log
+          </div>
+          <div
+            role="group"
+            aria-label="Direction"
+            style={{
+              display: 'flex', gap: 4, padding: 4, marginBottom: 12,
+              borderRadius: 10, background: 'rgba(123,168,157,0.08)',
+            }}
+          >
+            <button type="button" aria-pressed={direction === 'in'} onClick={() => setDirection('in')} style={segmentStyle(direction === 'in')}>
+              📥 Income
+            </button>
+            <button type="button" aria-pressed={direction === 'out'} onClick={() => setDirection('out')} style={segmentStyle(direction === 'out')}>
+              📤 Expense
+            </button>
+          </div>
+          <form onSubmit={submitLog} style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <input
+              ref={labelRef}
+              value={label}
+              onChange={e => setLabel(e.target.value)}
+              placeholder="What is this?"
+              aria-label="What is this?"
+              style={{ ...fieldStyle, flex: '2 1 180px', fontFamily: 'var(--font-body)' }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', flex: '1 1 110px', ...fieldStyle, padding: 0 }}>
+              <span style={{
+                fontFamily: 'var(--font-label)', fontSize: '0.82rem',
+                color: 'var(--text-muted)', paddingLeft: 8,
+              }}>$</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                placeholder="Amount"
+                aria-label="Amount"
+                style={{
+                  fontFamily: 'var(--font-label)', fontSize: '0.82rem',
+                  border: 'none', background: 'transparent', width: '100%',
+                  color: 'var(--cr8w-text)', outline: 'none', padding: '6px 8px 6px 4px',
+                }}
+              />
+            </div>
+            <input
+              type="date"
+              value={date}
+              onChange={e => setDate(e.target.value)}
+              aria-label="Date"
+              style={{ ...fieldStyle, fontFamily: 'var(--font-label)', fontSize: '0.78rem', flex: '0 1 auto' }}
+            />
+            <button
+              type="submit"
+              disabled={logging}
+              style={{
+                padding: '6px 16px', borderRadius: 7,
+                background: 'var(--cr8w-primary, #7BA89D)', color: '#fff',
+                fontFamily: 'var(--font-label)', fontSize: '0.78rem', fontWeight: 600,
+                border: 'none', cursor: logging ? 'wait' : 'pointer',
+                opacity: logging ? 0.7 : 1,
+              }}
+            >
+              {logging ? 'Logging…' : 'Add'}
+            </button>
+          </form>
+          {logError && (
+            <div style={{
+              fontFamily: 'var(--font-body)', fontSize: '0.75rem',
+              color: EXPENSE_COLOR, marginTop: 8,
+            }}>
+              {logError}
+            </div>
+          )}
+        </section>
+
+        {/* Recent Activity — last 5, merged, signed with word tags */}
+        <section style={{ marginBottom: 28 }}>
+          <div style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '0.9rem',
+            fontWeight: 700,
+            color: 'var(--cr8w-text, #2D2438)',
+            letterSpacing: '-0.01em',
+            marginBottom: 12,
+          }}>
+            Recent activity
+          </div>
+          {recent.length === 0 ? (
+            <div style={{
+              padding: '20px 0',
+              textAlign: 'center',
+              color: 'var(--text-muted, #6B5F7A)',
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.78rem',
+              lineHeight: 1.5,
+              borderRadius: 10,
+              border: '1px dashed var(--border-soft, rgba(196,164,132,0.25))',
+              background: 'rgba(123,168,157,0.03)',
+            }}>
+              No money tracked yet. Real numbers only.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {recent.map(record => <ActivityRow key={record.id} record={record} />)}
+            </div>
+          )}
+        </section>
+
+        {/* Next right money move — solid card treatment, KV-persisted */}
+        <section style={{
+          padding: '16px 18px',
+          borderRadius: 14,
+          background: 'var(--cr8w-card-bg, #F4F1ED)',
           border: '1px solid rgba(184,169,212,0.2)',
         }}>
           <div style={{
@@ -341,15 +373,15 @@ export function MoneyPage() {
                 }}
               />
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setEditingNextMove(false)} style={{
+                <button onClick={() => saveNextMove(nextMove)} disabled={savingNextMove} style={{
                   padding: '5px 14px', borderRadius: 7,
                   background: 'var(--cr8w-primary, #7BA89D)', color: '#fff',
                   fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600,
-                  border: 'none', cursor: 'pointer',
+                  border: 'none', cursor: savingNextMove ? 'wait' : 'pointer',
                 }}>
-                  Save
+                  {savingNextMove ? 'Saving…' : 'Save'}
                 </button>
-                <button onClick={() => { setNextMove(''); setEditingNextMove(false); }} style={{
+                <button onClick={() => saveNextMove('')} disabled={savingNextMove} style={{
                   padding: '5px 14px', borderRadius: 7,
                   background: 'none', color: 'var(--text-muted)',
                   fontFamily: 'var(--font-label)', fontSize: '0.72rem',
@@ -358,6 +390,11 @@ export function MoneyPage() {
                   Clear
                 </button>
               </div>
+              {nextMoveError && (
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: EXPENSE_COLOR }}>
+                  {nextMoveError}
+                </div>
+              )}
             </div>
           ) : (
             <button

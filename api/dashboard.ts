@@ -16,7 +16,7 @@
  *   NOTION_DB_PEOPLE      — PEOPLE database ID
  *   NOTION_DB_FLOWS       — FLOWS database ID  (the only dated table)
  *   NOTION_DB_CONTENT     — CONTENT database ID
- *   NOTION_DB_MONEY       — MONEY database ID  (read-only for now; writes deferred to Phase 2)
+ *   NOTION_DB_MONEY       — MONEY database ID  (read here; writes land through POST /api/server/money)
  *   SUPABASE_URL          — Supabase project URL
  *   SUPABASE_SERVICE_ROLE_KEY — Supabase service-role key (server-only)
  */

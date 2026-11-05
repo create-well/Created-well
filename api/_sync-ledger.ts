@@ -1,12 +1,11 @@
-// Sync-run recording for createdwell (Phase 2 adaptation).
+// Sync-run recording for createdwell.
 //
-// On cr8w-dashboard, engine runs are recorded into a Notion SYNC LEDGER
-// database through sync-ledger-store. No such database is bound on
-// createdwell, and creating one is a schema-class decision outside this
-// port. Until a ledger binding is configured, runs are recorded as
-// structured runtime-log lines (visible in the project's Vercel runtime
-// logs) and per-source outcomes persist in sync_delivery_state, which
-// is the operational record the freshness ladder reads.
+// Engine runs are recorded in the Supabase sync_runs table — the live
+// record, read back through GET /api/sync-runs (90-day retention) —
+// and per-source outcomes persist in sync_delivery_state, which is
+// the operational record the freshness ladder reads. The historical
+// Notion SYNC LEDGER database is frozen and archived; nothing writes
+// to it.
 //
 // recordSyncRun never throws: bookkeeping must not fail a sync.
 

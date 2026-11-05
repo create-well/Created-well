@@ -54,9 +54,9 @@ function DecisionCard({
   const deleteButton = (
     <button onClick={submitDelete} disabled={busy} style={{
       padding: '5px 12px', borderRadius: 7, minHeight: 44, background: 'none',
-      color: confirmingDelete ? '#FF453A' : 'var(--text-muted)',
+      color: confirmingDelete ? '#B3261E' : 'var(--text-muted)',
       fontFamily: 'var(--font-label)', fontSize: '0.72rem',
-      border: confirmingDelete ? '1px solid #FF453A' : '1px solid transparent',
+      border: confirmingDelete ? '1px solid #B3261E' : '1px solid transparent',
       cursor: busy ? 'wait' : 'pointer',
     }}>
       {busy ? 'Deleting…' : confirmingDelete ? 'Confirm delete' : 'Delete'}

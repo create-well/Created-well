@@ -198,17 +198,26 @@ export function NotesFromTheWell({ wellNotes, onAddNote, onLandNote, onDeleteNot
               className="well-note-submit-btn"
               style={{
                 alignSelf: 'flex-start',
-                padding: '7px 16px',
-                borderRadius: 10,
-                border: 'none',
-                background: input.trim() ? 'var(--cr8w-primary)' : 'rgba(var(--cr8w-primary-rgb, 123,168,157),0.3)',
-                color: '#fff',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: 44,
+                padding: '6px 16px',
+                borderRadius: 8,
+                border: '1.5px solid var(--cr8w-primary-text)',
+                background: 'transparent',
+                color: 'var(--cr8w-primary-text)',
                 fontFamily: 'var(--font-label)',
                 fontSize: '0.72rem',
                 fontWeight: 700,
                 cursor: input.trim() ? 'pointer' : 'default',
                 transition: 'all 0.15s',
                 letterSpacing: '0.03em',
+                // Empty state (named in the packet, ruling 1497): the ruled
+                // treatment has no disabled tint form, so the empty button
+                // keeps the treatment's border and text at reduced opacity —
+                // present but inactive, never a washed-out fill.
+                opacity: input.trim() ? 1 : 0.45,
               }}
             >drop it in \uD83D\uDCA7</button>
           )}

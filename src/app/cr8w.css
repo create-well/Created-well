@@ -2103,8 +2103,7 @@ a.gcc-pill-link:hover { background: var(--cr8w-card-bg, #F4F1ED); transform: tra
    every browser. */
 .well-note-textarea::placeholder, .well-note-input::placeholder { color: var(--text-muted); opacity: 1; }
 .well-note-submit-btn:hover:not(:disabled) {
-  background: #A8472A !important;
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--cr8w-primary-text) 8%, transparent);
 }
 .well-note-landed-btn:hover:not(:disabled) {
   background: rgba(139,181,196,0.15) !important;

@@ -410,8 +410,8 @@ export function MessageDrawer({
       return { label: 'Go to The Well \u2192', action: onNavigateToForum || null };
     if (lower.includes('station'))
       return { label: 'Go to Stations \u2192', action: onNavigateToStations || null };
-    if (lower.includes('geyser') || lower.includes('task'))
-      return { label: 'Go to Geyser \u2192', action: onNavigateToGeyser || null };
+    if (lower.includes('flow') || lower.includes('geyser') || lower.includes('task'))
+      return { label: 'Go to Flows \u2192', action: onNavigateToGeyser || null };
     return { label: 'Go to The Well \u2192', action: onNavigateToForum || null };
   }
 

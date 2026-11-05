@@ -180,19 +180,6 @@ export function TopNav({ onSignOut }: TopNavProps) {
                     {person.energyReminder.text}
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                  <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    energy
-                  </span>
-                  <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'rgba(45,36,56,0.08)', overflow: 'hidden' }}>
-                    <div style={{
-                      width: expandedProfile === 'bingle' ? '55%' : expandedProfile === 'monny' ? '75%' : '65%',
-                      height: '100%', borderRadius: 3,
-                      background: `linear-gradient(90deg, ${person.color}, ${person.color}AA)`,
-                      transition: 'width 0.4s ease',
-                    }} />
-                  </div>
-                </div>
                 <button
                   onClick={() => openPerson(expandedProfile)}
                   style={{

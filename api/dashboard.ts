@@ -36,6 +36,7 @@ import {
   openAsksCareCounts,
   normalizeContent,
   normalizeFlow,
+  buildFlowPartifulLinks,
   normalizeMoney,
   normalizeEvent,
   normalizeFeedback,
@@ -229,6 +230,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       coflowCheckins, wellNotes, calendarEvents, decisions,
     ] = kvValidated;
 
+    // Partiful RSVP links, projected once for the whole payload
+    // (register 1484, Leg 1): flow page id -> the link of its first
+    // related EVENTS row carrying one.
+    const partifulLinks = buildFlowPartifulLinks(flowsPages, eventsPages);
+
     const payload: SyncData = {
       // Notion-backed
       // MOVES Owner is a Relation → PEOPLE: resolve the first target
@@ -239,7 +245,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       peopleCare:        peopleCareCounts(peoplePages),
       openAsksCare:      openAsksCareCounts(openAsksPages),
       forum:             contentPages.map(normalizeContent),
-      coflowDates:       flowsPages.map(normalizeFlow),
+      // The Partiful link projects through each flow's Events relation
+      // (register 1484, Leg 1); every other flow field is normalizeFlow's.
+      coflowDates:       flowsPages.map((pg) => {
+        const d = normalizeFlow(pg);
+        const partifulLink = partifulLinks.get(pg.id);
+        return partifulLink ? { ...d, partifulLink } : d;
+      }),
       money:             moneyPages.map(normalizeMoney) as MoneyRecord[],
       events:            eventsPages.map(normalizeEvent) as EventRecord[],
       feedback:          feedbackPages.map(normalizeFeedback) as FeedbackRecord[],

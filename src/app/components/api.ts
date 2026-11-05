@@ -394,6 +394,11 @@ export interface CoFlowDate {
   flowType?: FlowType;
   /** Free-text topic label; fallback when flowType is absent. */
   theme?: string;
+  /** The related EVENTS row's Partiful link, projected through the
+      flow's Events relation at payload assembly (register 1484, Leg 1).
+      Only the link projects; absent when no related event carries one.
+      Leg 2 renders it as the card's RSVP door. */
+  partifulLink?: string;
   rsvp: Record<string, string>;
   agendaItems: { id: number; text: string; lead: string; timeEstimate: number; done: boolean }[];
   agendaLocked?: boolean;

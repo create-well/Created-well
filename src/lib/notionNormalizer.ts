@@ -597,6 +597,33 @@ export function normalizeEvent(page: NotionPage): EventRecord {
   };
 }
 
+// ── EVENTS → FLOWS Partiful link projection (register 1484, Leg 1) ─────
+// Relations are never projected under the standing rule; this is the one
+// commissioned exception, and only the link travels: for each FLOWS page,
+// the first related EVENTS row (in relation order) carrying a Partiful
+// link lends it to the flow's client record. Returns flow page id → link;
+// flows with no linked event carrying a link are absent from the map.
+export function buildFlowPartifulLinks(
+  flowsPages: NotionPage[],
+  eventsPages: NotionPage[],
+): Map<string, string> {
+  const linkByEventId = new Map<string, string>();
+  for (const ev of eventsPages) {
+    const link = getUrl(pick(ev.properties, 'Partiful link', 'Link'));
+    if (link) linkByEventId.set(ev.id, link);
+  }
+  const linkByFlowId = new Map<string, string>();
+  for (const fl of flowsPages) {
+    const rel = pick(fl.properties, 'Events');
+    if (!rel || rel.type !== 'relation') continue;
+    for (const target of (rel as NPropRelation).relation) {
+      const link = linkByEventId.get(target.id);
+      if (link) { linkByFlowId.set(fl.id, link); break; }
+    }
+  }
+  return linkByFlowId;
+}
+
 // ── FEEDBACK → FeedbackRecord ─────────────────────────────────────────────────
 // Canonical FEEDBACK schema (Create Well OS; wired 2026-10-30, Amendment 2):
 //   Name            : Title

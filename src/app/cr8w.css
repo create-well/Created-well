@@ -332,6 +332,16 @@ html.cw-no-motion *::after {
   max-width: 1080px; margin: 0 auto;
   padding-left: 24px; padding-right: 24px; padding-bottom: 80px;
 }
+/* Audit-2 narrow-width clearance (rank C, QA geometry): below 1172px the
+   content column runs under the bottom-left fixed stack (Decomprocess
+   cluster + scroll-top button, union top 162px at a zero inset), so the
+   final content slice needs bottom padding that clears the stack. The
+   padding grows 1:1 with the safe-area inset past 20px, matching the
+   scroll-top button's own inset lift, so the clearance holds on
+   home-indicator devices where the F1b gap used to be consumed. */
+@media (max-width: 1171px) {
+  .cr-main { padding-bottom: calc(170px + max(0px, env(safe-area-inset-bottom, 0px) - 20px)); }
+}
 .cr-view { animation: cw-fadeInUp 0.4s ease; }
 
 /* NOTION SYNC BAR */

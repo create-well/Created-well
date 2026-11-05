@@ -252,6 +252,7 @@ export function GeyserView({
           <div className="card">
             <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
               <input
+                className="well-note-input"
                 value={noteInput}
                 onChange={e => setNoteInput(e.target.value)}
                 placeholder="share a thought, reflection, or intention…"

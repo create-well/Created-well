@@ -438,9 +438,12 @@ export interface SyncData {
   peopleCare?: { total: number; consentGaps: number };
   /** OPEN ASKS care aggregate (counts only, never values); absent when OPEN ASKS did not load. */
   openAsksCare?: { total: number; unanswered: number };
-  tasks: Task[];
-  stations: Station[];
-  forum: ForumPost[];
+  /** Canonical slices are optional: the fallback (/sync) response omits
+   *  them (named in canonicalSlicesUnavailable) instead of serving a
+   *  stale KV mirror; the primary payload always carries them. */
+  tasks?: Task[];
+  stations?: Station[];
+  forum?: ForumPost[];
   messages: Message[];
   braindumps: BrainDump[];
   announcements: Announcement[];
@@ -448,7 +451,7 @@ export interface SyncData {
   workshops: Workshop[];
   workshopPrograms: WorkshopProgram[];
   workshopResources: WorkshopResource[];
-  coflowDates: CoFlowDate[];
+  coflowDates?: CoFlowDate[];
   coflowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
   calendarEvents: CalendarEventKV[];

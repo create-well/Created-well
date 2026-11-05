@@ -4,7 +4,7 @@
 //
 // Property name conventions match the Create Well OS Notion schema:
 //   MOVES  : Name, Owner (Relation→PEOPLE), Flow (Relation→FLOWS),
-//             Due, Status (Now/Next/Done/Dropped), Type, Blocked By, Touchpoint
+//             Due, Status (Now/Next/Done/Blocked/Dropped), Type, Blocked By, Touchpoint
 //   PEOPLE : Name, Owner (Person), Roles, Consent, Consent Captured,
 //             Next Invitation, Pathway Stage, Bench Stage, Interest Signal
 //   FLOWS  : Name, Type, Date, Status, Phase, Flow Keeper (Relation→PEOPLE),
@@ -178,6 +178,7 @@ export function stableId(notionId: string): number {
 //   Now → actively being worked on → in_progress
 //   Next → queued, ready to pick up → todo
 //   Done → completed → done
+//   Blocked → blocked, with any reason carried separately in Blocked By
 //   Dropped → its own client state, not done
 const TASK_STATUS_MAP: Record<string, Task['status']> = {
   // Create Well MOVES canonical values
@@ -237,7 +238,7 @@ const FLOW_STATUS_MAP: Record<string, CoFlowDate['status']> = {
 //   Owner       : Relation → PEOPLE (resolves to person field via relation ID)
 //   Flow        : Relation → FLOWS
 //   Due         : Date
-//   Status      : Select (Now / Next / Done / Dropped)
+//   Status      : Select (Now / Next / Done / Blocked / Dropped)
 //   Type        : Select (Prep / Day-of / Follow-up / Admin / Content)
 //   Blocked By  : Text
 //   Person      : Relation → PEOPLE (relationship follow-up, secondary)

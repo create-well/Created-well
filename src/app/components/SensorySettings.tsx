@@ -10,10 +10,6 @@ const TOGGLE_W = 40;
 const TOGGLE_H = 22;
 const KNOB = 16;
 
-function isMobile(): boolean {
-  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
 function prefersReducedMotion(): boolean {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 }
@@ -117,16 +113,6 @@ function SettingRow({
 
 /* ─── Main component ─── */
 export function SensorySettings() {
-  const [sound, setSound] = useState<boolean>(() => {
-    const stored = localStorage.getItem('cw_sound');
-    return stored !== null ? stored === 'true' : true;
-  });
-
-  const [haptic, setHaptic] = useState<boolean>(() => {
-    const stored = localStorage.getItem('cw_haptic');
-    return stored !== null ? stored === 'true' : isMobile();
-  });
-
   const [motion, setMotion] = useState<boolean>(() => {
     const stored = localStorage.getItem('cw_motion');
     if (stored !== null) return stored === 'true';
@@ -163,20 +149,6 @@ export function SensorySettings() {
     return () => mq.removeEventListener('change', handler);
   }, [applyMotionClass]);
 
-  function toggleSound() {
-    const next = !sound;
-    setSound(next);
-    localStorage.setItem('cw_sound', String(next));
-    window.dispatchEvent(new StorageEvent('storage', { key: 'cw_sound', newValue: String(next) }));
-  }
-
-  function toggleHaptic() {
-    const next = !haptic;
-    setHaptic(next);
-    localStorage.setItem('cw_haptic', String(next));
-    window.dispatchEvent(new StorageEvent('storage', { key: 'cw_haptic', newValue: String(next) }));
-  }
-
   function toggleMotion() {
     const next = !motion;
     setMotion(next);
@@ -200,22 +172,6 @@ export function SensorySettings() {
           sensory settings {'\uD83C\uDFB6'}
         </div>
       </div>
-
-      <SettingRow
-        emoji={'\uD83D\uDD0A'}
-        label="sounds"
-        sublabel="button taps, seals, ambient cues"
-        on={sound}
-        onToggle={toggleSound}
-      />
-
-      <SettingRow
-        emoji={'\uD83D\uDCF3'}
-        label="haptics"
-        sublabel="gentle vibrations on mobile"
-        on={haptic}
-        onToggle={toggleHaptic}
-      />
 
       <SettingRow
         emoji={'\u2728'}

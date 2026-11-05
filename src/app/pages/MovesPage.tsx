@@ -34,7 +34,11 @@ export function MovesPage() {
     data.syncStatus === 'failed' ? 'failed' :
     data.syncStatus === 'stale' ? 'stale' : 'fresh';
 
-  const forumNotesForView = data.forum.map(f => ({
+  // Registry-mirror rows are records, not community notes
+  // (register 1435 Leg 2): excluded at the presentation
+  // reshapes on the registryMirror flag Leg 1 carries. The
+  // slice itself stays whole for its legitimate surfaces.
+  const forumNotesForView = data.forum.filter(f => !f.registryMirror).map(f => ({
     id: f.id, author: f.author, content: f.content, created_at: f.created_at,
   }));
 
@@ -57,7 +61,7 @@ export function MovesPage() {
         stations={data.stations}
         announcements={data.announcements}
         wellNotes={forumNotesForView}
-        forum={data.forum}
+        forum={data.forum.filter(f => !f.registryMirror)}
         forumReplies={data.forumReplies}
         defaultTab={ui.movesDefaultTab}
         onAddTask={() => setShowAddTask(true)}

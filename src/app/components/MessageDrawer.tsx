@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { PERSONS } from './data';
 import type { Message } from './api';
 import { showToast } from './Toast';
+import { toggleReactionMap } from '../../lib/messageReactions';
 
 interface MessageDrawerProps {
   messages: Message[];
@@ -64,23 +65,10 @@ const SENDER_COLORS: Record<string, string> = {
   bingle:   '#B8A9D4',
 };
 
-// ── localStorage-based reactions ─────────────────────────────────────────────
-const LS_REACTIONS_KEY = 'cr8w_chat_reactions';
-
-function loadLocalReactions(): Record<number, Record<string, string[]>> {
-  try {
-    const raw = localStorage.getItem(LS_REACTIONS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-}
-
-function saveLocalReactions(data: Record<number, Record<string, string[]>>) {
-  try {
-    localStorage.setItem(LS_REACTIONS_KEY, JSON.stringify(data));
-  } catch {
-    showToast('\u26A0\uFE0F couldn\u2019t save \u2014 try again', 'alert');
-  }
-}
+// ── Reactions live on the message record (Fix 3) ─────────────────────────────
+// Message.reactions (emoji → person keys) writes through the messages
+// resource via onUpdateFields, the same path tags take. The former
+// localStorage-only map synced nowhere and is retired.
 
 // ── Local reply threads ───────────────────────────────────────────────────────
 type ChatReply = { id: number; author: string; content: string; ts: string };
@@ -175,7 +163,6 @@ export function MessageDrawer({
   const [filterMode,     setFilterMode]     = useState<FilterMode>('all');
   const [activeTag,      setActiveTag]      = useState<MsgTag>(null);
   const [hoveredMsgId,   setHoveredMsgId]   = useState<number | null>(null);
-  const [localReactions, setLocalReactions] = useState<Record<number, Record<string, string[]>>>(loadLocalReactions);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Edit state
@@ -351,21 +338,12 @@ export function MessageDrawer({
     setMsgMenu(null);
   }
 
-  // ── Reaction toggle (localStorage) ──────────────────────────────────────────
-  function toggleReaction(msgId: number, emoji: string) {
-    setLocalReactions(prev => {
-      const next = { ...prev };
-      if (!next[msgId]) next[msgId] = {};
-      const users = next[msgId][emoji] ? [...next[msgId][emoji]] : [];
-      const idx = users.indexOf(activeAs);
-      if (idx >= 0) users.splice(idx, 1);
-      else users.push(activeAs);
-      if (users.length > 0) next[msgId] = { ...next[msgId], [emoji]: users };
-      else { const r = { ...next[msgId] }; delete r[emoji]; next[msgId] = r; }
-      if (Object.keys(next[msgId]).length === 0) delete next[msgId];
-      saveLocalReactions(next);
-      return next;
-    });
+  // ── Reaction toggle (record-backed) ─────────────────────────────────────────
+  async function toggleReaction(msgId: number, emoji: string) {
+    const msg = messages.find(m => m.id === msgId);
+    if (msg) {
+      await onUpdateFields(msgId, { reactions: toggleReactionMap(msg.reactions, emoji, activeAs) });
+    }
     setReactionPicker(null);
     setHoveredMsgId(null);
   }
@@ -499,7 +477,7 @@ export function MessageDrawer({
   // ── Render helpers ────────────────────────────────────────────────────────
 
   function renderReactions(msg: AnyMsg) {
-    const reactions = localReactions[msg.id];
+    const reactions = msg.reactions;
     if (!reactions || Object.keys(reactions).length === 0) return null;
     return (
       <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
@@ -872,7 +850,7 @@ export function MessageDrawer({
             onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', gap: 4, background: '#fff', borderRadius: 22, padding: '5px 9px', boxShadow: '0 2px 12px rgba(0,0,0,0.15)' }}>
               {REACTION_EMOJIS.map(r => {
-                const iReacted = (localReactions[msg.id]?.[r] || []).includes(activeAs);
+                const iReacted = (msg.reactions?.[r] || []).includes(activeAs);
                 return (
                   <button key={r} onClick={() => toggleReaction(msg.id, r)}
                     style={{

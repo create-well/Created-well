@@ -13,7 +13,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive, createMoneyPage, validateMoneyCreate } from './_notionWriter.js';
+import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive, createMoneyPage, validateMoneyCreate, isNotionPageId } from './_notionWriter.js';
 import { normalizeMoney } from '../src/lib/notionNormalizer.js';
 import { applyCors, requireSession, requireSessionOrCron } from './_auth.js';
 
@@ -123,12 +123,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ── Sync ──────────────────────────────────────────────────────────────────
     if (resource === 'sync' && method === 'GET') {
+      // Legacy fallback honesty: this route serves only KV-owned
+      // collections. Tasks, stations, forum, and coflow dates are
+      // Notion-canonical; their KV rows are write mirrors and can go
+      // stale when Notion is edited directly, so they are deliberately
+      // not served here. The response names the unavailable canonical
+      // slices instead of dressing a mirror up as the source.
       const SYNC_KEYS = [
-        'cr8w_tasks', 'cr8w_stations', 'cr8w_forum', 'cr8w_messages',
+        'cr8w_messages',
         'cr8w_braindumps', 'cr8w_announcements', 'cr8w_forum_replies',
         'cr8w_workshops', 'cr8w_workshop_programs', 'cr8w_workshop_resources',
-        'cr8w_coflow_dates', 'cr8w_coflow_checkins', 'cr8w_well_notes',
-        'cr8w_calendar_events',
+        'cr8w_coflow_checkins', 'cr8w_well_notes',
+        'cr8w_calendar_events', 'cr8w_decisions',
       ];
       const sb = supabase();
       const { data, error } = await sb.from(TABLE).select('key,value').in('key', SYNC_KEYS);
@@ -136,9 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const map: Record<string, any[]> = {};
       for (const row of data ?? []) map[row.key] = parseList(row.value, row.key);
       res.json({
-        tasks: map['cr8w_tasks'] ?? [],
-        stations: map['cr8w_stations'] ?? [],
-        forum: map['cr8w_forum'] ?? [],
+        canonicalSlicesUnavailable: ['tasks', 'stations', 'forum', 'coflowDates'],
         messages: map['cr8w_messages'] ?? [],
         braindumps: map['cr8w_braindumps'] ?? [],
         announcements: map['cr8w_announcements'] ?? [],
@@ -146,10 +150,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         workshops: map['cr8w_workshops'] ?? [],
         workshopPrograms: map['cr8w_workshop_programs'] ?? [],
         workshopResources: map['cr8w_workshop_resources'] ?? [],
-        coflowDates: map['cr8w_coflow_dates'] ?? [],
         coflowCheckins: map['cr8w_coflow_checkins'] ?? [],
         wellNotes: map['cr8w_well_notes'] ?? [],
         calendarEvents: map['cr8w_calendar_events'] ?? [],
+        decisions: map['cr8w_decisions'] ?? [],
       });
       return;
     }
@@ -453,7 +457,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         const list = await getList(kvKey);
         const idx = list.findIndex((x: any) => String(x.id) === String(id));
-        if (idx === -1) { res.status(404).json({ error: 'Not found' }); return; }
+        if (idx === -1) {
+          // RR-004 (shape A): the dual-write resources may also be
+          // addressed by Notion page id. The dashboard payload presents
+          // Notion-sourced records under their page, and their edits
+          // carry partial bodies — so the update writes through to
+          // Notion with the partial property builders, no KV shadow
+          // required. A KV id that misses keeps the plain 404.
+          const cfg = NOTION_RESOURCES[resource];
+          if (cfg && isNotionPageId(id)) {
+            if (!process.env[cfg.dbIdEnvVar] || !process.env.NOTION_SECRET) {
+              res.status(502).json({ error: 'Notion update failed', notion_error: 'notion_not_configured' }); return;
+            }
+            try {
+              await notionUpdate(id, cfg.toPartialProperties(b));
+            } catch (err: any) {
+              console.error(`[_notionWriter] update failed for ${resource}:`, err);
+              res.status(502).json({ error: 'Notion update failed', notion_error: 'notion_write_failed' }); return;
+            }
+            res.json({ ...b, id, notionPageId: id, notion_sync: 'ok' }); return;
+          }
+          res.status(404).json({ error: 'Not found' }); return;
+        }
         list[idx] = { ...list[idx], ...b, id: list[idx].id, updated_at: new Date().toISOString() };
         // Notion dual-write: update if item has a notionPageId.
         // Truthful outcome: a Notion failure returns 502 and KV is unchanged.
@@ -465,6 +490,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (method === 'DELETE' && id) {
         const list = await getList(kvKey);
         const target = list.find((x: any) => String(x.id) === String(id));
+        // RR-004 DELETE follow-on: the dual-write resources may also be
+        // addressed by Notion page id. A Notion-sourced record with no
+        // KV shadow archives directly on its page; no shadow is
+        // required, and the outcome is reported truthfully.
+        if (!target) {
+          const cfg = NOTION_RESOURCES[resource];
+          if (cfg && isNotionPageId(id)) {
+            if (!process.env[cfg.dbIdEnvVar] || !process.env.NOTION_SECRET) {
+              res.status(502).json({ error: 'Notion archive failed', notion_error: 'notion_not_configured' }); return;
+            }
+            try {
+              await notionArchive(id);
+            } catch (err: any) {
+              console.error(`[_notionWriter] archive failed for ${resource}:`, err);
+              res.status(502).json({ error: 'Notion archive failed', notion_error: 'notion_write_failed' }); return;
+            }
+            res.json({ ok: true, id, notionPageId: id, notion_sync: 'ok' }); return;
+          }
+        }
         // The dashboard can include Notion-only Moves without a KV shadow.
         // Without a trusted stored target, do not report a canonical deletion.
         if (resource === 'tasks' && !target) {

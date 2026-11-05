@@ -39,6 +39,7 @@ interface HubViewProps {
   brainDumps: BrainDump[];
   onAddBrainDump: (dump: Omit<BrainDump, 'id' | 'created_at'>) => void;
   onDeleteBrainDump: (id: number) => void;
+  onUpdateBrainDump: (id: number, updates: Partial<BrainDump>) => Promise<void>;
   syncTime: string;
   activeUser?: string;
   wellNotes: WellNote[];
@@ -345,7 +346,7 @@ function getGreeting() {
   return 'Good evening';
 }
 
-export function HubView({ onNavigate, onNavigateGeyserStations, announcements, brainDumps, onAddBrainDump, onDeleteBrainDump, syncTime, activeUser, wellNotes, onAddWellNote, onLandWellNote, workshops = [], coFlowDates = [], coFlowCheckins = [], actionItems = [], stations = [] }: HubViewProps) {
+export function HubView({ onNavigate, onNavigateGeyserStations, announcements, brainDumps, onAddBrainDump, onDeleteBrainDump, onUpdateBrainDump, syncTime, activeUser, wellNotes, onAddWellNote, onLandWellNote, workshops = [], coFlowDates = [], coFlowCheckins = [], actionItems = [], stations = [] }: HubViewProps) {
   const [showSynergy, setShowSynergy] = useState(false);
   const [openSynergySections, setOpenSynergySections] = useState<Set<string>>(new Set());
   const [showAllDumps, setShowAllDumps] = useState(false);
@@ -355,13 +356,10 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
   const [dumpFilter, setDumpFilter] = useState('all');
   const [dumpTag, setDumpTag] = useState<string | null>(null);
 
-  // ── Brain Dump: localStorage-backed state for playground sends, archives, timer resets ──
-  const [sentToPlayground, setSentToPlayground] = useState<Set<number>>(() => {
-    try { const r = localStorage.getItem('cr8w_dump_sent_pg'); return r ? new Set(JSON.parse(r)) : new Set(); } catch { return new Set(); }
-  });
-  const [archivedDumps, setArchivedDumps] = useState<Set<number>>(() => {
-    try { const r = localStorage.getItem('dump_archive'); return r ? new Set(JSON.parse(r)) : new Set(); } catch { return new Set(); }
-  });
+  // ── Brain Dump flags (Fix 3): sent/archived ride the dump record itself
+  // (sent_to_playground / archived via onUpdateBrainDump). Only the timer
+  // resets stay localStorage-backed — a personal timer preference, not
+  // shared state (named device-local by design).
   const [resetTimestamps, setResetTimestamps] = useState<Record<number, string>>(() => {
     try { const r = localStorage.getItem('cr8w_dump_reset_ts'); return r ? JSON.parse(r) : {}; } catch { return {}; }
   });
@@ -735,28 +733,33 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
   ];
 
   // ── Send dump to Playground Brain Lumps ──
-  function sendDumpToPlayground(dump: BrainDump) {
+  async function sendDumpToPlayground(dump: BrainDump) {
     try {
       const raw = localStorage.getItem('cr8w_playground');
       const pgData = raw ? JSON.parse(raw) : { glossary: [], brainLumps: [], seeds: [], brandLab: [], parking: [] };
       const newLump = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, text: dump.content, ts: Date.now() };
       pgData.brainLumps = [newLump, ...(pgData.brainLumps || [])];
       localStorage.setItem('cr8w_playground', JSON.stringify(pgData));
-      const next = new Set(sentToPlayground); next.add(dump.id);
-      setSentToPlayground(next);
-      localStorage.setItem('cr8w_dump_sent_pg', JSON.stringify([...next]));
-      showToast('\u26FA sent to Playground Brain Lumps', 'well');
     } catch {
       showToast('\u26A0\uFE0F couldn\u2019t send \u2014 try again', 'alert');
+      return;
+    }
+    try {
+      await onUpdateBrainDump(dump.id, { sent_to_playground: true });
+      showToast('\u26FA sent to Playground Brain Lumps', 'well');
+    } catch {
+      showToast('\u26A0\uFE0F sent to the Playground, but the sent mark didn\u2019t save \u2014 try again', 'alert');
     }
   }
 
   // ── Bubbling up: archive a dump ──
-  function archiveDump(id: number) {
-    const next = new Set(archivedDumps); next.add(id);
-    setArchivedDumps(next);
-    localStorage.setItem('dump_archive', JSON.stringify([...next]));
-    showToast('\u{1FAA6} resting now.');
+  async function archiveDump(id: number) {
+    try {
+      await onUpdateBrainDump(id, { archived: true });
+      showToast('\u{1FAA6} resting now.');
+    } catch {
+      showToast('\u26A0\uFE0F couldn\u2019t archive \u2014 try again', 'alert');
+    }
   }
 
   // ── Bubbling up: reset timer (still alive) ──
@@ -771,8 +774,8 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
   const bubblingUpItem = React.useMemo(() => {
     const fiveDaysAgo = Date.now() - 5 * 24 * 60 * 60 * 1000;
     return brainDumps.find(d => {
-      if (archivedDumps.has(d.id)) return false;
-      if (sentToPlayground.has(d.id)) return false;
+      if (d.archived) return false;
+      if (d.sent_to_playground) return false;
       // Must be untagged (no tag or empty)
       const tag = d.tags?.trim();
       if (tag && DUMP_TAG_PILLS.some(t => t.key === tag)) return false;
@@ -782,7 +785,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
         : d.created_at ? new Date(d.created_at).getTime() : Date.now();
       return effectiveTime < fiveDaysAgo;
     }) || null;
-  }, [brainDumps, archivedDumps, sentToPlayground, resetTimestamps]);
+  }, [brainDumps, resetTimestamps]);
 
   const bubblingUpDaysAgo = bubblingUpItem ? (() => {
     const ts = resetTimestamps[bubblingUpItem.id]
@@ -791,7 +794,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
     return Math.floor((Date.now() - ts) / (24 * 60 * 60 * 1000));
   })() : 0;
 
-  const filteredDumps = (dumpFilter === 'all' ? brainDumps : brainDumps.filter(d => d.author === dumpFilter)).filter(d => !archivedDumps.has(d.id));
+  const filteredDumps = (dumpFilter === 'all' ? brainDumps : brainDumps.filter(d => d.author === dumpFilter)).filter(d => !d.archived);
   const visibleDumps = showAllDumps ? filteredDumps : filteredDumps.slice(0, 3);
 
   return (
@@ -1168,6 +1171,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                       />
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.58rem', color: 'var(--text-muted)', fontWeight: 600, marginRight: 4 }}>RSVP</span>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: '0.58rem', color: 'var(--text-muted)', marginRight: 4 }}>saved on this device</span>
                         {RSVP_PEOPLE.map(p => {
                           const attending = !!rsvpData[p.key];
                           return (
@@ -2232,7 +2236,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                 const displayName = isAnon ? 'anonymous' : capitalize(d.author);
                 const tagKey = d.tags?.trim();
                 const tagPill = DUMP_TAG_PILLS.find(t => t.key === tagKey);
-                const isSentToPg = sentToPlayground.has(d.id);
+                const isSentToPg = !!d.sent_to_playground;
                 return (
                   <div key={d.id} className="hub-dump-entry" style={{
                     opacity: isSentToPg ? 0.5 : 1,

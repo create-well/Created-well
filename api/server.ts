@@ -157,7 +157,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ── Generic CRUD for list resources ───────────────────────────────────────
     // D-1b: the decisions queue's vocabularies (client DecisionRecord).
     const DECISION_URGENCIES = ['now', 'this-week', 'when-clear'];
-    const DECISION_STATUSES = ['pending', 'decided', 'deferred'];
+    // QA note (D-1 verdict): the DecisionRecord type union admits
+    // 'deferred' for read compatibility, but no page partition renders
+    // it, so it is NOT a writable status — defer is an urgency write
+    // only, on both sides of the wire. The writable set is exactly:
+    const DECISION_STATUSES = ['pending', 'decided'];
     const KV_MAP: Record<string, string> = {
       tasks: 'cr8w_tasks',
       stations: 'cr8w_stations',
@@ -445,7 +449,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // value is refused rather than stored.
         if (resource === 'decisions') {
           if ('urgency' in b && !DECISION_URGENCIES.includes(b.urgency)) { res.status(400).json({ error: "urgency must be 'now', 'this-week', or 'when-clear'" }); return; }
-          if ('status' in b && !DECISION_STATUSES.includes(b.status)) { res.status(400).json({ error: "status must be 'pending', 'decided', or 'deferred'" }); return; }
+          if ('status' in b && !DECISION_STATUSES.includes(b.status)) { res.status(400).json({ error: "status must be 'pending' or 'decided' ('deferred' is not writable — defer is an urgency write)" }); return; }
         }
         const list = await getList(kvKey);
         const idx = list.findIndex((x: any) => String(x.id) === String(id));

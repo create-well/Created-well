@@ -105,7 +105,10 @@ test('PUT defer drops urgency to when-clear and the record stays pending', async
 
 test('PUT enum guard refuses out-of-enum urgency/status and stores nothing new', async () => {
   const seed = [{ id: 7, question: 'Q?', context: '', urgency: 'now', status: 'pending', created_at: '2026-11-04T00:00:00.000Z' }];
-  for (const body of [{ urgency: 'later' }, { status: 'archived' }]) {
+  // 'deferred' is in the client's type union but is NOT a writable
+  // status (QA note, D-1 verdict): no partition renders it, and defer
+  // is an urgency write only. It refuses like any out-of-enum value.
+  for (const body of [{ urgency: 'later' }, { status: 'archived' }, { status: 'deferred' }]) {
     const r = await invoke({ method: 'PUT', path: 'decisions/7', seed, body });
     assert.equal(r.code, 400, JSON.stringify(body));
     assert.equal(r.stored[0].urgency, 'now');

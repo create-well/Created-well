@@ -36,10 +36,15 @@ test('nextUpFlow picks the soonest upcoming open flow', () => {
   assert.equal(nextUpFlow([], NOW), null);
 });
 
-test('isEmergenceDay is true only on the day itself', () => {
-  assert.equal(isEmergenceDay(flow(1, '2026-10-27'), NOW), true);
-  assert.equal(isEmergenceDay(flow(2, '2026-10-28'), NOW), false);
-  assert.equal(isEmergenceDay(flow(3, 'TBD'), NOW), false);
+test('isEmergenceDay: a Geyser-marked flow, on its day only (register 1378)', () => {
+  // Amended by the register-1378 packet: the FE-5-era version of
+  // this test asserted an UNMARKED flow dated today was an
+  // emergence day — the mislabel the vocabulary fix retires. The
+  // marker now needs the record's Geyser marking AND the day.
+  assert.equal(isEmergenceDay(flow(1, '2026-10-27', { flowType: 'Geyser' }), NOW), true);
+  assert.equal(isEmergenceDay(flow(1, '2026-10-27'), NOW), false);
+  assert.equal(isEmergenceDay(flow(2, '2026-10-28', { flowType: 'Geyser' }), NOW), false);
+  assert.equal(isEmergenceDay(flow(3, 'TBD', { flowType: 'Geyser' }), NOW), false);
 });
 
 test('nextUpDateLabel carries weekday + PT; missing reads §4 wording', () => {

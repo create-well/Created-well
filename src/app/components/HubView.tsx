@@ -1809,8 +1809,11 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                                 </button>
                               )}
 
-                              {/* Geyser link for CR8W/launch events */}
-                              {(ev.type === 'cr8w' || ev.type === 'launch') && (
+                              {/* Geyser link — Geyser-class events only (register 1378):
+                                  the co-flow record's own Geyser marking, or the
+                                  calendar event's own title naming it. Every KV
+                                  event used to qualify via the blanket 'cr8w' type. */}
+                              {((ev.coFlowDate && (ev.coFlowDate.flowType === 'Geyser' || ev.coFlowDate.theme === 'Geyser')) || /\bgeyser\b/i.test(ev.title)) && (
                                 <button
                                   onClick={e => { e.stopPropagation(); onNavigate('geyser'); }}
                                   style={{

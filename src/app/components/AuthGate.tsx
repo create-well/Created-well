@@ -14,7 +14,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { projectId } from '/utils/supabase/info';
 import { lookupUsername, registerUsername } from './api';
-import { isRecoveryHash, sessionEntry } from '../../lib/recoveryEntry';
+import { isRecoveryHash, sessionEntry, recoveryLatched, clearRecoveryLatch } from '../../lib/recoveryEntry';
 
 // ── Supabase browser client ───────────────────────────────────────────────────
 // SUPABASE_ANON_JWT: JWT anon key required by Supabase Auth (signIn, signUp, etc.)
@@ -103,6 +103,9 @@ export function getStoredProfile(): string | null {
 export async function signOut(): Promise<void> {
   try { await client().auth.signOut(); } catch {}
   try { localStorage.removeItem('cr8w_user_profile'); } catch {}
+  // An explicit sign-out is one of the two paths that end a recovery
+  // (R-0): the latch must not hold a later normal sign-in at the form.
+  try { clearRecoveryLatch(sessionStorage); } catch {}
 }
 
 // ── Friendly error messages for common Supabase Auth codes ────────────────────
@@ -182,7 +185,13 @@ export function AuthGate({ onAuthenticated }: Props) {
     // set-new-password handlers create the client on user interaction,
     // via client().
     const hasStoredSession = hasStoredSessionForRefresh();
-    const isRecoveryArrival = typeof window !== 'undefined' && isRecoveryHash(window.location.hash);
+    // R-0: the structural latch joins the arrival checks. App.tsx captured
+    // the recovery marker at module-evaluation time into sessionStorage,
+    // before any client could consume the hash; the raw hash may already
+    // be stripped by the time this effect runs, so the latch — not the
+    // hash — is the durable evidence of a recovery arrival.
+    const isLatched = typeof window !== 'undefined' && recoveryLatched(sessionStorage);
+    const isRecoveryArrival = isLatched || (typeof window !== 'undefined' && isRecoveryHash(window.location.hash));
     if (!hasStoredSession && !isRecoveryArrival) {
       setCheckingSession(false);
       return;
@@ -190,9 +199,9 @@ export function AuthGate({ onAuthenticated }: Props) {
 
     // Recovery hold: a recovery arrival carries a valid session, so the
     // session check below must not auto-enter on it — the gate holds at
-    // the set-new-password form until the password is set. The flag is
-    // read from the URL hash synchronously, before the client can
-    // consume it, and the PASSWORD_RECOVERY event raises it too.
+    // the set-new-password form until the password is set. Pending is the
+    // union of the structural latch, the arrival hash, and the
+    // PASSWORD_RECOVERY event, so no single lost race can drop it (R-0).
     let recoveryPending = isRecoveryArrival;
 
     // Listen for PASSWORD_RECOVERY: fires when user arrives via a reset-password email link.
@@ -243,6 +252,12 @@ export function AuthGate({ onAuthenticated }: Props) {
         setMode('newpassword');
         setCheckingSession(false);
       } else if (entry === 'enter') {
+        // R-0 stale-latch sweep: a live NORMAL session entering the app
+        // proves no recovery is in progress, so a latch left behind by a
+        // recovery tab that closed without setting or signing out cannot
+        // hold a later entry. The session this branch keys on is not a
+        // fresh recovery arrival — pending was false when it was decided.
+        try { clearRecoveryLatch(sessionStorage); } catch {}
         const key = session!.user?.user_metadata?.cr8w_profile ?? getStoredProfile() ?? 'monny';
         const userEmail = session!.user?.email ?? '';
         localStorage.setItem('cr8w_user_profile', key);
@@ -349,6 +364,9 @@ export function AuthGate({ onAuthenticated }: Props) {
     const { data, error: err } = await client().auth.updateUser({ password: newPw });
     setBusy(false);
     if (err) { setError(friendlyError(err.message)); triggerShake(); return; }
+    // The set completed: the recovery is over and the latch clears (R-0).
+    // Until this line the latch survives everything, including reloads.
+    try { clearRecoveryLatch(sessionStorage); } catch {}
     const key = data.user?.user_metadata?.cr8w_profile ?? getStoredProfile() ?? 'monny';
     const userEmail = data.user?.email ?? '';
     localStorage.setItem('cr8w_user_profile', key);

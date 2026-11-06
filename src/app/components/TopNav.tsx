@@ -227,6 +227,26 @@ export function TopNav({ onSignOut }: TopNavProps) {
           })()}
         </div>
 
+        {/* R-0: sign-out is always visible in the top bar — the account
+            menu and the mobile menu keep their entries, but leaving the
+            dashboard never depends on finding either. */}
+        {onSignOut && (
+          <button
+            type="button"
+            onClick={onSignOut}
+            aria-label="Sign out"
+            style={{
+              marginLeft: 10, padding: '7px 12px', borderRadius: 8,
+              background: 'none', border: '1px solid var(--border-soft, rgba(196,164,132,0.3))',
+              color: '#964226', fontFamily: 'var(--font-label)', fontSize: '0.72rem',
+              fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
+              cursor: 'pointer', minHeight: 44, whiteSpace: 'nowrap',
+            }}
+          >
+            ⏻ sign out
+          </button>
+        )}
+
         <button className="hamburger" aria-label="Menu" onClick={() => setMobileOpen(!mobileOpen)}>
           <span></span><span></span><span></span>
         </button>

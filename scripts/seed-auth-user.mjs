@@ -3,7 +3,7 @@
  * Uses email_confirm: true to bypass email confirmation.
  *
  * Usage:
- *   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key node scripts/seed-auth-user.mjs
+ *   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key CR8W_PASSWORD=your_seed_password node scripts/seed-auth-user.mjs
  *
  * Find the service role key at:
  *   https://supabase.com/dashboard/project/axntibrdivccycxdwlzk/settings/api
@@ -20,8 +20,14 @@ if (!SERVICE_ROLE_KEY) {
 }
 
 const EMAIL    = 'monny@createwell.co';
-const PASSWORD = 'createwell2026!';
+const PASSWORD = process.env.CR8W_PASSWORD;
 const PROFILE  = 'monny';
+if (!PASSWORD) {
+  console.error('Error: CR8W_PASSWORD env var is required.');
+  console.error('Set it to the seed password for the test user; it is never stored in this repo.');
+  process.exit(1);
+}
+
 const NAME     = 'Monica (Monny)';
 
 console.log(`Seeding user: ${EMAIL} (profile: ${PROFILE})`);

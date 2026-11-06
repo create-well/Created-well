@@ -1,6 +1,6 @@
 /**
  * Seed mb@tablante.com as the CR8W admin / owner account.
- * Primary password: '4612cr8w'   Alternative: 'cocreatemb'
+ * The seed password comes from env (CR8W_PASSWORD); no password is stored in this repo.
  *
  * Usage:
  *   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key node scripts/seed-mb-admin.mjs
@@ -23,8 +23,14 @@ if (!SERVICE_ROLE_KEY) {
 }
 
 const EMAIL    = 'mb@tablante.com';
-const PASSWORD = process.env.CR8W_PASSWORD ?? '4612cr8w';
+const PASSWORD = process.env.CR8W_PASSWORD;
 const PROFILE  = 'monny';
+if (!PASSWORD) {
+  console.error('Error: CR8W_PASSWORD env var is required.');
+  console.error('Set it to the seed password for the admin account; it is never stored in this repo.');
+  process.exit(1);
+}
+
 const NAME     = 'MB';
 
 const adminHeaders = {

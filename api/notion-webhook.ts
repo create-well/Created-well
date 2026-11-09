@@ -353,8 +353,19 @@ export default async function handler(
     }
 
     const prior = await getDeliveryState(source);
-    await markEvent(source, { id: eventId, entityId, at: eventAt });
-    if (withinCoalesceWindow(prior, Date.now())) {
+    // The pending pair carries the event's op (rev3 item 7):
+    // page.deleted tombstones at claim time; everything else upserts.
+    const marked = await markEvent(source, {
+      id: eventId,
+      entityId,
+      at: eventAt,
+      op: type === "page.deleted" ? "delete" : "upsert",
+    });
+    // A pending overflow clears the set into an immediate full-source
+    // claim (rev3 item 7 escalation): the coalesce deferral below
+    // would strand the work, because the set no longer names it. The
+    // overflow rides this run's record as a note.
+    if (!marked.overflowed && withinCoalesceWindow(prior, Date.now())) {
       console.log(
         `${LOG_PREFIX} coalesced source=${source} eventIdPresent=${eventId ? "yes" : "no"}`,
       );
@@ -372,11 +383,30 @@ export default async function handler(
       console.log(
         `${LOG_PREFIX} deferred source=${source} (lease held) eventIdPresent=${eventId ? "yes" : "no"}`,
       );
+      if (marked.overflowed) {
+        // The one fact the deferral rule would otherwise lose: the
+        // overflow itself. It rides the log line (the ledger's console
+        // surface); the holder's run performs the escalated re-query.
+        console.log(
+          `${LOG_PREFIX} pending overflow source=${source} escalated to full-source claim; claim deferred (lease held)`,
+        );
+      }
       return res.status(200).json({ ok: true, deferred: true, source });
     }
     await recordEngineRun(
       startedAtMs,
-      [{ source, rows: outcome.count, cached: false }],
+      [
+        {
+          source,
+          rows: outcome.count,
+          cached: false,
+          ...(marked.overflowed
+            ? {
+                note: "pending overflow: set cleared at the 200-pair cap; escalated to a full-source re-query",
+              }
+            : {}),
+        },
+      ],
       { trigger: "webhook" },
     );
     console.log(

@@ -78,17 +78,20 @@ export function computeSyncAlerts(inputs: AlertInputs): string[] {
   const alerts: string[] = [];
   const { now, runs } = inputs;
 
-  // The window opens at the previous reconcile pass. Runs are newest
-  // first and exclude the current pass, so the first reconcile run
-  // in the list is the previous pass; with none, the window is the
-  // whole list.
+  // The window opens AT the previous reconcile pass, inclusive: the
+  // previous pass is the boundary run, and if that pass itself failed
+  // its error run is the first thing this pass must surface (a strict
+  // > here would exempt reconcile's own failures from the alert
+  // forever). Runs are newest first and exclude the current pass, so
+  // the first reconcile run in the list is the previous pass; with
+  // none, the window is the whole list.
   const previousPass = runs.find((run) => run.trigger === "reconcile");
   const windowStart = previousPass
     ? Date.parse(previousPass.started_at)
     : NaN;
   const sinceLastPass = runs.filter((run) => {
     if (!Number.isFinite(windowStart)) return true;
-    return Date.parse(run.started_at) > windowStart;
+    return Date.parse(run.started_at) >= windowStart;
   });
 
   const errorRuns = sinceLastPass.filter(

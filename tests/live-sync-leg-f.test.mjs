@@ -82,6 +82,20 @@ test('error runs since the last pass alert once, counted; older ones do not', ()
   assert.deepEqual(lines, ['error runs since last reconcile pass: 2']);
 });
 
+test('a failed previous reconcile pass counts in its own window (the boundary is inclusive)', () => {
+  // Pins the inclusive window start: the previous pass is the boundary
+  // run, so its own failure must surface. A strict > filter would
+  // exempt reconcile's own failures from the alert permanently.
+  const lines = computeSyncAlerts(inputs({
+    runs: [
+      run(NOW - INTERVAL, 'reconcile', 'failed', [{ source: 'moves', error: 'store down' }]),
+      run(NOW - 2 * INTERVAL, 'reconcile', 'ok'),
+      run(NOW - 3 * INTERVAL, 'webhook', 'failed', [{ source: 'webhook', error: 'ancient' }]),
+    ],
+  }));
+  assert.deepEqual(lines, ['error runs since last reconcile pass: 1']);
+});
+
 test('with no previous pass, the whole history is the window', () => {
   const lines = computeSyncAlerts(inputs({
     runs: [run(NOW - MIN, 'webhook', 'failed', [{ source: 'webhook', error: 'x' }])],

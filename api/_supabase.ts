@@ -515,6 +515,36 @@ export async function getSetupValue(
   return row.value;
 }
 
+// The setup row itself, value plus its updated_at — the alert leg
+// (live-sync Leg F) ages the uncleared verification row from
+// updated_at, which getSetupValue does not surface. Null when the row
+// does not exist.
+export async function getSetupRow(
+  key: string,
+): Promise<{ value: Record<string, unknown> | null; updated_at: string | null } | null> {
+  const row = await rest(
+    `sync_setup?key=eq.${encodeURIComponent(key)}&select=value,updated_at`,
+    { expectObject: true },
+  );
+  if (!isRecord(row)) return null;
+  return {
+    value: isRecord(row.value) ? row.value : null,
+    updated_at: typeof row.updated_at === "string" ? row.updated_at : null,
+  };
+}
+
+// The lease snapshot for one source, for readers that only need the
+// claim's liveness (Leg F's expired-claim alert reads expiry; the
+// fencing fields stay inside this module). Null when the source has
+// no delivery-state row.
+export async function getLeaseSnapshot(
+  source: string,
+): Promise<{ owner: string | null; expires_at: string | null } | null> {
+  const row = await getLeaseRow(source);
+  if (!row) return null;
+  return { owner: row.lease_owner, expires_at: row.lease_expires_at };
+}
+
 export async function setSetupValue(
   key: string,
   value: Record<string, unknown>,

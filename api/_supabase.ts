@@ -488,3 +488,25 @@ export async function setSetupValue(
     }),
   });
 }
+
+// First-write-wins insert for one-time setup values (live-sync rev3
+// item 6): the insert lands only when the key is absent, so a populated
+// setup row can never be overwritten by a later writer. True when this
+// call inserted the row; false when a row already existed (the store
+// ignored the duplicate) — the caller treats false as "window closed",
+// never as a partial success.
+export async function insertSetupValue(
+  key: string,
+  value: Record<string, unknown>,
+): Promise<boolean> {
+  const result = await rest("sync_setup?on_conflict=key", {
+    method: "POST",
+    headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
+    body: JSON.stringify({
+      key,
+      value,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+  return Array.isArray(result) && result.length === 1;
+}

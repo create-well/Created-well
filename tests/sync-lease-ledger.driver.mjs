@@ -60,6 +60,13 @@ globalThis.fetch = async (url, init = {}) => {
   const u = new URL(String(url));
   if (u.hostname === 'api.notion.com') {
     notionCalls += 1;
+    // Live-sync Leg A: page->source mapping reads the re-read page's
+    // parent (the payload parent is fallback only), so the stub
+    // answers the retrieve for the driver's page with the same parent
+    // the payload carries. Everything else still 500s.
+    if ((init.method ?? 'GET') === 'GET' && u.pathname === '/v1/pages/page-driver-1') {
+      return new Response(JSON.stringify({ parent: { database_id: 'db-content' } }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
     return new Response('{"object":"error"}', { status: 500 });
   }
   if (u.pathname.endsWith('/sync_delivery_state')) {
@@ -155,6 +162,9 @@ assert.equal(lines.filter((l) => l.includes('[reconcile] deferred source=')).len
 assert.ok(!lines.some((l) => l.includes('[sync-ledger]')), 'NO ledger record when every source defers');
 realLog('PASS reconcile: all-deferred tick writes no ledger record');
 
-assert.equal(notionCalls, 0, 'deferred paths never call Notion');
-realLog('PASS: zero Notion calls across both deferred paths');
+// Leg A mapping note: the webhook path makes exactly one Notion call
+// (the mapping re-read of the driver's page); the reconcile path makes
+// none, and neither path ever reaches a source query.
+assert.equal(notionCalls, 1, 'only the mapping re-read calls Notion across both deferred paths');
+realLog('PASS: no source queries across both deferred paths (one mapping re-read)');
 console.log = realLog;

@@ -234,11 +234,11 @@ export default async function handler(
 
   const handlerStartedAtMs = Date.now();
   const raw = await readRawBody(req);
-  if (raw.error === "too-large") {
-    console.log(`${LOG_PREFIX} payload too large; failing closed`);
-    return res.status(400).json({ error: "Payload too large" });
-  }
-  if (raw.error) {
+  if ("error" in raw) {
+    if (raw.error === "too-large") {
+      console.log(`${LOG_PREFIX} payload too large; failing closed`);
+      return res.status(400).json({ error: "Payload too large" });
+    }
     // Transport failure, not an auth failure (rev3 item 11c): 400,
     // nothing written.
     console.log(`${LOG_PREFIX} raw body unavailable; failing closed`);

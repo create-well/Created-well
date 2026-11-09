@@ -14,6 +14,51 @@
 // RLS stays enabled with no public policies, so the anon key cannot read
 // or write any of it.
 
+// Pending work for a source (live-sync rev3 item 7): (entity_id, op)
+// pairs, not bare ids. A page.deleted event must tombstone at claim
+// time without a re-read, so the op travels with the id. The stored
+// JSONB predates the op: legacy string entries decode as op "upsert"
+// (decodePending below), so rows written by older code stay readable.
+export type PendingOp = "upsert" | "delete";
+
+export interface PendingEntry {
+  entity_id: string;
+  op: PendingOp;
+}
+
+export function decodePendingEntry(raw: unknown): PendingEntry | null {
+  if (typeof raw === "string") {
+    return raw ? { entity_id: raw, op: "upsert" } : null;
+  }
+  if (
+    isRecord(raw) &&
+    typeof raw.entity_id === "string" &&
+    raw.entity_id
+  ) {
+    return {
+      entity_id: raw.entity_id,
+      op: raw.op === "delete" ? "delete" : "upsert",
+    };
+  }
+  return null;
+}
+
+// Decode a stored pending array: malformed entries drop, duplicates
+// collapse by entity_id with delete winning over upsert (the same
+// rule the writer applies, so a stored duplicate can never resurrect
+// a deleted page).
+export function decodePending(raw: unknown): PendingEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const byId = new Map<string, PendingEntry>();
+  for (const item of raw) {
+    const entry = decodePendingEntry(item);
+    if (!entry) continue;
+    const prior = byId.get(entry.entity_id);
+    if (!prior || entry.op === "delete") byId.set(entry.entity_id, entry);
+  }
+  return [...byId.values()];
+}
+
 export interface DeliveryState {
   source: string;
   sync_version: number;
@@ -22,7 +67,7 @@ export interface DeliveryState {
   last_sync_started_at: string | null;
   last_sync_ok_at: string | null;
   dirty: boolean;
-  pending_entity_ids: string[];
+  pending_entity_ids: PendingEntry[];
   last_error: string | null;
 }
 
@@ -119,11 +164,7 @@ function toDeliveryState(raw: Record<string, unknown>): DeliveryState {
     last_sync_ok_at:
       typeof raw.last_sync_ok_at === "string" ? raw.last_sync_ok_at : null,
     dirty: raw.dirty === true,
-    pending_entity_ids: Array.isArray(raw.pending_entity_ids)
-      ? raw.pending_entity_ids.filter(
-          (id): id is string => typeof id === "string",
-        )
-      : [],
+    pending_entity_ids: decodePending(raw.pending_entity_ids),
     last_error: typeof raw.last_error === "string" ? raw.last_error : null,
   };
 }

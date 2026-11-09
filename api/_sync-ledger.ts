@@ -14,6 +14,10 @@ export interface LedgerSourceEntry {
   rows: number;
   cached: boolean;
   error?: string;
+  // Free-form run note for facts that are neither success counts nor
+  // errors (live-sync Legs C and F: pending-overflow escalations and
+  // alert lines ride the run record through this field).
+  note?: string;
 }
 
 export interface SyncRunRecord {

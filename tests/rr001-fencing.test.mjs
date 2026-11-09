@@ -56,6 +56,9 @@ function resetStore() {
     last_sync_started_at: OK_AT,
     last_sync_ok_at: OK_AT,
     dirty: true,
+    // Legacy string form on purpose (live-sync Leg C): rows written
+    // before pending entries carried ops decode as op "upsert".
+    // Concurrent-event injections below append the new pair shape.
     pending_entity_ids: ['p1'],
     last_error: null,
     updated_at: OK_AT,
@@ -183,14 +186,14 @@ test('an event appended after the run starts survives the commit; the starting p
   beforeStore = ({ method, body }) => {
     if (!injected && method === 'PATCH' && body && 'last_sync_started_at' in body) {
       injected = true;
-      row.pending_entity_ids = [...row.pending_entity_ids, 'p2'];
+      row.pending_entity_ids = [...row.pending_entity_ids, { entity_id: 'p2', op: 'upsert' }];
       row.last_event_at = EDITED;
     }
   };
   const outcome = await engine.syncSource('moves', 'synthetic-secret');
   assert.equal(outcome.deferred, false);
   assert.equal(outcome.version, 4);
-  assert.deepEqual(row.pending_entity_ids, ['p2']);
+  assert.deepEqual(row.pending_entity_ids, [{ entity_id: 'p2', op: 'upsert' }]);
   assert.equal(row.sync_version, 4);
   assert.equal(row.last_error, null);
 });
@@ -202,12 +205,12 @@ test('an event appended between the initial read and the started-state write is 
     // The acquire PATCH is the first write after the initial read.
     if (!injected && method === 'PATCH' && body && 'lease_owner' in body) {
       injected = true;
-      row.pending_entity_ids = [...row.pending_entity_ids, 'p2'];
+      row.pending_entity_ids = [...row.pending_entity_ids, { entity_id: 'p2', op: 'upsert' }];
     }
   };
   const outcome = await engine.syncSource('moves', 'synthetic-secret');
   assert.equal(outcome.deferred, false);
-  assert.deepEqual(row.pending_entity_ids, ['p2']);
+  assert.deepEqual(row.pending_entity_ids, [{ entity_id: 'p2', op: 'upsert' }]);
 });
 
 test('a lease takeover before the snapshot phase stops the run before any snapshot write', async () => {
@@ -266,13 +269,13 @@ test('the failure write records the error and preserves pending appended during 
   beforeStore = ({ method, body }) => {
     if (!injected && method === 'PATCH' && body && 'last_sync_started_at' in body) {
       injected = true;
-      row.pending_entity_ids = [...row.pending_entity_ids, 'p2'];
+      row.pending_entity_ids = [...row.pending_entity_ids, { entity_id: 'p2', op: 'upsert' }];
     }
   };
   await assert.rejects(engine.syncSource('moves', 'synthetic-secret'), /invalid properties/);
   assert.match(row.last_error, /invalid properties/);
   assert.equal(row.dirty, true);
-  assert.deepEqual(row.pending_entity_ids, ['p1', 'p2']);
+  assert.deepEqual(row.pending_entity_ids, ['p1', { entity_id: 'p2', op: 'upsert' }]);
   assert.equal(row.sync_version, 3);
 });
 

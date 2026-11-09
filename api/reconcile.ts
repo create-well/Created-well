@@ -14,11 +14,16 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { recordEngineRun, SOURCES, syncSource } from "./_sync-engine.js";
 import {
+  getDeliveryState,
+  getLeaseSnapshot,
+  getSetupRow,
   getSetupValue,
+  listSyncRuns,
   pruneSyncRuns,
   setSetupValue,
   supabaseConfigProblem,
 } from "./_supabase.js";
+import { computeSyncAlerts, type SyncRunSummary } from "./_sync-alerts.js";
 import type { LedgerSourceEntry } from "./_sync-ledger.js";
 
 interface ApiRequest {
@@ -40,6 +45,50 @@ function headerValue(
   // eslint-disable-next-line security/detect-object-injection -- Read-only header lookup keyed by an internal literal.
   const value = headers[name] ?? headers[name.toLowerCase()];
   return Array.isArray(value) ? value[0] : value;
+}
+
+// Gather the Leg F alert inputs from the store and compute the
+// lines. Every read is best-effort: a store problem yields no alerts
+// rather than a failed reconcile (the sync loop above has already
+// recorded any real store failure as per-source errors).
+async function computeAlertLines(): Promise<string[]> {
+  try {
+    const rawRuns: unknown[] = await listSyncRuns(50).catch(() => []);
+    const runs: SyncRunSummary[] = [];
+    for (const raw of rawRuns) {
+      if (typeof raw !== "object" || raw === null) continue;
+      const run = raw as Record<string, unknown>;
+      if (typeof run.started_at !== "string" || run.started_at === "") {
+        continue;
+      }
+      runs.push({
+        started_at: run.started_at,
+        status: typeof run.status === "string" ? run.status : "",
+        trigger: typeof run.trigger === "string" ? run.trigger : "",
+        sources: run.sources,
+      });
+    }
+    const states = await Promise.all(
+      SOURCES.map(async (source) => {
+        const [state, lease] = await Promise.all([
+          getDeliveryState(source).catch(() => null),
+          getLeaseSnapshot(source).catch(() => null),
+        ]);
+        return { source, state, leaseExpiresAt: lease?.expires_at ?? null };
+      }),
+    );
+    const setupRow = await getSetupRow("notion_webhook_verification").catch(
+      () => null,
+    );
+    return computeSyncAlerts({
+      now: Date.now(),
+      runs,
+      states,
+      setupUpdatedAt: setupRow?.updated_at ?? null,
+    });
+  } catch {
+    return [];
+  }
 }
 
 function cronAuthorized(req: ApiRequest): boolean {
@@ -127,13 +176,40 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
   }
 
+  // Alert lines (rev3 item 10; Leg F): computed from run history,
+  // delivery state, lease liveness, and the setup row, BEFORE this
+  // pass records its own run (the history read excludes the current
+  // pass by construction). Alerts ride the pass's run record as
+  // entries in its sources array plus one console line each. Fail-
+  // soft: alert computation never fails a reconcile.
+  const alertLines = await computeAlertLines();
+  for (const line of alertLines) {
+    console.log(`[reconcile] alert: ${line}`);
+  }
+
   // No entries means every source deferred: no run record at all, for
-  // the same reason a single deferral writes none.
+  // the same reason a single deferral writes none. Alert entries ride
+  // the record when one is written; on an all-deferred pass they
+  // exist only as the console lines above and recompute next pass.
   if (entries.length > 0) {
-    await recordEngineRun(startedAtMs, entries, {
-      trigger: "reconcile",
-      deferredSources,
-    });
+    await recordEngineRun(
+      startedAtMs,
+      [
+        ...entries,
+        ...alertLines.map(
+          (line): LedgerSourceEntry => ({
+            source: "alert",
+            rows: 0,
+            cached: false,
+            note: line,
+          }),
+        ),
+      ],
+      {
+        trigger: "reconcile",
+        deferredSources,
+      },
+    );
   }
 
   // Run-history retention (G-35): prune sync_runs rows older than 90

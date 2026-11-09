@@ -13,6 +13,7 @@
 //   delivery state and in the Notion sync ledger. The 15-minute cron is
 //   the guaranteed trailing edge.
 
+import { createHash } from "node:crypto";
 import {
   acquireLease,
   deleteSnapshotRow,
@@ -234,6 +235,33 @@ export function withinCoalesceWindow(
   return now - Date.parse(state.last_sync_started_at) < COALESCE_WINDOW_MS;
 }
 
+// Canonical (key-sorted) serialization + hash for the drift compare
+// (rev3 item 9, Leg E in-memory half). Raw JSON.stringify made the
+// compare depend on key order, so the same content serialized in a
+// different order read as drift; the canonical form sorts object
+// keys recursively (arrays stay order-sensitive: order is content)
+// and the compare runs on SHA-256 digests of it. The stored-hash
+// column the spec's full shape wants is a v4 candidate behind the
+// front door's gate (front-door default 2026-11-09: in-memory only);
+// nothing here adds a column, an RPC, or any SQL.
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value) ?? "null";
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => canonicalJson(entry)).join(",")}]`;
+  }
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  return `{${keys
+    .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
+    .join(",")}}`;
+}
+
+export function canonicalRowHash(row: Record<string, unknown>): string {
+  return createHash("sha256").update(canonicalJson(row), "utf8").digest("hex");
+}
+
 export interface SyncOutcome {
   source: SourceName;
   count: number;
@@ -352,7 +380,7 @@ export async function syncSource(
       if (
         !prior ||
         prior.last_edited !== lastEdited ||
-        JSON.stringify(prior.row) !== JSON.stringify(row)
+        canonicalRowHash(prior.row) !== canonicalRowHash(row)
       ) {
         upserts.push({
           page_id: pageId,

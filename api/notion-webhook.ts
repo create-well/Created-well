@@ -1,15 +1,27 @@
 // POST /api/notion-webhook — Notion webhook receiver for live-sync.
 //
-// Implements Monny's blueprint (2026-10-22) on main's architecture:
+// Implements Monny's blueprint (2026-10-22) on main's architecture,
+// with the rev3 corrections (live-sync spec rev3 items 6 and 11):
 // - Raw-body HMAC-SHA256 verification against NOTION_WEBHOOK_SECRET
 //   (the subscription verification token), fail-closed: a missing or
-//   mismatched signature is a 401 and nothing is written.
-// - The one-time verification handshake stashes the token in the
-//   Supabase setup table for operator retrieval. The token value is
+//   mismatched signature is a 401 and nothing is written. While the
+//   env var is unset (the setup window only), signature verification
+//   falls back to the token in the setup row; after activation the
+//   route reads the token only from the env var.
+// - The one-time verification handshake is accepted ONLY while the
+//   env var is unset AND the setup row is empty, and the token is
+//   written once, first-write-wins. Any other handshake POST is
+//   rejected: 200, a ledger error run, no write. The token value is
 //   never logged, never echoed, never committed.
+// - Request hygiene: the raw body is capped at 256 KB (over-cap →
+//   400); a body that cannot be read raw answers 400 (transport
+//   failure, not an auth failure); a JSON parse failure answers 401
+//   because it precedes signature verification.
 // - Events are signals, not content: the changed page's source is
-//   resolved, the event is recorded as pending delivery state, and the
-//   source is re-read from Notion through the one normalization path.
+//   resolved from the re-read page's own parent (the mapping call of
+//   record; the payload parent is a fallback only), the event is
+//   recorded as pending delivery state, and the source is re-read
+//   from Notion through the one normalization path.
 // - Coalescing is per source: an event inside the window is carried as
 //   dirty + pending, never dropped and never global.
 // - After a signature verifies, ANY failure still answers 200 and is
@@ -18,7 +30,8 @@
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import {
-  setSetupValue,
+  getSetupValue,
+  insertSetupValue,
   supabaseConfigured,
   getDeliveryState,
 } from "./_supabase.js";
@@ -38,6 +51,14 @@ import {
 export const config = { api: { bodyParser: false } };
 
 const LOG_PREFIX = "[notion-webhook]";
+
+// The setup row that carries the one-time verification token between
+// the handshake and the operator's read (spec §8 step 3).
+const SETUP_KEY = "notion_webhook_verification";
+
+// Request hygiene cap (rev3 item 11c): a webhook payload larger than
+// this is refused before parsing, verification, or any write.
+export const MAX_BODY_BYTES = 256 * 1024;
 
 const EVENT_TYPES = new Set([
   "page.created",
@@ -69,24 +90,56 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-async function readRawBody(req: WebhookRequest): Promise<Buffer | null> {
+type RawBodyResult =
+  | { body: Buffer }
+  | { error: "unavailable" | "too-large" };
+
+async function readRawBody(req: WebhookRequest): Promise<RawBodyResult> {
   if (typeof req[Symbol.asyncIterator] === "function") {
     const chunks: Buffer[] = [];
+    let total = 0;
     for await (const chunk of req as AsyncIterable<Buffer | string>) {
-      chunks.push(
-        typeof chunk === "string" ? Buffer.from(chunk, "utf8") : chunk,
-      );
+      const buffer =
+        typeof chunk === "string" ? Buffer.from(chunk, "utf8") : chunk;
+      total += buffer.length;
+      if (total > MAX_BODY_BYTES) return { error: "too-large" };
+      chunks.push(buffer);
     }
-    return Buffer.concat(chunks);
+    return { body: Buffer.concat(chunks) };
   }
-  if (typeof req.body === "string") return Buffer.from(req.body, "utf8");
-  if (Buffer.isBuffer(req.body)) return req.body;
+  if (typeof req.body === "string") {
+    const body = Buffer.from(req.body, "utf8");
+    return body.length > MAX_BODY_BYTES
+      ? { error: "too-large" }
+      : { body };
+  }
+  if (Buffer.isBuffer(req.body)) {
+    return req.body.length > MAX_BODY_BYTES
+      ? { error: "too-large" }
+      : { body: req.body };
+  }
   // A pre-parsed object body cannot be verified byte-exactly.
-  return null;
+  return { error: "unavailable" };
 }
 
-function verifySignature(rawBody: Buffer, header: unknown): boolean {
-  const secret = process.env.NOTION_WEBHOOK_SECRET;
+// Signature verification precedence (rev3 item 6): the env var when
+// set; otherwise, during the setup window only, the token stored by
+// the accepted handshake; otherwise no secret exists and verification
+// fails closed. After activation the setup row is cleared by the
+// operator, so the fallback has nothing to read.
+async function resolveWebhookSecret(): Promise<string | null> {
+  const fromEnv = process.env.NOTION_WEBHOOK_SECRET;
+  if (fromEnv) return fromEnv;
+  if (!supabaseConfigured()) return null;
+  const row = await getSetupValue(SETUP_KEY).catch(() => null);
+  return row && typeof row.token === "string" ? row.token : null;
+}
+
+function verifySignature(
+  rawBody: Buffer,
+  header: unknown,
+  secret: string | null,
+): boolean {
   if (!secret) return false;
   const providedRaw =
     typeof header === "string" ? header : Array.isArray(header) ? header[0] : "";
@@ -140,9 +193,11 @@ async function notionGetPageParent(
   return payload.parent;
 }
 
-// Resolve which of the five sources a page belongs to: the payload's
-// own parent when present, else the page's parent under the legacy API
-// (database_id), else under the data-source API (data_source_id).
+// Resolve which of the seven sources a page belongs to. The re-read
+// page's own parent is the mapping call of record (rev3 item 11b):
+// the data-source API first, then the legacy API (database_id). The
+// event payload's parent is a fallback only, for pages the re-read
+// cannot see (a deleted page retrieves as 404 under both versions).
 async function resolvePageSource(
   pageId: string,
   payloadParent: Record<string, unknown> | null,
@@ -162,9 +217,9 @@ async function resolvePageSource(
     );
   };
   return (
-    fromParent(payloadParent) ??
+    fromParent(await notionGetPageParent(pageId, notionSecret, "2025-09-03")) ??
     fromParent(await notionGetPageParent(pageId, notionSecret, "2022-06-28")) ??
-    fromParent(await notionGetPageParent(pageId, notionSecret, "2025-09-03"))
+    fromParent(payloadParent)
   );
 }
 
@@ -177,11 +232,19 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const rawBody = await readRawBody(req);
-  if (rawBody === null) {
-    console.log(`${LOG_PREFIX} raw body unavailable; failing closed`);
-    return res.status(401).json({ error: "Raw body required" });
+  const handlerStartedAtMs = Date.now();
+  const raw = await readRawBody(req);
+  if (raw.error === "too-large") {
+    console.log(`${LOG_PREFIX} payload too large; failing closed`);
+    return res.status(400).json({ error: "Payload too large" });
   }
+  if (raw.error) {
+    // Transport failure, not an auth failure (rev3 item 11c): 400,
+    // nothing written.
+    console.log(`${LOG_PREFIX} raw body unavailable; failing closed`);
+    return res.status(400).json({ error: "Raw body required" });
+  }
+  const rawBody = raw.body;
 
   let body: Record<string, unknown>;
   try {
@@ -189,33 +252,57 @@ export default async function handler(
       ? (JSON.parse(rawBody.toString("utf8")) as Record<string, unknown>)
       : {};
   } catch {
-    // Malformed and unauthenticated: answer 200 so a bad sender cannot
-    // manufacture a retry storm either.
+    // A parse failure here precedes signature verification, so it is
+    // an unauthenticated failure: 401 (rev3 item 11c). The spec's
+    // post-verification parse-failure shape (200 + ledger error run)
+    // cannot occur in this route: parsing precedes verification.
     console.log(`${LOG_PREFIX} malformed body`);
-    return res.status(200).json({ ok: false, error: "malformed payload" });
+    return res.status(401).json({ ok: false, error: "malformed payload" });
   }
 
   // Subscription verification handshake: Notion posts a one-time
-  // verification_token when the subscription is created. Stash it for
-  // the operator; never log the value.
+  // verification_token when the subscription is created. The handshake
+  // is signature-exempt by construction (no key exists yet); its
+  // protection is the rev3 item 6 guard. Accept and store the token
+  // ONLY while the env var is unset AND the setup row is empty; the
+  // write is first-write-wins, so no code path overwrites a populated
+  // row. Any other handshake POST is rejected: 200, a ledger error
+  // run, no write. The token value is never logged or echoed.
   if (typeof body.verification_token === "string") {
-    if (supabaseConfigured()) {
-      try {
-        await setSetupValue("notion_webhook_verification", {
+    let accepted = false;
+    if (!process.env.NOTION_WEBHOOK_SECRET && supabaseConfigured()) {
+      const existing = await getSetupValue(SETUP_KEY).catch(() => undefined);
+      if (existing === null) {
+        accepted = await insertSetupValue(SETUP_KEY, {
           token: body.verification_token,
           receivedAt: new Date().toISOString(),
-        });
-      } catch {
-        console.log(`${LOG_PREFIX} verification stash failed`);
+        }).catch(() => false);
       }
-    } else {
-      console.log(`${LOG_PREFIX} verification stash skipped (store unconfigured)`);
     }
-    console.log(`${LOG_PREFIX} verification handshake received`);
+    if (accepted) {
+      console.log("handshake received");
+    } else {
+      console.log(`${LOG_PREFIX} handshake rejected (setup window closed)`);
+      await recordEngineRun(
+        handlerStartedAtMs,
+        [
+          {
+            source: "webhook",
+            rows: 0,
+            cached: false,
+            error: "handshake rejected: setup window closed",
+          },
+        ],
+        { trigger: "webhook" },
+      );
+    }
     return res.status(200).json({ ok: true, received: "verification_token" });
   }
 
-  if (!verifySignature(rawBody, headerValue(req.headers, "x-notion-signature"))) {
+  const secret = await resolveWebhookSecret();
+  if (
+    !verifySignature(rawBody, headerValue(req.headers, "x-notion-signature"), secret)
+  ) {
     return res.status(401).json({ error: "Invalid signature" });
   }
 

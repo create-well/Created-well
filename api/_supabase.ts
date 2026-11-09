@@ -59,6 +59,12 @@ export function decodePending(raw: unknown): PendingEntry[] {
   return [...byId.values()];
 }
 
+// The claim boundary (rev3.1 item 1; columns land via the SQL v3
+// gated sitting — code reading them must not deploy before it).
+// Decoding is tolerant: a row read before the sitting has neither
+// key, and decodes to the safe defaults (idle, never populated).
+export type ClaimState = "idle" | "running";
+
 export interface DeliveryState {
   source: string;
   sync_version: number;
@@ -69,6 +75,8 @@ export interface DeliveryState {
   dirty: boolean;
   pending_entity_ids: PendingEntry[];
   last_error: string | null;
+  claim_state: ClaimState;
+  mirror_populated_at: string | null;
 }
 
 export interface SnapshotRow {
@@ -166,6 +174,11 @@ function toDeliveryState(raw: Record<string, unknown>): DeliveryState {
     dirty: raw.dirty === true,
     pending_entity_ids: decodePending(raw.pending_entity_ids),
     last_error: typeof raw.last_error === "string" ? raw.last_error : null,
+    claim_state: raw.claim_state === "running" ? "running" : "idle",
+    mirror_populated_at:
+      typeof raw.mirror_populated_at === "string"
+        ? raw.mirror_populated_at
+        : null,
   };
 }
 
@@ -180,6 +193,8 @@ export function emptyDeliveryState(source: string): DeliveryState {
     dirty: false,
     pending_entity_ids: [],
     last_error: null,
+    claim_state: "idle",
+    mirror_populated_at: null,
   };
 }
 
@@ -389,6 +404,91 @@ export async function releaseLease(
   } catch {
     // Expiry is the backstop; nothing to do.
   }
+}
+
+// ── The claim boundary (rev3.1 item 1) ─────────────────────────────
+//
+// claim_state is the ONE claim mechanism for a source, taken by the
+// webhook and the cron alike through the sync engine. The TTL is the
+// only reclaim boundary: a claim is the conditional update that sets
+// claim_state='running' + last_sync_started_at=now, allowed only
+// where the row is idle, or running with a start at least
+// CLAIM_TTL_MS old. PostgREST filters cannot express the age
+// comparison, so the reclaim branch pins the exact stale
+// last_sync_started_at the caller just read (eq.<value>): a claim
+// that landed in between moved that value, this PATCH matches zero
+// rows, and exactly one contender wins. The lease epoch stays UNDER
+// the claim as the write fence (a stale writer whose claim was
+// reclaimed must not be able to commit or clear the new claim).
+
+export const CLAIM_TTL_MS = 120_000;
+
+export type ClaimOutcome = "claimed" | "busy" | "no-row";
+
+export async function claimDeliveryState(
+  source: string,
+  nowMs: number,
+): Promise<ClaimOutcome> {
+  const raw = await rest(
+    `sync_delivery_state?source=eq.${encodeURIComponent(source)}&select=claim_state,last_sync_started_at`,
+    { expectObject: true },
+  );
+  if (!isRecord(raw)) return "no-row";
+  const nowIso = new Date(nowMs).toISOString();
+  const body = JSON.stringify({
+    claim_state: "running",
+    last_sync_started_at: nowIso,
+    updated_at: nowIso,
+  });
+  const headers = { Prefer: "return=representation" };
+  if (raw.claim_state === "running") {
+    const startedAt =
+      typeof raw.last_sync_started_at === "string"
+        ? raw.last_sync_started_at
+        : null;
+    // A running claim with no readable start cannot be aged; fail
+    // closed and treat it as busy rather than stealing it blind.
+    if (!startedAt || nowMs - Date.parse(startedAt) < CLAIM_TTL_MS) {
+      return "busy";
+    }
+    const result = await rest(
+      `sync_delivery_state?source=eq.${encodeURIComponent(source)}&claim_state=eq.running&last_sync_started_at=eq.${encodeURIComponent(startedAt)}`,
+      { method: "PATCH", headers, body },
+    );
+    return Array.isArray(result) && result.length === 1
+      ? "claimed"
+      : "busy";
+  }
+  const result = await rest(
+    `sync_delivery_state?source=eq.${encodeURIComponent(source)}&claim_state=eq.idle`,
+    { method: "PATCH", headers, body },
+  );
+  return Array.isArray(result) && result.length === 1 ? "claimed" : "busy";
+}
+
+// A delivery-state write fenced by BOTH the claim and the lease: the
+// PATCH lands only while the row still carries claim_state='running'
+// AND this owner + epoch. A reclaim (claim taken over) or a lease
+// takeover (epoch moved) makes it match zero rows. True when the
+// write landed (exactly one row).
+export async function fencedClaimPatchDeliveryState(
+  source: string,
+  fields: Partial<DeliveryState>,
+  owner: string,
+  epoch: number,
+): Promise<boolean> {
+  const result = await rest(
+    `sync_delivery_state?source=eq.${encodeURIComponent(source)}&claim_state=eq.running&lease_owner=eq.${encodeURIComponent(owner)}&lease_epoch=eq.${epoch}`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({
+        ...fields,
+        updated_at: new Date().toISOString(),
+      }),
+    },
+  );
+  return Array.isArray(result) && result.length === 1;
 }
 
 export async function listSnapshot(source: string): Promise<SnapshotRow[]> {

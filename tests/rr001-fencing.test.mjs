@@ -56,6 +56,8 @@ function resetStore() {
     last_sync_started_at: OK_AT,
     last_sync_ok_at: OK_AT,
     dirty: true,
+    claim_state: 'idle',
+    mirror_populated_at: null,
     // Legacy string form on purpose (live-sync Leg C): rows written
     // before pending entries carried ops decode as op "upsert".
     // Concurrent-event injections below append the new pair shape.
@@ -224,7 +226,7 @@ test('a lease takeover before the snapshot phase stops the run before any snapsh
       row.lease_expires_at = '2999-01-01T00:00:00.000Z';
     }
   };
-  await assert.rejects(engine.syncSource('moves', 'synthetic-secret'), /sync lease lost for moves/);
+  await assert.rejects(engine.syncSource('moves', 'synthetic-secret'), /sync claim lost for moves/);
   assert.equal(snapshotWrites, 0);
   assert.equal(row.sync_version, 3);
 });
@@ -240,12 +242,19 @@ test('a lease takeover before the commit write reports lease-lost, never success
       row.lease_expires_at = '2999-01-01T00:00:00.000Z';
     }
   };
-  await assert.rejects(engine.syncSource('moves', 'synthetic-secret'), /sync lease lost for moves/);
+  await assert.rejects(engine.syncSource('moves', 'synthetic-secret'), /sync claim lost for moves/);
   assert.equal(row.sync_version, 3);
   assert.equal(row.last_sync_ok_at, OK_AT);
 });
 
-test('a lease that expires before the commit write fails the commit even with owner and epoch intact', async () => {
+test('a lease that expires before the commit write no longer fails the commit when the claim was never taken over (Leg B: the claim is the boundary)', async () => {
+  // Semantics changed by live-sync Leg B (rev3.1 item 1): the commit
+  // fence is claim_state + lease owner + epoch. Lease expiry alone
+  // does not fence a run out — expiry only makes the claim
+  // reclaimable, and a reclaim bumps the epoch, which is what stops
+  // a stale writer (the takeover cases above). An expired lease with
+  // owner and epoch intact means nobody took over, so the run's own
+  // commit lands.
   resetStore();
   let expired = false;
   beforeStore = ({ method, body }) => {
@@ -254,8 +263,10 @@ test('a lease that expires before the commit write fails the commit even with ow
       row.lease_expires_at = '2000-01-01T00:00:00.000Z';
     }
   };
-  await assert.rejects(engine.syncSource('moves', 'synthetic-secret'), /sync lease lost for moves/);
-  assert.equal(row.sync_version, 3);
+  const outcome = await engine.syncSource('moves', 'synthetic-secret');
+  assert.equal(outcome.deferred, false);
+  assert.equal(row.sync_version, 4);
+  assert.equal(row.claim_state, 'idle');
 });
 
 test('the failure write records the error and preserves pending appended during the run', async () => {

@@ -78,6 +78,7 @@ function resetStore() {
     source: 'moves', sync_version: 3, last_event_at: null, last_event_id: null,
     last_sync_started_at: OK_AT, last_sync_ok_at: OK_AT, dirty: true,
     pending_entity_ids: [], last_error: null, updated_at: OK_AT,
+    claim_state: 'idle', mirror_populated_at: null,
     lease_owner: null, lease_epoch: 0, lease_expires_at: null,
   };
   snapshots = [];

@@ -60,6 +60,8 @@ function resetStore(pending = []) {
     last_sync_started_at: OK_AT,
     last_sync_ok_at: OK_AT,
     dirty: true,
+    claim_state: 'idle',
+    mirror_populated_at: null,
     pending_entity_ids: pending,
     last_error: null,
     updated_at: OK_AT,

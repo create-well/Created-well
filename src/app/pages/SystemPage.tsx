@@ -59,7 +59,7 @@ const ROUTE_ARCHITECTURE = [
   { path: '/workshops', label: 'Workshops',             emoji: '🎨',
     sources: 'FLOWS hub — Type: Workshop · MOVES hub (workshop tasks)' },
   { path: '/money',     label: 'Money, Real Only',      emoji: '💰',
-    sources: 'MONEY DB — Stage: Possible → Committed → Invoiced → Received → Paid; dashboard read + quick-log create (POST /money, Received/Paid only)' },
+    sources: 'Create Well — Budget & P&L Bookkeeping workbook (Transactions) — cr8w_money KV feed; dashboard read only; quick log retired (POST /money returns 410, log money in the workbook)' },
   { path: '/decisions', label: 'Decision Queue',        emoji: '⚡',
     sources: 'cr8w_decisions KV resource — dashboard read/write (no Notion counterpart, by design)' },
   { path: '/system',    label: 'System Health',         emoji: '🔧',

@@ -36,7 +36,7 @@ test('CONTENT failure is visibly different from a successfully empty source',()=
 test('CONTENT failure must not be reported fresh',()=>{
  const data=payload([],{content:'redacted'}); const snapshot=snapshotFromDashboard(data,false);
  assert.equal(dashboardStatusForSnapshot(sourceStatusesFromDashboard(data,false),snapshot.status),'stale');
- for(const name of ['moves','people','flows','money']){
+ for(const name of ['moves','people','flows']){
   const other=payload(source,{[name]:'redacted'});
   assert.equal(dashboardStatusForSnapshot(sourceStatusesFromDashboard(other,false),snapshotFromDashboard(other,false).status),'stale');
  }

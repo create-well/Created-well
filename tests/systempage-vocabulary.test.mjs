@@ -4,6 +4,10 @@
 // name their real hubs, and /money is not read-only — the quick log
 // creates (Received/Paid only). The /decisions line rides the same pass:
 // it stopped being "not yet connected" when D-1b landed the KV resource.
+// Rider (register 1621, 2026-11-13): MONEY A retired the quick log —
+// POST /money returns 410 and money is logged in the "Create Well —
+// Budget & P&L Bookkeeping" workbook; the money test below now pins
+// that truth instead of the Fix 2 quick-log claim.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -15,9 +19,9 @@ test('MOVES status set is the published wire set', () => {
   assert.doesNotMatch(page, /Not Started \/ In Progress \/ Done \/ Blocked/);
 });
 
-test('money line states the read + quick-log create truth', () => {
-  assert.match(page, /dashboard read \+ quick-log create \(POST \/money, Received\/Paid only\)/);
-  assert.doesNotMatch(page, /\(read-only\)/);
+test('money line states the workbook-fed truth: read only, quick log retired', () => {
+  assert.match(page, /Create Well — Budget & P&L Bookkeeping workbook \(Transactions\) — cr8w_money KV feed; dashboard read only; quick log retired \(POST \/money returns 410, log money in the workbook\)/);
+  assert.doesNotMatch(page, /quick-log create/);
 });
 
 test('stations and forum name their real source hubs', () => {

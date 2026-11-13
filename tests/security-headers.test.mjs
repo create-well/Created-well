@@ -1,17 +1,22 @@
 // SA-1 (small-change half): the four simple security headers ride one
 // vercel.json entry scoped to the shell (the SPA source pattern, API
-// routes excluded). The split of record is enforced here in test form:
-// CSP ships separately (report-only first or its own scored change)
-// and COOP/COEP join only if they verify clean, so none of those keys
-// may appear in this change. The /api CORS entry must stay untouched.
-// Live header verification rides the landing audit (curl the shell).
+// routes excluded). SA-1 remainder part 1 adds Content-Security-Policy-
+// Report-Only to that same shell entry — report-only, never enforcing
+// in this packet; the policy value is the build census of record (see
+// sa1-csp-report-only-prep-2026-11-13). The split of record still
+// holds for the rest: enforcing CSP and COOP/COEP join only on their
+// own scored changes, so none of those keys may appear here. The /api
+// CORS entry must stay untouched. Live header verification rides the
+// landing audit (curl the shell).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const cfg = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
 
-test('the shell headers entry carries exactly the four SA-1 headers', () => {
+const CSP_REPORT_ONLY = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self'; media-src 'self' blob:; connect-src 'self' https://irtqcygriedvdijppntz.supabase.co wss://irtqcygriedvdijppntz.supabase.co https://www.googleapis.com https://oauth2.googleapis.com; frame-src https://calendar.google.com; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'";
+
+test('the shell headers entry carries exactly the four SA-1 headers plus CSP report-only', () => {
   const entry = cfg.headers.find(h => h.source === '/((?!api/).*)');
   assert.ok(entry, 'shell headers entry exists');
   const map = Object.fromEntries(entry.headers.map(h => [h.key, h.value]));
@@ -20,14 +25,25 @@ test('the shell headers entry carries exactly the four SA-1 headers', () => {
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    'Content-Security-Policy-Report-Only': CSP_REPORT_ONLY,
   });
 });
 
-test('CSP and COOP/COEP are absent everywhere in this change (split of record)', () => {
+test('enforcing CSP and COOP/COEP are absent everywhere; CSP report-only rides the shell entry only', () => {
   const keys = cfg.headers.flatMap(e => e.headers.map(h => h.key));
-  for (const banned of ['Content-Security-Policy', 'Content-Security-Policy-Report-Only', 'Cross-Origin-Opener-Policy', 'Cross-Origin-Embedder-Policy']) {
+  for (const banned of ['Content-Security-Policy', 'Cross-Origin-Opener-Policy', 'Cross-Origin-Embedder-Policy']) {
     assert.ok(!keys.includes(banned), `${banned} must not ride this change`);
   }
+  const shell = cfg.headers.find(h => h.source === '/((?!api/).*)');
+  assert.ok(
+    shell.headers.some(h => h.key === 'Content-Security-Policy-Report-Only'),
+    'CSP report-only must ride the shell entry',
+  );
+  const api = cfg.headers.find(h => h.source === '/api/(.*)');
+  assert.ok(
+    !api.headers.some(h => h.key === 'Content-Security-Policy-Report-Only'),
+    'CSP report-only must not ride the /api entry',
+  );
 });
 
 test('the /api CORS entry is unchanged', () => {

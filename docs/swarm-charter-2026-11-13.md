@@ -68,3 +68,9 @@
 - Phase 2 lanes branch as `docs/mirror-map-refresh-2026-11-13`, `docs/ux-view-derivations-2026-11-13`, `chore/token-pipeline-verify-2026-11-13`, `fix/api-non-gated-sync-2026-11-13` (API lane names the final branch to match content), charter on `docs/swarm-charter-2026-11-13`.
 - All lanes work in their own git worktree off **current origin/main at execution time**; never in the owner's `~/Created-well` checkout; never push to main directly; never stage the untracked GitHits files.
 - Receipts reconcile: git remote SHA · Vercel deployment record (READY + SHA) · production probes (route matrix). A disagreement is recorded with an owner, never averaged away.
+
+## 7. Execution-mode addendum (2026-11-13, in-session)
+
+- **A-1:** Swarm dispatch FAILED its live check: AgentSwarm launched 7 lane agents; all failed at spawn with `x-api-key header is required` (subagent runtime missing its provider key in this session). Resume retry failed identically; a direct Agent probe failed identically. The standard parallel path is unavailable and not fixable from inside the session.
+- **A-2:** Non-blocked legs continue under the mission's own rule: the coordinator executes the lane tasks inline, sequentially, one worktree, same gates, same evidence discipline. One executor per landing pass is trivially satisfied. Lane receipts below record this mode.
+- **A-3:** To re-run as a true parallel swarm: configure the subagent provider API key for Kimi Code, then `/reload` and re-dispatch from this charter. All lane briefs are reproducible from the task graph.

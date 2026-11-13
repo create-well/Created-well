@@ -52,10 +52,12 @@ const { getSyncFreshness, SOURCES } = syncEngine;
 const NOW = Date.parse('2026-10-27T12:00:00.000Z');
 const iso = (ms) => new Date(ms).toISOString();
 const base = {
-  source: 'people', sync_version: 7, last_event_at: iso(NOW - 60_000),
+  source: 'people', sync_version: 7, last_event_at: iso(NOW - 180_000),
   last_event_id: null, last_sync_started_at: iso(NOW - 120_000),
   last_sync_ok_at: iso(NOW - 120_000), dirty: false,
   pending_entity_ids: [], last_error: null,
+  claim_state: 'idle', mirror_populated_at: iso(NOW - 120_000),
+  updated_at: iso(NOW - 120_000),
 };
 const reader = (map) => async (source) => (source in map ? map[source] : null);
 
@@ -108,4 +110,94 @@ test('an unconfigured store marks every source unknown', async () => {
   } finally {
     process.env.SUPABASE_URL = url;
   }
+});
+
+// --- Leg D ladder cases (rev3 item 5 as amended by rev3.1 items 1, 5a).
+// Transitions are driven by event / dirty / error / claim state, not by
+// the wall-clock age of the last success.
+
+const MIN = 60_000;
+const stateOf = async (overrides) => {
+  const out = await getSyncFreshness(NOW, reader({ people: { ...base, ...overrides } }));
+  return out.people.state;
+};
+
+test('a quiet source stays live however old its last success is (wall-clock age never demotes)', async () => {
+  assert.equal(await stateOf({
+    last_event_at: iso(NOW - 3 * 60 * MIN),
+    last_sync_started_at: iso(NOW - 3 * 60 * MIN),
+    last_sync_ok_at: iso(NOW - 3 * 60 * MIN),
+    updated_at: iso(NOW - 3 * 60 * MIN),
+  }), 'live');
+});
+
+test('a delivery row whose mirror was never populated reads unknown', async () => {
+  assert.equal(await stateOf({ mirror_populated_at: null }), 'unknown');
+});
+
+test('an active claim inside its TTL reads reconciling', async () => {
+  assert.equal(await stateOf({
+    claim_state: 'running',
+    last_sync_started_at: iso(NOW - 30_000),
+  }), 'reconciling');
+});
+
+test('an expired claim reads degraded', async () => {
+  assert.equal(await stateOf({
+    claim_state: 'running',
+    last_sync_started_at: iso(NOW - 121_000),
+  }), 'degraded');
+});
+
+test('fresh unprocessed work (event after the last success, under one interval) reads reconciling', async () => {
+  assert.equal(await stateOf({
+    last_event_at: iso(NOW - 5 * MIN),
+    last_sync_ok_at: iso(NOW - 60 * MIN),
+    updated_at: iso(NOW - 5 * MIN),
+  }), 'reconciling');
+});
+
+test('unprocessed work between one and two intervals reads stale', async () => {
+  assert.equal(await stateOf({
+    last_event_at: iso(NOW - 20 * MIN),
+    last_sync_ok_at: iso(NOW - 60 * MIN),
+    updated_at: iso(NOW - 20 * MIN),
+  }), 'stale');
+});
+
+test('unprocessed work older than two intervals reads degraded', async () => {
+  assert.equal(await stateOf({
+    last_event_at: iso(NOW - 31 * MIN),
+    last_sync_ok_at: iso(NOW - 60 * MIN),
+    updated_at: iso(NOW - 31 * MIN),
+  }), 'degraded');
+});
+
+test('ladder boundaries are strict: exactly one interval is not stale, exactly two is not degraded', async () => {
+  assert.equal(await stateOf({
+    last_event_at: iso(NOW - 15 * MIN),
+    last_sync_ok_at: iso(NOW - 60 * MIN),
+    updated_at: iso(NOW - 15 * MIN),
+  }), 'reconciling');
+  assert.equal(await stateOf({
+    last_event_at: iso(NOW - 30 * MIN),
+    last_sync_ok_at: iso(NOW - 60 * MIN),
+    updated_at: iso(NOW - 30 * MIN),
+  }), 'stale');
+});
+
+test('dirty-only work ages from the row write, not the old event', async () => {
+  assert.equal(await stateOf({
+    dirty: true,
+    last_event_at: iso(NOW - 3 * 60 * MIN),
+    updated_at: iso(NOW - 20 * MIN),
+  }), 'stale');
+});
+
+test('a recorded error reads degraded even while a retry claim is in flight', async () => {
+  assert.equal(await stateOf({
+    last_error: 'boom',
+    claim_state: 'running',
+    last_sync_started_at: iso(NOW - 10_000),
+  }), 'degraded');
 });

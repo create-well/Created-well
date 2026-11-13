@@ -17,6 +17,7 @@ import { createHash } from "node:crypto";
 import {
   acquireLease,
   claimDeliveryState,
+  CLAIM_TTL_MS,
   deleteSnapshotRow,
   emptyDeliveryState,
   fencedClaimPatchDeliveryState,
@@ -103,29 +104,52 @@ export function computeFreshness(
   state: DeliveryState | null,
   now: number,
 ): FreshnessState {
-  if (!state || (!state.last_sync_ok_at && !state.last_event_at)) {
-    return "unknown";
-  }
-  const startedAt = state.last_sync_started_at
-    ? Date.parse(state.last_sync_started_at)
-    : NaN;
-  const okAt = state.last_sync_ok_at ? Date.parse(state.last_sync_ok_at) : NaN;
+  if (!state) return "unknown";
+  // rev3.1 item 5a: unknown tests the population flag, not row counts.
+  // A source whose mirror has never been populated reads unknown even
+  // when a delivery row exists; a source that legitimately holds zero
+  // rows after a completed sync has the flag set and reads live.
+  if (state.mirror_populated_at == null) return "unknown";
   // last_error is cleared by every successful sync, so a non-null value
   // always means the latest completed attempt failed: degraded wins
   // over reconciling (a retry in flight does not erase the failure).
   if (state.last_error) return "degraded";
-  if (
-    Number.isFinite(startedAt) &&
-    now - startedAt < 60_000 &&
-    (!Number.isFinite(okAt) || okAt < startedAt)
-  ) {
-    return "reconciling";
+  const startedAt = state.last_sync_started_at
+    ? Date.parse(state.last_sync_started_at)
+    : NaN;
+  if (state.claim_state === "running") {
+    // rev3.1 item 1: reconciling while the claim is inside its TTL;
+    // at the TTL the claim is expired, the source reads degraded, and
+    // the claim is reclaimable.
+    return Number.isFinite(startedAt) && now - startedAt < CLAIM_TTL_MS
+      ? "reconciling"
+      : "degraded";
   }
-  if (!Number.isFinite(okAt)) return "degraded";
-  const age = now - okAt;
-  if (age > 2 * CRON_INTERVAL_MS) return "degraded";
-  if (age > CRON_INTERVAL_MS) return "stale";
-  return "live";
+  const eventAt = state.last_event_at ? Date.parse(state.last_event_at) : NaN;
+  const okAt = state.last_sync_ok_at ? Date.parse(state.last_sync_ok_at) : NaN;
+  const eventUnprocessed =
+    Number.isFinite(eventAt) && (!Number.isFinite(okAt) || eventAt > okAt);
+  if (!state.dirty && !eventUnprocessed) return "live";
+  // Event-relative ladder (rev3 item 5): only OWED work ages through
+  // the states. The age of an unprocessed event is measured from when
+  // it arrived; dirty-only work (a failed drift repair) ages from the
+  // row's last write. Wall-clock age of the last success never demotes
+  // a quiet source.
+  const workAt = eventUnprocessed
+    ? eventAt
+    : state.updated_at
+      ? Date.parse(state.updated_at)
+      : NaN;
+  const workAge = Number.isFinite(workAt)
+    ? now - workAt
+    : Number.POSITIVE_INFINITY;
+  if (workAge > 2 * CRON_INTERVAL_MS) return "degraded";
+  if (workAge > CRON_INTERVAL_MS) return "stale";
+  // Owed work younger than one interval is in flight through the
+  // coalesce window, the webhook sync, or the next cron pass: the
+  // ladder's in-flight state. It is not live (work is owed) and not
+  // yet stale (a full interval has not passed).
+  return "reconciling";
 }
 
 export interface FreshnessEntry {
@@ -461,15 +485,22 @@ export async function syncSource(
     // converge on the next sync; delivery state is never committed
     // by a run that lost its claim.
     const freshest = await getDeliveryState(source);
+    const completedAt = new Date().toISOString();
     const commitFields: Partial<DeliveryState> = {
       sync_version: version,
-      last_sync_ok_at: new Date().toISOString(),
+      last_sync_ok_at: completedAt,
       last_error: null,
       claim_state: "idle",
       pending_entity_ids: (freshest?.pending_entity_ids ?? []).filter(
         (entry) => !startingPending.has(entry.entity_id),
       ),
     };
+    // First successful population stamps the mirror flag in the same
+    // update (rev3.1 item 5a); later commits leave it untouched. The
+    // freshness ladder reads unknown off this flag, never row counts.
+    if ((freshest ?? state).mirror_populated_at === null) {
+      commitFields.mirror_populated_at = completedAt;
+    }
     if (epoch !== null) {
       const landed = await fencedClaimPatchDeliveryState(
         source,

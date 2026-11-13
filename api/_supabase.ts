@@ -77,6 +77,9 @@ export interface DeliveryState {
   last_error: string | null;
   claim_state: ClaimState;
   mirror_populated_at: string | null;
+  // The row's own last-write time (every store write stamps it). The
+  // freshness ladder ages dirty-only work from it (Leg D).
+  updated_at: string | null;
 }
 
 export interface SnapshotRow {
@@ -179,6 +182,7 @@ function toDeliveryState(raw: Record<string, unknown>): DeliveryState {
       typeof raw.mirror_populated_at === "string"
         ? raw.mirror_populated_at
         : null,
+    updated_at: typeof raw.updated_at === "string" ? raw.updated_at : null,
   };
 }
 
@@ -195,6 +199,7 @@ export function emptyDeliveryState(source: string): DeliveryState {
     last_error: null,
     claim_state: "idle",
     mirror_populated_at: null,
+    updated_at: null,
   };
 }
 

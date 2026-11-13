@@ -191,6 +191,8 @@ function coalescedPeopleState() {
     last_sync_started_at: new Date().toISOString(),
     last_sync_ok_at: new Date().toISOString(),
     dirty: true,
+    claim_state: 'idle',
+    mirror_populated_at: null,
     pending_entity_ids: [],
     last_error: null,
     lease_owner: null,

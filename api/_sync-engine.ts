@@ -16,9 +16,10 @@
 import { createHash } from "node:crypto";
 import {
   acquireLease,
+  claimDeliveryState,
   deleteSnapshotRow,
   emptyDeliveryState,
-  fencedPatchDeliveryState,
+  fencedClaimPatchDeliveryState,
   getDeliveryState,
   LEASE_TTL_MS,
   supabaseConfigured,
@@ -26,7 +27,6 @@ import {
   patchDeliveryState,
   releaseLease,
   insertSyncRun,
-  renewLease,
   upsertDeliveryState,
   upsertSnapshotRows,
   type DeliveryState,
@@ -49,13 +49,12 @@ export { SOURCES };
 
 // Per-source coalesce window. Events for the same source inside this
 // window after a sync starts are carried as dirty + pending instead of
-// each starting its own sync.
+// each starting its own sync. W governs start spacing only; the claim
+// boundary is claim_state with its 120s TTL (rev3.1 item 1), taken in
+// syncSource below. There is no lease renewal anymore: the TTL is the
+// only reclaim boundary, so a run that outlives it is reclaimable and
+// its fenced commits fail.
 export const COALESCE_WINDOW_MS = 10_000;
-
-// While a lease is held, its owner renews on this cadence (TTL is
-// LEASE_TTL_MS in _supabase). Syncs run in seconds; the renew exists so
-// a long reconcile of a large source never outlives its own lease.
-export const LEASE_RENEW_MS = 30_000;
 
 export const CRON_INTERVAL_MS = 15 * 60_000;
 
@@ -201,8 +200,8 @@ export async function markEvent(
     op: PendingOp;
   },
 ): Promise<MarkEventResult> {
-  const state =
-    (await getDeliveryState(source)) ?? emptyDeliveryState(source);
+  const existing = await getDeliveryState(source);
+  const state = existing ?? emptyDeliveryState(source);
   // Ordering discipline (rev3 item 8): last_event_at only ever moves
   // forward; an out-of-order redelivery can never move it backwards.
   if (!state.last_event_at || event.at > state.last_event_at) {
@@ -220,7 +219,22 @@ export async function markEvent(
     state.pending_entity_ids = appended.pending;
     overflowed = appended.overflowed;
   }
-  await upsertDeliveryState(state);
+  if (existing) {
+    // Column-scoped write (RR-001 discipline, extended by Leg B):
+    // markEvent owns exactly these four columns. A whole-row upsert
+    // from this read could revert claim_state or last_sync_started_at
+    // to their pre-claim values while a claimed run is in flight.
+    const fields: Partial<DeliveryState> = {
+      last_event_at: state.last_event_at,
+      dirty: true,
+      pending_entity_ids: state.pending_entity_ids,
+    };
+    if (event.id) fields.last_event_id = event.id;
+    const matched = await patchDeliveryState(source, fields);
+    if (matched === 0) await upsertDeliveryState(state);
+  } else {
+    await upsertDeliveryState(state);
+  }
   return { state, overflowed };
 }
 
@@ -283,16 +297,20 @@ export async function syncSource(
   const priorState = await getDeliveryState(source);
   const state = priorState ?? emptyDeliveryState(source);
 
-  // Per-source lease (G-02 Option A): one run syncs a source at a time,
-  // across every instance. Losing the acquire is a deferral, not a
-  // failure — the source stays dirty + pending on the webhook path and
-  // retries next tick on the cron path. A source with no delivery-state
-  // row yet has nothing to lease and bootstraps unleased, as before.
+  // The claim boundary (rev3.1 item 1): one run syncs a source at a
+  // time, across every instance, taken here by the webhook and the
+  // cron alike. W spacing runs first: an idle source whose last sync
+  // started inside the coalesce window defers (its events are already
+  // recorded; the trailing edge or the cron flushes them). Losing the
+  // claim is a deferral, not a failure. The lease epoch is acquired
+  // UNDER the claim as the write fence; it is never renewed, so the
+  // 120s TTL is the only reclaim boundary for both. A source with no
+  // delivery-state row yet has nothing to claim and bootstraps
+  // unclaimed, as before.
   const owner = `sync-${source}-${Date.now().toString(36)}-${Math.random()
     .toString(36)
     .slice(2, 10)}`;
-  const epoch = await acquireLease(source, owner, Date.now(), LEASE_TTL_MS);
-  if (epoch === null && priorState !== null) {
+  const defer = async (): Promise<SyncOutcome> => {
     const existing = await listSnapshot(source);
     return {
       source,
@@ -301,17 +319,29 @@ export async function syncSource(
       version: state.sync_version,
       deferred: true,
     };
+  };
+  let epoch: number | null = null;
+  if (priorState !== null) {
+    if (
+      priorState.claim_state === "idle" &&
+      priorState.last_sync_started_at &&
+      Date.now() - Date.parse(priorState.last_sync_started_at) <
+        COALESCE_WINDOW_MS
+    ) {
+      return defer();
+    }
+    // The fence is taken first so a held lease defers before any
+    // claim write lands (the lease-driver premise); the claim is
+    // then the boundary the run holds, and a busy claim hands the
+    // fence straight back.
+    epoch = await acquireLease(source, owner, Date.now(), LEASE_TTL_MS);
+    if (epoch === null) return defer();
+    const claim = await claimDeliveryState(source, Date.now());
+    if (claim !== "claimed") {
+      await releaseLease(source, owner, epoch);
+      return defer();
+    }
   }
-
-  const renewTimer =
-    epoch !== null
-      ? setInterval(() => {
-          void renewLease(source, owner, epoch, Date.now(), LEASE_TTL_MS).catch(
-            () => undefined,
-          );
-        }, LEASE_RENEW_MS)
-      : null;
-  (renewTimer as unknown as { unref?: () => void } | null)?.unref?.();
 
   // The pending pairs this run started with, by entity_id. The commit
   // write clears exactly these; anything markEvent appends while the
@@ -331,18 +361,22 @@ export async function syncSource(
     // Started-state write, column-scoped on purpose: pending is never
     // written here. (The pre-Leg-A shape upserted the whole stale
     // state object with pending cleared, erasing events appended
-    // after the run's initial read.)
+    // after the run's initial read.) Under a claim, the claim PATCH
+    // already wrote last_sync_started_at; this write only clears
+    // dirty, fenced by claim + lease. The claim takes the pending set
+    // as the run's starting set (read above); the set itself is
+    // cleared at completion, in the commit below, so an event that
+    // lands mid-run is never erased by the claim.
     if (epoch !== null) {
-      const landed = await fencedPatchDeliveryState(
+      const landed = await fencedClaimPatchDeliveryState(
         source,
-        { last_sync_started_at: startedAtIso, dirty: false },
+        { dirty: false },
         owner,
         epoch,
-        Date.now(),
       );
-      if (!landed) throw new Error(`sync lease lost for ${source}`);
+      if (!landed) throw new Error(`sync claim lost for ${source}`);
     } else {
-      // Bootstrap (no delivery row yet, nothing to lease): create the
+      // Bootstrap (no delivery row yet, nothing to claim): create the
       // row from the state read at run start, pending intact.
       state.last_sync_started_at = startedAtIso;
       state.dirty = false;
@@ -397,16 +431,15 @@ export async function syncSource(
     if (changed > 0) {
       if (epoch !== null) {
         // Fenced checkpoint BEFORE any snapshot mutation: a run that
-        // lost its lease during the read + diff stops here, having
+        // lost its claim during the read + diff stops here, having
         // written nothing outside its own started-state mark.
-        const landed = await fencedPatchDeliveryState(
+        const landed = await fencedClaimPatchDeliveryState(
           source,
           {},
           owner,
           epoch,
-          Date.now(),
         );
-        if (!landed) throw new Error(`sync lease lost for ${source}`);
+        if (!landed) throw new Error(`sync claim lost for ${source}`);
       }
       await upsertSnapshotRows(
         source,
@@ -419,59 +452,63 @@ export async function syncSource(
 
     // Commit. Pending is recomputed against the freshest row: only
     // the ids this run started with are cleared, so events appended
-    // during the run survive. Under a lease the commit write is
-    // itself fenced (owner + epoch + unexpired, inside the PATCH):
-    // a takeover or expiry since the checkpoint makes it match zero
-    // rows, and the run reports lease-lost instead of success.
+    // during the run survive. Completion releases the claim in the
+    // SAME fenced update as the outcome fields (rev3.1 item 1): the
+    // write lands only while this run still holds claim + lease, so
+    // a reclaim or takeover since the checkpoint makes it match zero
+    // rows and the run reports claim-lost instead of success.
     // Snapshot rows already applied carry the run's sync_version and
     // converge on the next sync; delivery state is never committed
-    // by a run that lost its lease.
+    // by a run that lost its claim.
     const freshest = await getDeliveryState(source);
     const commitFields: Partial<DeliveryState> = {
       sync_version: version,
       last_sync_ok_at: new Date().toISOString(),
       last_error: null,
+      claim_state: "idle",
       pending_entity_ids: (freshest?.pending_entity_ids ?? []).filter(
         (entry) => !startingPending.has(entry.entity_id),
       ),
     };
     if (epoch !== null) {
-      const landed = await fencedPatchDeliveryState(
+      const landed = await fencedClaimPatchDeliveryState(
         source,
         commitFields,
         owner,
         epoch,
-        Date.now(),
       );
-      if (!landed) throw new Error(`sync lease lost for ${source}`);
+      if (!landed) throw new Error(`sync claim lost for ${source}`);
     } else {
       await upsertDeliveryState({ ...(freshest ?? state), ...commitFields });
     }
     return { source, count: rows.length, changed, version, deferred: false };
   } catch (error) {
-    // Failure write: last_error + dirty only. It never writes pending,
-    // the version, or the ok clock; under a lease it is fenced like
-    // every other state write, so a stale owner cannot overwrite the
-    // current holder's row with its own stale view. Best-effort: a
-    // failed failure-write never masks the run's real error.
+    // Failure write: last_error + dirty, pending retained, and the
+    // claim released in the same fenced update (rev3 item 3 +
+    // rev3.1 item 1). It never writes the version or the ok clock;
+    // under a claim it is fenced like every other state write, so a
+    // stale owner cannot overwrite the current holder's row with its
+    // own stale view. If the fence is already gone the write matches
+    // zero rows and the claim stands until its TTL — the expired-
+    // claim path, by design. Best-effort: a failed failure-write
+    // never masks the run's real error.
     const failureFields: Partial<DeliveryState> = {
       last_error: error instanceof Error ? error.message : "sync failed",
       dirty: true,
+      claim_state: "idle",
     };
     if (epoch !== null) {
-      await fencedPatchDeliveryState(
+      await fencedClaimPatchDeliveryState(
         source,
         failureFields,
         owner,
         epoch,
-        Date.now(),
       ).catch(() => undefined);
     } else {
       await patchDeliveryState(source, failureFields).catch(() => undefined);
     }
     throw error;
   } finally {
-    if (renewTimer) clearInterval(renewTimer);
     if (epoch !== null) await releaseLease(source, owner, epoch);
   }
 }

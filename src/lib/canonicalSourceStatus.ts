@@ -1,11 +1,13 @@
-/** Per-source result of the primary dashboard request, not a freshness proof. */
-export const CANONICAL_DASHBOARD_SOURCES = ['moves', 'people', 'flows', 'content', 'money'] as const;
+/** Per-source result of the primary dashboard request, not a freshness proof.
+ * Money is not a canonical source (MONEY A): it rides the cr8w_money KV feed
+ * and has no sourceErrors entry, so it cannot report a canonical status. */
+export const CANONICAL_DASHBOARD_SOURCES = ['moves', 'people', 'flows', 'content'] as const;
 export type CanonicalDashboardSource = typeof CANONICAL_DASHBOARD_SOURCES[number];
 export type SourceRequestStatus = 'loading' | 'failed' | 'reported-success' | 'unknown';
 export type CanonicalSourceStatuses = Readonly<Record<CanonicalDashboardSource, SourceRequestStatus>>;
 
 export function uniformCanonicalStatus(status: SourceRequestStatus): CanonicalSourceStatuses {
-  return { moves: status, people: status, flows: status, content: status, money: status };
+  return { moves: status, people: status, flows: status, content: status };
 }
 
 /** Error values stay private and are not returned. A reported success does not

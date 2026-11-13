@@ -78,6 +78,13 @@ export function MoneyPage() {
     data.syncStatus === 'loading' ? 'loading' :
     data.syncStatus === 'failed' ? 'failed' : 'fresh';
 
+  // MONEY A: the quick-log form is hidden (one reversible change — the
+  // form code below is untouched). POST /api/server/money now answers
+  // 410: money is logged in the "Create Well — Budget & P&L Bookkeeping"
+  // workbook, which feeds this page through KV (cr8w_money). Flip this
+  // back to true only if a working quick-log endpoint returns.
+  const SHOW_QUICK_LOG = false;
+
   // Autofocus the description field on fine-pointer devices only; on
   // touch it would open the keyboard over the page on arrival.
   useEffect(() => {
@@ -220,7 +227,9 @@ export function MoneyPage() {
           </div>
         )}
 
-        {/* Quick Log — one card, segmented Direction toggle, one-row form */}
+        {/* Quick Log — one card, segmented Direction toggle, one-row form.
+            Hidden under MONEY A (see SHOW_QUICK_LOG above). */}
+        {SHOW_QUICK_LOG && (
         <section style={{
           padding: '16px 18px',
           borderRadius: 14,
@@ -309,6 +318,7 @@ export function MoneyPage() {
             </div>
           )}
         </section>
+        )}
 
         {/* Recent Activity — last 5, merged, signed with word tags */}
         <section style={{ marginBottom: 28 }}>

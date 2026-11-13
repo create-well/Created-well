@@ -1,13 +1,14 @@
-// M-1b (2026-11-04): the MONEY quick-log create route.
-// Contract (confirmed with the Frontend lane against MoneyCreate):
-// POST /api/server/money { name, amount, direction, actual, stage }
-// writes exactly one MONEY page (Name/Amount/Direction/Actual/Stage,
-// Type unset) and returns 201 + the MoneyRecord with direction and
-// stage. Validation refuses before any write; a Notion failure is a
-// truthful 502 with nothing stored (money has no KV shadow).
+// M-1b (2026-11-04) quick log, retired by MONEY A (2026-11-13).
+// Contract now: POST /api/server/money { name, amount, direction,
+// actual, stage } still runs the M-1b validation first (a malformed
+// log is a 400 with zero writes, unchanged), then answers a truthful
+// 410 naming where quick log moved — the "Create Well — Budget & P&L
+// Bookkeeping" workbook, whose Transactions feed the dashboard's money
+// slice through KV (cr8w_money). No Notion write is attempted on any
+// path; the retired MONEY database stays frozen.
 // Handler-level against api/server.ts with the kv-corrupt stub pattern
 // (synthetic auth + Supabase client, the REAL _notionWriter) and a
-// stubbed Notion fetch.
+// stubbed Notion fetch that counts every call.
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
@@ -76,28 +77,19 @@ function invoke({ method = 'POST', path = 'money', body } = {}) {
 
 const validIn = { name: 'Ticket sales — SLO Create', amount: 240, direction: 'In', actual: '2026-11-04', stage: 'Received' };
 
-test('valid In log: one Notion create, exact five properties, 201 MoneyRecord + direction/stage', async () => {
+test('valid In log: 410 naming the workbook move, zero Notion calls', async () => {
   const r = await invoke({ body: validIn });
-  assert.equal(r.code, 201);
-  assert.equal(r.notionCalls.length, 1);
-  const sent = JSON.parse(r.notionCalls[0].init.body);
-  assert.equal(sent.parent.database_id, 'db-money-fixture');
-  assert.deepEqual(Object.keys(sent.properties).sort(), ['Actual', 'Amount', 'Direction', 'Name', 'Stage']);
-  assert.equal(r.body.name, 'Ticket sales — SLO Create');
-  assert.equal(r.body.amount, 240);
-  assert.equal(r.body.date, '2026-11-04');
-  assert.equal(r.body.kind, '');
-  assert.equal(r.body.direction, 'In');
-  assert.equal(r.body.stage, 'Received');
-  assert.equal(r.body.notionPageId, '3e724acf-799d-81ff-9000-0000000000aa');
-  assert.equal(typeof r.body.id, 'number');
+  assert.equal(r.code, 410);
+  assert.equal(r.notionCalls.length, 0);
+  assert.equal(r.body.code, 'quick_log_moved_to_workbook');
+  assert.match(r.body.error, /Create Well — Budget & P&L Bookkeeping/);
 });
 
-test('valid Out log: stage Paid writes and echoes', async () => {
+test('valid Out log: 410 as well — validation passes, no write attempted', async () => {
   const r = await invoke({ body: { name: 'Venue fee', amount: 75.5, direction: 'Out', actual: '2026-11-01', stage: 'Paid' } });
-  assert.equal(r.code, 201);
-  assert.equal(r.body.direction, 'Out');
-  assert.equal(r.body.stage, 'Paid');
+  assert.equal(r.code, 410);
+  assert.equal(r.notionCalls.length, 0);
+  assert.equal(r.body.code, 'quick_log_moved_to_workbook');
 });
 
 test('stage/direction mismatch refuses 400 before any write', async () => {
@@ -124,20 +116,18 @@ test('invalid fields refuse 400 with zero writes', async () => {
   }
 });
 
-test('extra body fields are ignored; Type is never written', async () => {
+test('extra body fields are ignored by validation; still 410, zero writes', async () => {
   const r = await invoke({ body: { ...validIn, type: 'Grant', kind: 'Grant', flowId: 'x', notionPageId: 'spoof' } });
-  assert.equal(r.code, 201);
-  const sent = JSON.parse(r.notionCalls[0].init.body);
-  assert.deepEqual(Object.keys(sent.properties).sort(), ['Actual', 'Amount', 'Direction', 'Name', 'Stage']);
-  assert.equal(r.body.notionPageId, '3e724acf-799d-81ff-9000-0000000000aa'); // server-issued, not the spoof
+  assert.equal(r.code, 410);
+  assert.equal(r.notionCalls.length, 0);
 });
 
-test('Notion failure: 502, truthful, nothing stored', async () => {
+test('the 410 does not depend on Notion: a valid log answers 410 with zero calls even when Notion would fail', async () => {
   notionShouldFail = true;
   const r = await invoke({ body: validIn });
   notionShouldFail = false;
-  assert.equal(r.code, 502);
-  assert.equal(r.body.notion_error, 'notion_write_failed');
+  assert.equal(r.code, 410);
+  assert.equal(r.notionCalls.length, 0);
 });
 
 test('money is POST-only here: GET falls through to 404, POST with an id 404s', async () => {

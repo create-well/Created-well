@@ -160,9 +160,13 @@ test('all Notion sources failing: 200, all slices empty, all failures named', as
     for (const key of ['tasks', 'stations', 'forum', 'coflowDates', 'money', 'events', 'feedback']) {
       assert.deepEqual(res.body[key], [], key);
     }
-    for (const name of ['moves', 'people', 'flows', 'content', 'money', 'openAsks', 'events', 'feedback']) {
+    for (const name of ['moves', 'people', 'flows', 'content', 'openAsks', 'events', 'feedback']) {
       assert.ok(res.body.sourceErrors[name], `${name} named`);
     }
+    // MONEY A: money is not a Notion source anymore — its empty slice
+    // here comes from the (empty) KV store, and no money failure is
+    // named, because there is no money leg left to fail.
+    assert.equal(res.body.sourceErrors.money, undefined);
   } finally { restore(); }
 });
 
@@ -199,6 +203,59 @@ test('valid paginated CONTENT retains both full IDs and asserts completed query'
     assert.deepEqual(res.body.forum.map(x=>x.notionPageId),ids);
     assert.deepEqual(res.body.forum.map(x=>x.flowRelation.ids),[[flow],[flow]]);
   } finally {restore();}
+});
+
+// MONEY A: the money slice is KV-fed (cr8w_money) from the bookkeeping
+// workbook — the mapper (money-feed/money_to_dashboard.py) emits exactly
+// this MoneyRecord shape. The retired Notion MONEY database is out of
+// the fanout entirely.
+const MONEY_KV_ROW = {
+  id: 7630379282737480,
+  notionPageId: 'a5ab65b9a5ab65b9a5ab65b9a5ab65b9a5ab65b9a5ab65b9a5ab65b9a5ab65b9',
+  name: 'Square payout $212.94 — uncategorized', amount: 212.94,
+  kind: 'Needs category', direction: 'In', stage: 'Received',
+  date: '2026-10-13', flowId: '', docUrl: '', created_at: '',
+};
+
+test('money is absent from the Notion fanout source lists', async () => {
+  const { SOURCES, CANONICAL_SOURCES } = await import('../api/_notion-sources.ts');
+  assert.ok(!SOURCES.includes('money'), 'SOURCES carries no money');
+  assert.ok(!CANONICAL_SOURCES.includes('money'), 'CANONICAL_SOURCES carries no money');
+});
+
+test('money slice is served from KV (cr8w_money); the retired Notion MONEY db is not consulted', async () => {
+  const restore = installFetch({ failing: new Set([DB.money]), kvRows: { cr8w_money: [MONEY_KV_ROW] } });
+  try {
+    const res = await callHandler();
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.money, [MONEY_KV_ROW]);
+    assert.deepEqual(res.body.sourceErrors, {});
+  } finally { restore(); }
+});
+
+test('money KV read failing: 200, money slice empty, failure named under kv:cr8w_money only', async () => {
+  const restore = installFetch({ failingKv: new Set(['cr8w_money']) });
+  try {
+    const res = await callHandler();
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.money, []);
+    assert.ok(res.body.sourceErrors['kv:cr8w_money'], 'kv money failure named');
+    assert.equal(res.body.sourceErrors.money, undefined, 'no Notion money leg remains to fail');
+    assert.equal(Object.keys(res.body.sourceErrors).length, 1);
+  } finally { restore(); }
+});
+
+test('money KV boundary validation: a non-numeric amount drops, valid money rows served', async () => {
+  const restore = installFetch({ kvRows: { cr8w_money: [
+    MONEY_KV_ROW,
+    { ...MONEY_KV_ROW, id: 2, notionPageId: 'b'.repeat(64), amount: '212.94' },
+  ] } });
+  try {
+    const res = await callHandler();
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.money, [MONEY_KV_ROW]);
+    assert.match(res.body.sourceErrors['kv:cr8w_money'], /dropped 1 malformed/);
+  } finally { restore(); }
 });
 
 test('KV boundary validation: malformed rows dropped and named, valid rows served', async () => {

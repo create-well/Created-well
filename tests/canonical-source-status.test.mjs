@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {sourceStatusesFromDashboard, uniformCanonicalStatus, canonicalFailureOrUnknown} from '../src/lib/canonicalSourceStatus.ts';
-const names=['moves','people','flows','content','money'];
+const names=['moves','people','flows','content'];
 test('source failures remain distinct per canonical source and do not expose provider details',()=>{
  for(const failed of names){
   const states=sourceStatusesFromDashboard({sourceErrors:{[failed]:'private provider details'}},false);

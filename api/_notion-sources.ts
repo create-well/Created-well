@@ -1,6 +1,6 @@
 // Notion source registry for createdwell live-sync.
 //
-// The seven sources feed the dashboard's UI collections through the
+// The six sources feed the dashboard's UI collections through the
 // pure normalizers behind /api/dashboard, so a per-database snapshot
 // in UI shape cannot represent them 1:1. The snapshot here therefore
 // stores the normalizer INPUT: one row per Notion page carrying its
@@ -11,8 +11,13 @@
 // route (Notion-Version 2025-09-03; see the reader migration note at
 // NOTION_API_VERSION below — the legacy /v1/databases/{id}/query path
 // this file used through 2026-11-02 was removed in that API version).
-// The canonical five sources use bounded transient retries; optional
+// The canonical four sources use bounded transient retries; optional
 // sources retain their single-attempt behavior.
+//
+// MONEY A (2026-11-13): money is no longer a Notion source. The MONEY
+// database is a retired frozen snapshot; the dashboard's money slice is
+// KV-fed from the bookkeeping workbook (key cr8w_money, see
+// api/dashboard.ts). NOTION_DB_MONEY stays set but unread.
 
 import type { NotionPage } from "../src/lib/notionNormalizer.js";
 
@@ -21,7 +26,6 @@ export const SOURCES = [
   "people",
   "flows",
   "content",
-  "money",
   "events",
   "feedback",
 ] as const;
@@ -33,7 +37,6 @@ const SOURCE_ENV: Record<SourceName, string> = {
   people: "NOTION_DB_PEOPLE",
   flows: "NOTION_DB_FLOWS",
   content: "NOTION_DB_CONTENT",
-  money: "NOTION_DB_MONEY",
   events: "NOTION_DB_EVENTS",
   feedback: "NOTION_DB_FEEDBACK",
 };
@@ -155,7 +158,6 @@ export const CANONICAL_SOURCES = [
   "people",
   "flows",
   "content",
-  "money",
 ] as const;
 
 export type CanonicalSourceName = (typeof CANONICAL_SOURCES)[number];

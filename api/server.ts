@@ -13,8 +13,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive, createMoneyPage, validateMoneyCreate, isNotionPageId } from './_notionWriter.js';
-import { normalizeMoney } from '../src/lib/notionNormalizer.js';
+import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive, validateMoneyCreate, isNotionPageId } from './_notionWriter.js';
 import { applyCors, requireSession, requireSessionOrCron } from './_auth.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
@@ -392,24 +391,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // ── MONEY quick log (M-1b): POST-only, Notion-canonical, no KV shadow ──
-    // MONEY rows live only in Notion; the dashboard reads them through
-    // the sync payload. A create writes exactly one MONEY page and
-    // returns it in MoneyRecord shape (plus direction + stage, which
-    // the read projection also supplies). Other methods fall through
-    // to the 404 below — there is no money list endpoint here.
+    // ── MONEY quick log (M-1b, retired by MONEY A): POST-only ─────────────
+    // Quick log no longer writes here. Money's source of record is the
+    // "Create Well — Budget & P&L Bookkeeping" workbook; its Transactions
+    // feed the dashboard's money slice through KV (cr8w_money). The
+    // request validation still runs first (a malformed log is a 400,
+    // exactly as before), then the route answers a truthful 410 naming
+    // where quick log moved. Nothing is written anywhere. Other methods
+    // fall through to the 404 below — there is no money list endpoint here.
     if (resource === 'money' && method === 'POST' && !id) {
       const validation = validateMoneyCreate(await body(req));
       if (!validation.ok) { res.status(400).json({ error: validation.error }); return; }
-      try {
-        const page = await createMoneyPage(validation.value);
-        const record = normalizeMoney(page as unknown as Parameters<typeof normalizeMoney>[0]);
-        res.status(201).json({ ...record, direction: validation.value.direction, stage: validation.value.stage });
-      } catch (err) {
-        // Truthful outcome: nothing is stored anywhere on a failed write.
-        console.error('[money] Notion create failed:', err instanceof Error ? err.message : 'unknown error');
-        res.status(502).json({ error: 'Notion write failed; nothing was stored', notion_error: 'notion_write_failed' });
-      }
+      res.status(410).json({
+        error: 'Money quick log has moved to the "Create Well — Budget & P&L Bookkeeping" workbook — log money there. The dashboard money view now reads the workbook through its KV feed.',
+        code: 'quick_log_moved_to_workbook',
+      });
       return;
     }
 

@@ -149,7 +149,7 @@ test('transient network failures retry for canonical sources', async () => {
     calls += 1;
     if (calls === 1) throw new TypeError('synthetic network failure');
     return response(200, { results: [page('synthetic-page')], has_more: false, next_cursor: null });
-  }, () => queryCanonicalNotionDatabase('money', 'synthetic-db-id', 'synthetic-token'));
+  }, () => queryCanonicalNotionDatabase('content', 'synthetic-db-id', 'synthetic-token'));
 
   assert.equal(calls, 2);
   assert.equal(pages[0].id, 'synthetic-page');
@@ -181,7 +181,7 @@ test('TimeoutError retries for canonical sources', async () => {
       throw error;
     }
     return response(200, { results: [page('synthetic-page')], has_more: false, next_cursor: null });
-  }, () => queryCanonicalNotionDatabase('money', 'synthetic-db-id', 'synthetic-token'));
+  }, () => queryCanonicalNotionDatabase('content', 'synthetic-db-id', 'synthetic-token'));
 
   assert.equal(calls, 2);
   assert.equal(pages[0].id, 'synthetic-page');
@@ -246,8 +246,8 @@ test('canonical query retries HTTP 408, 429, 500, and 504', async () => {
 });
 
 test('fetchSourceRows retries canonical pages and follows the cursor', async () => {
-  const previous = process.env.NOTION_DB_MONEY;
-  process.env.NOTION_DB_MONEY = 'synthetic-money-db';
+  const previous = process.env.NOTION_DB_CONTENT;
+  process.env.NOTION_DB_CONTENT = 'synthetic-content-db';
   const calls = [];
   try {
     const rows = await withFetch(async (url, init) => {
@@ -255,30 +255,30 @@ test('fetchSourceRows retries canonical pages and follows the cursor', async () 
       if (calls.length < 3) return response(504, { message: 'synthetic retry' });
       if (calls.length === 3) {
         return response(200, {
-          results: [page('synthetic-money-one')],
+          results: [page('synthetic-content-one')],
           has_more: true,
-          next_cursor: 'synthetic-money-cursor',
+          next_cursor: 'synthetic-content-cursor',
         });
       }
       return response(200, {
-        results: [page('synthetic-money-two')],
+        results: [page('synthetic-content-two')],
         has_more: false,
         next_cursor: null,
       });
-    }, () => fetchSourceRows('money', 'synthetic-token'));
+    }, () => fetchSourceRows('content', 'synthetic-token'));
 
     assert.equal(calls.length, 4);
     assert.deepEqual(calls[0].body, { page_size: 100 });
     assert.deepEqual(calls[0].body, calls[1].body);
     assert.deepEqual(calls[1].body, calls[2].body);
-    assert.deepEqual(calls[3].body, { page_size: 100, start_cursor: 'synthetic-money-cursor' });
+    assert.deepEqual(calls[3].body, { page_size: 100, start_cursor: 'synthetic-content-cursor' });
     assert.deepEqual(rows.map((row) => row._id), [
-      'synthetic-money-one',
-      'synthetic-money-two',
+      'synthetic-content-one',
+      'synthetic-content-two',
     ]);
   } finally {
-    if (previous === undefined) delete process.env.NOTION_DB_MONEY;
-    else process.env.NOTION_DB_MONEY = previous;
+    if (previous === undefined) delete process.env.NOTION_DB_CONTENT;
+    else process.env.NOTION_DB_CONTENT = previous;
   }
 });
 
@@ -303,13 +303,17 @@ test('optional feedback source remains single-attempt', async () => {
   assert.equal(calls, 1);
 });
 
-test('dashboard wires retry only to the five canonical Notion sources', async () => {
+test('dashboard wires retry only to the four canonical Notion sources', async () => {
   const { readFile } = await import('node:fs/promises');
   const dashboard = await readFile(new URL('../api/dashboard.ts', import.meta.url), 'utf8');
 
-  for (const source of ['moves', 'people', 'flows', 'content', 'money']) {
+  for (const source of ['moves', 'people', 'flows', 'content']) {
     assert.match(dashboard, new RegExp(`queryCanonicalNotionDatabase\\('${source}'`));
   }
+  // MONEY A: money left the fanout — the dashboard must not query the
+  // retired MONEY database through the canonical leg (or at all).
+  assert.doesNotMatch(dashboard, /queryCanonicalNotionDatabase\('money'/);
+  assert.doesNotMatch(dashboard, /dbMoney/);
   for (const variable of ['dbOpenAsks', 'dbEvents', 'dbFeedback']) {
     assert.match(dashboard, new RegExp(`queryNotionDatabase\\(${variable}, secret\\)`));
     assert.doesNotMatch(dashboard, new RegExp(`queryCanonicalNotionDatabase\\('${variable.replace(/^db/, '').toLowerCase()}'`));

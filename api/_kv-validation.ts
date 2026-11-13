@@ -71,6 +71,16 @@ const RULES: Readonly<Record<string, Rule>> = {
       status: ['pending', 'decided'],
     },
   },
+  // MONEY A: the money slice is the MoneyRecord shape the workbook →
+  // KV mapper emits (money-feed/money_to_dashboard.py). `amount` is
+  // load-bearing (the page totals on it), so a non-numeric amount is a
+  // definite wrong primitive and drops the row. Direction/stage/kind
+  // stay vocabulary-free like every other descriptive field here;
+  // created_at rides the generic string check above.
+  cr8w_money: {
+    strings: ['notionPageId', 'name', 'kind', 'direction', 'stage', 'date', 'flowId', 'docUrl'],
+    numbers: ['amount'],
+  },
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {

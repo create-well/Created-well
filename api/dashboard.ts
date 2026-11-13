@@ -16,7 +16,9 @@
  *   NOTION_DB_PEOPLE      — PEOPLE database ID
  *   NOTION_DB_FLOWS       — FLOWS database ID  (the only dated table)
  *   NOTION_DB_CONTENT     — CONTENT database ID
- *   NOTION_DB_MONEY       — MONEY database ID  (read here; writes land through POST /api/server/money)
+ *   NOTION_DB_MONEY       — retired MONEY database ID (presence still required by the config
+ *                           check; no longer read — MONEY A moved the money slice to the KV
+ *                           feed from the bookkeeping workbook, key cr8w_money)
  *   SUPABASE_URL          — Supabase project URL
  *   SUPABASE_SERVICE_ROLE_KEY — Supabase service-role key (server-only)
  */
@@ -37,7 +39,6 @@ import {
   normalizeContent,
   normalizeFlow,
   buildFlowPartifulLinks,
-  normalizeMoney,
   normalizeEvent,
   normalizeFeedback,
   type NotionPage,
@@ -146,7 +147,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const dbPeople   = process.env.NOTION_DB_PEOPLE;
   const dbFlows    = process.env.NOTION_DB_FLOWS;
   const dbContent  = process.env.NOTION_DB_CONTENT;
-  const dbMoney    = process.env.NOTION_DB_MONEY;
   const dbOpenAsks = process.env.NOTION_DB_OPEN_ASKS;
   const dbEvents   = process.env.NOTION_DB_EVENTS;
   const dbFeedback = process.env.NOTION_DB_FEEDBACK;
@@ -164,6 +164,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'cr8w_well_notes',
     'cr8w_calendar_events',
     'cr8w_decisions',
+    'cr8w_money',
   ] as const;
 
   try {
@@ -189,7 +190,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       settleNamed('people',  () => secret && dbPeople  ? queryCanonicalNotionDatabase('people', dbPeople, secret)  : Promise.resolve([])),
       settleNamed('flows',   () => secret && dbFlows   ? queryCanonicalNotionDatabase('flows', dbFlows, secret)   : Promise.resolve([])),
       settleNamed('content', () => secret && dbContent ? queryCanonicalNotionDatabase('content', dbContent, secret) : Promise.resolve([])),
-      settleNamed('money',   () => secret && dbMoney   ? queryCanonicalNotionDatabase('money', dbMoney, secret)   : Promise.resolve([])),
       // Optional sources retain their existing single-attempt query path.
       settleNamed('openAsks', () => secret && dbOpenAsks ? queryNotionDatabase(dbOpenAsks, secret) : Promise.resolve([])),
       settleNamed('events',   () => secret && dbEvents   ? queryNotionDatabase(dbEvents, secret)   : Promise.resolve([])),
@@ -201,13 +201,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const sourceErrors: Record<string, string> = {};
     for (const [name, settled] of [
-      ...notionSettled.map((s, i) => [['moves', 'people', 'flows', 'content', 'money', 'openAsks', 'events', 'feedback'][i], s] as const),
+      ...notionSettled.map((s, i) => [['moves', 'people', 'flows', 'content', 'openAsks', 'events', 'feedback'][i], s] as const),
       ...kvSettled.map((s, i) => [`kv:${KV_KEYS[i]}`, s] as const),
     ]) {
       if (settled.error) sourceErrors[name] = settled.error;
     }
 
-    const [movesPages, peoplePages, flowsPages, contentPages, moneyPages, openAsksPages, eventsPages, feedbackPages] =
+    const [movesPages, peoplePages, flowsPages, contentPages, openAsksPages, eventsPages, feedbackPages] =
       notionSettled.map((s) => s.values);
     const ownerSlugIndex = buildOwnerSlugIndex(peoplePages);
     // KV boundary validation: stored rows are checked at this read
@@ -228,6 +228,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       messages, braindumps, announcements, forumReplies,
       workshops, workshopPrograms, workshopResources,
       coflowCheckins, wellNotes, calendarEvents, decisions,
+      moneyKv,
     ] = kvValidated;
 
     // Partiful RSVP links, projected once for the whole payload
@@ -252,7 +253,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const partifulLink = partifulLinks.get(pg.id);
         return partifulLink ? { ...d, partifulLink } : d;
       }),
-      money:             moneyPages.map(normalizeMoney) as MoneyRecord[],
+      // MONEY A: the money slice is KV-fed from the bookkeeping
+      // workbook (mapper: money-feed/money_to_dashboard.py), already in
+      // MoneyRecord shape and boundary-validated above like every KV
+      // slice. The retired Notion MONEY database is no longer read.
+      money:             moneyKv as MoneyRecord[],
       events:            eventsPages.map(normalizeEvent) as EventRecord[],
       feedback:          feedbackPages.map(normalizeFeedback) as FeedbackRecord[],
       // KV-backed (boundary-validated per slice; see validateKvSlice)

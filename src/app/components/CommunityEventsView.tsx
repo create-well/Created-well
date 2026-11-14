@@ -4,7 +4,7 @@ import { useDashboard } from '../../contexts/DashboardContext';
 import { localDateString } from '../../lib/dateLabel';
 import {
   PERSONS, TASK_ROLES, HD_PROFILES,
-  getDaysToNextEvent, formatDate,
+  formatDate,
 } from './data';
 import type { CoFlowDate, Task } from './api';
 import {
@@ -12,14 +12,15 @@ import {
   isWorkshop,
   isBookClub,
   isGroupEvent,
-  isCommunityFlow,
-  isSloCreateSeries,
+  seriesOf,
+  groupFlowsBySeries,
+  boardPopulation,
 } from '../../lib/flows';
 
 type Tab = 'upcoming' | 'podyaps' | 'workshops' | 'moves' | 'team';
 
 const TABS: { key: Tab; label: string; emoji: string }[] = [
-  { key: 'upcoming',   label: 'Upcoming',           emoji: '📅' },
+  { key: 'upcoming',   label: 'Board',              emoji: '📅' },
   { key: 'podyaps',    label: 'Podyaps',             emoji: '🎙️' },
   { key: 'workshops',  label: 'Book Club + Shops',   emoji: '🎨' },
   { key: 'moves',      label: 'Moves',               emoji: '📋' },
@@ -50,6 +51,7 @@ function statusPill(status: string) {
 }
 
 function FlowCard({ flow }: { flow: CoFlowDate }) {
+  const navigate = useNavigate();
   const dateStr = flow.date ? formatDate(flow.date) : 'Date not set yet.';
   const hostPerson = flow.host ? PERSONS[flow.host] : null;
   // Partiful is the RSVP platform of record (register 1484, Leg 2): a flow
@@ -57,7 +59,9 @@ function FlowCard({ flow }: { flow: CoFlowDate }) {
   // Upcoming only — a past event takes no RSVPs.
   const showRsvp = !!flow.partifulLink && (!flow.date || flow.date >= localDateString(new Date()));
   return (
-    <div style={{
+    <div
+      onClick={() => navigate(`/gatherings/${flow.id}`)}
+      style={{
       background: '#fff',
       border: '1px solid rgba(0,0,0,0.07)',
       borderRadius: 12,
@@ -66,6 +70,7 @@ function FlowCard({ flow }: { flow: CoFlowDate }) {
       flexDirection: 'column',
       gap: 6,
       boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+      cursor: 'pointer',
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', fontWeight: 500, color: 'var(--cr8w-text, #2D2438)', lineHeight: 1.3, flex: 1 }}>
@@ -89,6 +94,11 @@ function FlowCard({ flow }: { flow: CoFlowDate }) {
             {hostPerson.emoji} {hostPerson.name}
           </span>
         )}
+        {flow.stage && (
+          <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', color: 'var(--text-muted, #8A7060)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            🌊 {flow.stage}
+          </span>
+        )}
       </div>
 
       {flow.notes && (
@@ -103,6 +113,7 @@ function FlowCard({ flow }: { flow: CoFlowDate }) {
             href={flow.partifulLink}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             style={{
               fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 700,
               color: 'var(--cr8w-primary-text, #466F64)', textDecoration: 'none',
@@ -127,82 +138,36 @@ function EmptyState({ emoji, title, body }: { emoji: string; title: string; body
   );
 }
 
-// ── Upcoming tab ──────────────────────────────────────────────────────────────
+// ── Board tab (Phase 2a, packet K §3) ───────────────────────────────────────
+// The Gatherings board: the default surface, replacing the old
+// Upcoming list. The population is the same slice the Upcoming
+// tab drew from (the parent's community-flows-or-all set); the
+// board groups it by series through groupFlowsBySeries — SLO
+// Create first, the unfiled group last — and orders each group
+// by stage, then date. Every card opens the gathering's detail
+// page. The countdown banner and the past-five cap are gone with
+// the old tab: wrapped gatherings live in their stage groups.
 
-function UpcomingTab({ flows }: { flows: CoFlowDate[] }) {
-  const today = localDateString();
-  const upcoming = flows.filter(f => f.date >= today && !FLOW_ARCHIVED.has(f.status)).sort((a, b) => a.date.localeCompare(b.date));
-  const past     = flows.filter(f => !f.date || f.date < today || FLOW_ARCHIVED.has(f.status)).sort((a, b) => b.date.localeCompare(a.date));
-  const daysToNext = getDaysToNextEvent(upcoming);
-
+function BoardTab({ flows }: { flows: CoFlowDate[] }) {
+  const groups = groupFlowsBySeries(flows);
+  if (flows.length === 0) {
+    return (
+      <EmptyState emoji="🌊" title="Nothing flowing yet" body="Community events from FLOWS will appear here once scheduled in Notion." />
+    );
+  }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Countdown banner */}
-      {upcoming.length > 0 ? (
-        <div style={{
-          background: 'linear-gradient(135deg, rgba(123,168,157,0.12) 0%, rgba(184,169,212,0.10) 100%)',
-          border: '1px solid rgba(123,168,157,0.25)',
-          borderRadius: 14,
-          padding: '16px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-        }}>
-          <div style={{ textAlign: 'center', flexShrink: 0 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '2.2rem', fontWeight: 800, color: 'var(--cr8w-primary, #7BA89D)', lineHeight: 1 }}>
-              {daysToNext === 0 ? '🎉' : daysToNext}
-            </div>
-            {daysToNext > 0 && (
-              <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.62rem', color: 'var(--text-muted, #8A7060)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>days</div>
-            )}
-          </div>
-          <div>
-            <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.68rem', fontWeight: 700, color: 'var(--cr8w-primary, #7BA89D)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>
-              {daysToNext === 0 ? "It's happening today" : 'Next event'}
-            </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--cr8w-text, #2D2438)' }}>
-              {upcoming[0].theme || 'Upcoming event'}
-            </div>
-            {upcoming[0].date && (
-              <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', color: 'var(--text-muted, #8A7060)', marginTop: 2 }}>
-                {formatDate(upcoming[0].date)}{upcoming[0].location && upcoming[0].location !== 'TBD' ? ` · ${upcoming[0].location}` : ''}
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div style={{
-          background: 'rgba(255,214,10,0.06)', border: '1px solid rgba(255,214,10,0.18)',
-          borderRadius: 12, padding: '12px 16px', fontFamily: 'var(--font-label)',
-          fontSize: '0.78rem', color: '#A0860A',
-        }}>
-          💧 No upcoming events scheduled. Add a FLOW in Notion to have it appear here.
-        </div>
-      )}
-
-      {/* Upcoming list */}
-      {upcoming.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', color: 'var(--text-muted, #8A7060)' }}>
+        {flows.length} gathering{flows.length === 1 ? '' : 's'} by series
+      </div>
+      {groups.map((group) => (
+        <div key={group.series} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted, #8A7060)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Coming Up ({upcoming.length})
+            {group.series} ({group.flows.length})
           </div>
-          {upcoming.map(f => <FlowCard key={f.id} flow={f} />)}
+          {group.flows.map(f => <FlowCard key={f.id} flow={f} />)}
         </div>
-      )}
-
-      {/* Past */}
-      {past.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted, #8A7060)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 4 }}>
-            Past ({past.length})
-          </div>
-          {past.slice(0, 5).map(f => <FlowCard key={f.id} flow={f} />)}
-        </div>
-      )}
-
-      {upcoming.length === 0 && past.length === 0 && (
-        <EmptyState emoji="🌊" title="Nothing flowing yet" body="Community events from FLOWS will appear here once scheduled in Notion." />
-      )}
+      ))}
     </div>
   );
 }
@@ -255,9 +220,12 @@ function WorkshopsTab({ flows }: { flows: CoFlowDate[] }) {
   const [sub, setSub] = useState<'book-club' | 'workshops'>('workshops');
   // Workshops-proper filter (model of record, 2026-11-14): SLO Create
   // is the core monthly offering, its own series, never a workshop —
-  // an SLO Create row never renders inside this tab.
-  const bookClub  = flows.filter(f => isBookClub(f) && !isSloCreateSeries(f));
-  const workshops = flows.filter(f => isWorkshop(f) && !isSloCreateSeries(f));
+  // an SLO Create row never renders inside this tab. Phase 2a makes
+  // the exclusion field-first (packet K §3): seriesOf reads the
+  // projected Series field, with the landed name guard as its
+  // fallback for rows with no Series filed.
+  const bookClub  = flows.filter(f => isBookClub(f) && seriesOf(f) !== 'SLO Create');
+  const workshops = flows.filter(f => isWorkshop(f) && seriesOf(f) !== 'SLO Create');
   const shown = sub === 'book-club' ? bookClub : workshops;
 
   return (
@@ -527,12 +495,13 @@ export function CommunityEventsView({ defaultTab = 'upcoming' }: { defaultTab?: 
   }, [defaultTab]);
 
   const allFlows = data.coFlowDates ?? [];
-  const communityFlows = allFlows.filter(isCommunityFlow);
   const podyaps       = allFlows.filter(isPodyap);
   const groupFlows    = allFlows.filter(isGroupEvent);
 
-  // Fall back to all flows when no typed community events exist yet
-  const upcomingFlows = (communityFlows.length > 0 ? communityFlows : allFlows);
+  // The board's population (packet K §3, as amended A6): the
+  // community-flows slice plus every row whose seriesOf
+  // resolves, falling back to all flows when the union is empty.
+  const upcomingFlows = boardPopulation(allFlows);
   const podyapFlows   = (podyaps.length > 0 ? podyaps : []);
   const groupFlowsFinal = (groupFlows.length > 0 ? groupFlows : []);
 
@@ -588,7 +557,7 @@ export function CommunityEventsView({ defaultTab = 'upcoming' }: { defaultTab?: 
 
       {/* Tab content */}
       <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
-        {activeTab === 'upcoming'  && <UpcomingTab  flows={upcomingFlows} />}
+        {activeTab === 'upcoming'  && <BoardTab     flows={upcomingFlows} />}
         {activeTab === 'podyaps'   && <PodyapsTab   flows={podyapFlows} />}
         {activeTab === 'workshops' && <WorkshopsTab flows={groupFlowsFinal} />}
         {activeTab === 'moves'     && <MovesTab     tasks={data.tasks ?? []} />}

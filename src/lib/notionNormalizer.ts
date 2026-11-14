@@ -127,6 +127,30 @@ function getRelationFirstId(p: NotionPropValue | undefined): string {
   return (p as NPropRelation).relation[0]?.id ?? '';
 }
 
+// All relation page IDs, in filed order.
+function getRelationIds(p: NotionPropValue | undefined): string[] {
+  if (!p || p.type !== 'relation') return [];
+  return (p as NPropRelation).relation.map(r => r.id);
+}
+
+// A number the source actually carries: a plain number property,
+// or a rollup whose result is a number (the FLOWS Pleasure In /
+// Out shape, verified at Phase 2a spec time). Anything else —
+// absent, null, a non-number rollup — is undefined, never 0: a
+// missing number and a filed 0 are different facts.
+function getNumberValue(p: NotionPropValue | undefined): number | undefined {
+  if (!p) return undefined;
+  if (p.type === 'number') {
+    const n = (p as NPropNumber).number;
+    return typeof n === 'number' ? n : undefined;
+  }
+  if (p.type === 'rollup') {
+    const rollup = (p as unknown as { rollup?: { type?: string; number?: number | null } }).rollup;
+    if (rollup?.type === 'number' && typeof rollup.number === 'number') return rollup.number;
+  }
+  return undefined;
+}
+
 function getUrl(p: NotionPropValue | undefined): string {
   if (!p || p.type !== 'url') return '';
   return (p as NPropUrl).url ?? '';
@@ -304,6 +328,11 @@ export function normalizeMove(page: NotionPage, ownerSlugs?: ReadonlyMap<string,
     category:     getSelect(pick(p, 'Type', 'Category', 'Label'))  || undefined,
     source:       blockedBy || undefined,
     created_at:   page.created_time,
+    // The Flow relation (Phase 2a, packet K §1.4): the MOVES-side
+    // property is named "Flow", a dual relation synced to the
+    // FLOWS-side "Moves" (verified at spec time). The gathering
+    // detail page's work list joins on this id.
+    flowPageId:   getRelationFirstId(pick(p, 'Flow')) || undefined,
   };
 }
 
@@ -486,15 +515,23 @@ export function normalizeMoney(page: NotionPage): MoneyRecord {
 }
 
 // ── FLOWS → CoFlowDate ────────────────────────────────────────────────────────
-// Canonical FLOWS schema (Create Well OS):
+// Canonical FLOWS schema (Create Well OS; property set verified
+// against the live data source at Phase 2a spec time, 2026-11-14):
 //   Name            : Title
-//   Type            : Select (gathering type / container)
+//   Type            : Select (gathering type / container; 11 options,
+//                     its podcast value is "Podcast" — see the alias
+//                     in normalizeFlow)
+//   Series          : Select (Podyap / Workshop / Open Studio /
+//                     Book Club / Internal / SLO Create / Geyser)
+//   Stage           : Select (In the water / Rising / Flowing /
+//                     Wrapped / Depanty — casing as filed)
 //   Date            : Date
-//   Status          : Select (Scheduled / Planning / Confirmed / Wrapped / Cancelled)
-//   Phase           : Select (current production moment)
+//   Status          : Select (Upcoming / Active / Archived / Wrapped / Cancelled)
 //   Flow Keeper     : Relation → PEOPLE (accountable holder)
-//   Hard Stop       : Text (non-negotiable boundary)
-//   Desired Body-Feel: Text (felt design intention)
+//   Attended        : Relation → PEOPLE (who came)
+//   Attendees Actual: Number
+//   Pleasure In/Out : Rollup (number) — the row's recorded money
+//   Hard Stop       : Date (the non-negotiable boundary moment)
 //   Public URL      : URL
 //   Retro           : Text (short Depanty return)
 
@@ -510,13 +547,30 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
 
   const rawStatus = getSelect(pick(p, 'Status', 'State', 'Phase')).toLowerCase();
 
-  // Type (hub FLOWS DB select: Podyap/Workshop/Book Club/Open Studio/Pop-Up/Geyser/Internal)
+  // Type (hub FLOWS DB select: Podcast/Open Studio/Drop-in/Book Club/
+  // Workshop/Pop-Up/Surprise-ment/Geyser/Internal/Off-site/SLO Create)
   // Theme (hub FLOWS DB free text — freeform topic label, used alongside Type)
   const typeRaw  = getSelect(pick(p, 'Type', 'Kind', 'Category'));
   const themeRaw = getText(pick(p, 'Theme', 'Topic')) || typeRaw;
 
-  const FLOW_TYPES: FlowType[] = ['Podyap', 'Workshop', 'Book Club', 'Open Studio', 'Pop-Up', 'Geyser', 'Internal'];
-  const flowType = FLOW_TYPES.find(t => t.toLowerCase() === typeRaw.toLowerCase()) ?? undefined;
+  // The canonical list names the same 8 values as the FlowType
+  // union of record in api.ts (Phase 2a unification, packet K §2;
+  // a pin asserts the sites agree). One source alias: the select's
+  // podcast value is "Podcast", whose canonical FlowType is
+  // 'Podyap' — 17 of 38 live rows ride this line. Source values
+  // with no canonical FlowType (Drop-in, Off-site, SLO Create as a
+  // Type) write undefined and survive on theme, as before.
+  const FLOW_TYPES: FlowType[] = ['Podyap', 'Workshop', 'Book Club', 'Open Studio', 'Pop-Up', 'Surprise-ment', 'Geyser', 'Internal'];
+  const FLOW_TYPE_ALIASES: Record<string, FlowType> = { podcast: 'Podyap' };
+  const flowType =
+    FLOW_TYPES.find(t => t.toLowerCase() === typeRaw.toLowerCase()) ??
+    FLOW_TYPE_ALIASES[typeRaw.toLowerCase()] ??
+    undefined;
+
+  // Series and Stage (Phase 2a, packet K §1): the select values
+  // verbatim — the selects are the vocabularies, no remapping.
+  const series = getSelect(pick(p, 'Series')) || undefined;
+  const stage  = getSelect(pick(p, 'Stage')) || undefined;
 
   // Notes: combine Hard Stop and Retro as supplementary context
   const hardStop = getText(pick(p, 'Hard Stop', 'Hard stop', 'Notes', 'Description'));
@@ -545,6 +599,16 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
     host:         hostRaw.toLowerCase() || undefined,
     theme:        themeRaw || undefined,
     flowType:     flowType,
+    series:       series,
+    stage:        stage,
+    // Detail-page projections (packet K §1.4): the row's own
+    // recorded attendance count and Pleasure rollups, carried
+    // only when the source carries them. Attended names resolve
+    // at payload assembly (buildFlowAttendedNames), where the
+    // PEOPLE pages are in hand.
+    attendeesActual: getNumberValue(pick(p, 'Attendees Actual')),
+    pleasureIn:      getNumberValue(pick(p, 'Pleasure In')),
+    pleasureOut:     getNumberValue(pick(p, 'Pleasure Out')),
     rsvp:         {},
     agendaItems:  [],
     agendaLocked: false,
@@ -555,6 +619,32 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
     status:       FLOW_STATUS_MAP[rawStatus] ?? 'idea',
     created_at:   page.created_time,
   };
+}
+
+/**
+ * Attended names per flow, resolved at payload assembly (Phase
+ * 2a, packet K §1.4; the buildFlowPartifulLinks pattern): flow
+ * page id -> the display names of its Attended relation targets
+ * that resolve against the PEOPLE pages in hand. Unresolved ids
+ * are dropped — an id is never rendered as a name.
+ */
+export function buildFlowAttendedNames(
+  flowsPages: NotionPage[],
+  peoplePages: NotionPage[],
+): Map<string, string[]> {
+  const nameById = new Map<string, string>();
+  for (const person of peoplePages) {
+    const name = getText(pick(person.properties, 'Name', 'Title'));
+    if (name) nameById.set(person.id, name);
+  }
+  const result = new Map<string, string[]>();
+  for (const flow of flowsPages) {
+    const ids = getRelationIds(pick(flow.properties, 'Attended'));
+    if (ids.length === 0) continue;
+    const names = ids.map((id) => nameById.get(id)).filter((n): n is string => !!n);
+    if (names.length > 0) result.set(flow.id, names);
+  }
+  return result;
 }
 
 // ── EVENTS → EventRecord ──────────────────────────────────────────────────────

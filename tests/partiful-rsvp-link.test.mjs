@@ -41,5 +41,6 @@ test('no other component renders the projected link', async () => {
     'src/app/components/CommunityEventsView.tsx',
     'src/app/components/HubView.tsx',
     'src/app/components/api.ts',
+    'src/app/pages/GatheringDetailPage.tsx',
   ]);
 });

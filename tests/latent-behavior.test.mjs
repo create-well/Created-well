@@ -43,9 +43,10 @@ test('in-union Type in non-canonical casing is canonicalized', () => {
 });
 
 test('out-of-union Type writes undefined flowType; the raw label survives on theme', () => {
-  const podcast = normalizeFlow(page({ Type: sel('Podcast') }));
-  assert.equal(podcast.flowType, undefined);
-  assert.equal(podcast.theme, 'Podcast');
+  // Phase 2a (packet K §2): 'Podcast' left this set — the
+  // normalizer's named alias maps it to 'Podyap', pinned in
+  // tests/restructure-phase2a.test.mjs. 'Drop-in' remains a
+  // no-canonical source value and carries this assertion.
   const dropIn = normalizeFlow(page({ Type: sel('Drop-in') }));
   assert.equal(dropIn.flowType, undefined);
   assert.equal(dropIn.theme, 'Drop-in');

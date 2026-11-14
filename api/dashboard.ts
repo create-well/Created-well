@@ -39,6 +39,7 @@ import {
   normalizeContent,
   normalizeFlow,
   buildFlowPartifulLinks,
+  buildFlowAttendedNames,
   normalizeEvent,
   normalizeFeedback,
   type NotionPage,
@@ -236,6 +237,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // related EVENTS row carrying one.
     const partifulLinks = buildFlowPartifulLinks(flowsPages, eventsPages);
 
+    // Attended names, projected the same way (Phase 2a, packet K
+    // §1.4): flow page id -> the PEOPLE names its Attended
+    // relation resolves to. Consumed only by the gathering
+    // detail view.
+    const attendedNames = buildFlowAttendedNames(flowsPages, peoplePages);
+
     const payload: SyncData = {
       // Notion-backed
       // MOVES Owner is a Relation → PEOPLE: resolve the first target
@@ -251,7 +258,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       coflowDates:       flowsPages.map((pg) => {
         const d = normalizeFlow(pg);
         const partifulLink = partifulLinks.get(pg.id);
-        return partifulLink ? { ...d, partifulLink } : d;
+        const names = attendedNames.get(pg.id);
+        return {
+          ...d,
+          ...(partifulLink ? { partifulLink } : {}),
+          ...(names ? { attendedNames: names } : {}),
+        };
       }),
       // MONEY A: the money slice is KV-fed from the bookkeeping
       // workbook (mapper: money-feed/money_to_dashboard.py), already in

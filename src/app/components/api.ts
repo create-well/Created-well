@@ -273,6 +273,12 @@ export interface Task {
   priority: 'high' | 'medium' | 'low';
   due_date?: string; source?: string; category?: string; created_at?: string;
   notionPageId?: string;
+  /** The MOVES row's Flow relation target (a FLOWS page id),
+      projected by normalizeMove (Phase 2a, packet K §1.4): the
+      gathering detail page's work list joins on it against
+      CoFlowDate.notionPageId. Absent when the Move carries no
+      Flow relation; such tasks never appear on a detail page. */
+  flowPageId?: string;
 }
 
 export interface Station {
@@ -372,7 +378,12 @@ export interface WorkshopResource {
   created_at?: string;
 }
 
-export type FlowType = 'Podyap' | 'Workshop' | 'Book Club' | 'Open Studio' | 'Pop-Up' | 'Geyser' | 'Internal';
+/** The one FlowType definition of record (Phase 2a unification,
+    packet K §2): the 8 canonical values. flows.ts imports this
+    union instead of defining its own; the normalizer's lookup list
+    names the same 8. A pin in tests/restructure-phase2a.test.mjs
+    asserts the three sites agree. */
+export type FlowType = 'Podyap' | 'Workshop' | 'Book Club' | 'Open Studio' | 'Pop-Up' | 'Surprise-ment' | 'Geyser' | 'Internal';
 
 export interface CoFlowDate {
   id: number;
@@ -394,6 +405,25 @@ export interface CoFlowDate {
   flowType?: FlowType;
   /** Free-text topic label; fallback when flowType is absent. */
   theme?: string;
+  /** The FLOWS Series select, verbatim (Phase 2a, packet K §1):
+      the grouping key for the Gatherings board, read through
+      seriesOf() in lib/flows (which falls back to the name guard
+      for rows with no Series filed). Absent on payloads cached
+      before the projection landed; consumers tolerate undefined. */
+  series?: string;
+  /** The FLOWS Stage select, verbatim ("In the water" casing as
+      filed): the card's stage word and the within-group order on
+      the board. Display only in 2a; never touches status. */
+  stage?: string;
+  /** Detail-page projections (packet K §1.4), consumed only by the
+      gathering detail view: the FLOWS Attendees Actual number, the
+      Attended relation resolved to PEOPLE names at payload
+      assembly (unresolved ids dropped, never rendered raw), and
+      the Pleasure In / Out rollups when they resolve to numbers. */
+  attendeesActual?: number;
+  attendedNames?: string[];
+  pleasureIn?: number;
+  pleasureOut?: number;
   /** The related EVENTS row's Partiful link, projected through the
       flow's Events relation at payload assembly (register 1484, Leg 1).
       Only the link projects; absent when no related event carries one.

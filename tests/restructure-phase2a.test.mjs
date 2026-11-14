@@ -277,6 +277,12 @@ test('A6: the live SLO rows are IN the population — an absolute pin, not a dif
   assert.equal(groups[0].series, 'SLO Create');
   assert.deepEqual(new Set(groups[0].flows.map((f) => f.id)), new Set(live.map((f) => f.id)),
     'and they group together in the flagship group');
+  // The leg runs on seriesOf, not the field alone (exec's
+  // ruling): a name-only SLO row with no Series filed joins too.
+  const nameOnly = normalizeFlow(page({ Name: title('SLO Create (12/16)') }, 'live-name-only'));
+  assert.equal(nameOnly.series, undefined);
+  assert.ok(boardPopulation([nameOnly]).includes(nameOnly),
+    'the name-guard fallback leg carries a series-less SLO row onto the board');
 });
 
 // ── §4 / A2: detail resolution and the money slice ───────────────────────────

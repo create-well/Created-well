@@ -140,21 +140,21 @@ export function compareFlowsInGroup(a: CoFlowDate, b: CoFlowDate): number {
  */
 /**
  * The board's population (packet K §3, as amended A6): the
- * community-flows slice, plus every row with a Series filed.
- * The series leg is field-only — the projected Series value,
- * not the name fallback (grouping keeps the fallback;
- * membership does not). A6 exists because the frozen population
- * excluded all 3 live SLO Create rows: Series filed, Theme
- * empty, classifying outside the community slice, so the
- * flagship group could never render. When the union is empty
- * the board falls back to every flow, the parent's standing
- * behavior.
+ * community-flows slice, plus every row whose seriesOf
+ * resolves — the filed Series, or the name-guard fallback for
+ * rows with no Series filed (exec's ruling, 2026-11-14,
+ * confirming the lane's repair shape). A6 exists because the
+ * frozen population excluded all 3 live SLO Create rows:
+ * Series filed, Theme empty, classifying outside the community
+ * slice, so the flagship group could never render. When the
+ * union is empty the board falls back to every flow, the
+ * parent's standing behavior.
  */
 export function boardPopulation(flows: CoFlowDate[]): CoFlowDate[] {
   const community = flows.filter(isCommunityFlow);
   const member = new Set<CoFlowDate>(community);
-  const seriesFiled = flows.filter((f) => f.series !== undefined && !member.has(f));
-  const population = [...community, ...seriesFiled];
+  const seriesLeg = flows.filter((f) => seriesOf(f) !== undefined && !member.has(f));
+  const population = [...community, ...seriesLeg];
   return population.length > 0 ? population : flows;
 }
 

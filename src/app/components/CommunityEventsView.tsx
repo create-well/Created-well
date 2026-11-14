@@ -499,8 +499,8 @@ export function CommunityEventsView({ defaultTab = 'upcoming' }: { defaultTab?: 
   const groupFlows    = allFlows.filter(isGroupEvent);
 
   // The board's population (packet K §3, as amended A6): the
-  // community-flows slice plus every row with a Series filed,
-  // falling back to all flows when the union is empty.
+  // community-flows slice plus every row whose seriesOf
+  // resolves, falling back to all flows when the union is empty.
   const upcomingFlows = boardPopulation(allFlows);
   const podyapFlows   = (podyaps.length > 0 ? podyaps : []);
   const groupFlowsFinal = (groupFlows.length > 0 ? groupFlows : []);

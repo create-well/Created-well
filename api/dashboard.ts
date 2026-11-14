@@ -40,6 +40,8 @@ import {
   normalizeFlow,
   buildFlowPartifulLinks,
   buildFlowAttendedNames,
+  buildFlowCraftLeads,
+  buildFlowEventInfo,
   normalizeEvent,
   normalizeFeedback,
   type NotionPage,
@@ -243,6 +245,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // detail view.
     const attendedNames = buildFlowAttendedNames(flowsPages, peoplePages);
 
+    // Phase 2b projections (packet L, A3/A4): Craft Lead names,
+    // and per-flow linked-EVENTS info (start/end for §5's day-of
+    // time rule; the guest list for the door). Same assembly
+    // pattern as the two projections above.
+    const craftLeads = buildFlowCraftLeads(flowsPages, peoplePages);
+    const eventInfo = buildFlowEventInfo(flowsPages, eventsPages, peoplePages);
+
     const payload: SyncData = {
       // Notion-backed
       // MOVES Owner is a Relation → PEOPLE: resolve the first target
@@ -259,10 +268,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const d = normalizeFlow(pg);
         const partifulLink = partifulLinks.get(pg.id);
         const names = attendedNames.get(pg.id);
+        const craftLead = craftLeads.get(pg.id);
+        const ev = eventInfo.get(pg.id);
         return {
           ...d,
           ...(partifulLink ? { partifulLink } : {}),
           ...(names ? { attendedNames: names } : {}),
+          ...(craftLead ? { craftLead } : {}),
+          // A linked EVENTS row projects even when its guest
+          // list is empty and its Date is unset: eventGuests
+          // present-but-empty is A4's linked-but-empty state,
+          // distinct from no event row at all.
+          ...(ev ? {
+            eventGuests: ev.guests,
+            ...(ev.start ? { eventStart: ev.start } : {}),
+            ...(ev.end ? { eventEnd: ev.end } : {}),
+          } : {}),
         };
       }),
       // MONEY A: the money slice is KV-fed from the bookkeeping

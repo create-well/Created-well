@@ -46,23 +46,19 @@ const CONTENT_CHANNELS = [
 ];
 
 const ROUTE_ARCHITECTURE = [
-  { path: '/',          label: 'This Week at the Well', emoji: '💧',
+  { path: '/',          label: 'Today',      emoji: '💧',
     sources: 'CONTENT hub (brain dumps · well notes · announcements) + FLOWS hub' },
-  { path: '/moves',     label: 'Moves: Now',            emoji: '⛲️',
-    sources: 'MOVES hub (tasks) · PEOPLE hub (stations) · CONTENT hub (forum) — Status: Now / Next / Done / Blocked / Dropped' },
-  { path: '/care',      label: 'Care Loop',             emoji: '🫧',
-    sources: 'PEOPLE hub (messages, check-ins, well notes)' },
-  { path: '/flows',     label: 'Flows',                 emoji: '🛠️',
+  { path: '/gatherings', label: 'Gatherings', emoji: '🎨',
     sources: 'FLOWS hub — all Types · workshops' },
-  { path: '/podyaps',   label: 'Podyaps',               emoji: '🎙️',
+  { path: '/making',    label: 'Making',     emoji: '🎙️',
     sources: 'FLOWS hub — Type: Podyap (Status: Upcoming / Active / Archived)' },
-  { path: '/workshops', label: 'Workshops',             emoji: '🎨',
-    sources: 'FLOWS hub — Type: Workshop · MOVES hub (workshop tasks)' },
-  { path: '/money',     label: 'Money, Real Only',      emoji: '💰',
+  { path: '/people',    label: 'People',     emoji: '🫧',
+    sources: 'PEOPLE hub (messages, check-ins, well notes)' },
+  { path: '/money',     label: 'Money',      emoji: '💰',
     sources: 'Create Well — Budget & P&L Bookkeeping workbook (Transactions) — cr8w_money KV feed; dashboard read only; quick log retired (POST /money returns 410, log money in the workbook)' },
-  { path: '/decisions', label: 'Decision Queue',        emoji: '⚡',
+  { path: '/decisions', label: 'Decisions',  emoji: '⚡',
     sources: 'cr8w_decisions KV resource — dashboard read/write (no Notion counterpart, by design)' },
-  { path: '/system',    label: 'System Health',         emoji: '🔧',
+  { path: '/system',    label: 'System',     emoji: '🔧',
     sources: 'all hub collections · build info · API ID Registry' },
 ];
 
@@ -357,7 +353,7 @@ export function SystemPage() {
             textTransform: 'uppercase', letterSpacing: '0.1em',
             color: 'var(--text-muted)', marginBottom: 6,
           }}>
-            System Health
+            System
           </div>
           <h1 style={{
             fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800,
@@ -491,13 +487,13 @@ export function SystemPage() {
           border: '1px solid var(--border-soft, rgba(196,164,132,0.15))',
           borderRadius: 12, padding: '4px 16px',
         }}>
-          <DataCountRow label="Tasks"        count={data.tasks.length}          emoji="⛲️" internalPath="/moves"  notionHref={NOTION_DB_LINKS.tasks} source="MOVES hub" />
-          <DataCountRow label="Stations"     count={data.stations.length}       emoji="🗂️" internalPath="/moves"  notionHref={NOTION_DB_LINKS.stations} source="PEOPLE hub" />
-          <DataCountRow label="Forum posts"  count={data.forum.length}          emoji="💬" internalPath="/moves"  notionHref={NOTION_DB_LINKS.forum} source="CONTENT hub" />
-          <DataCountRow label="Messages"     count={data.messages.length}       emoji="📨" internalPath="/care"   source="KV store" />
-          <DataCountRow label="Workshops"    count={data.workshops.length}      emoji="🛠️" internalPath="/flows"  source="KV store" />
-          <DataCountRow label="CoFlow dates" count={data.coFlowDates.length}    emoji="🫧" internalPath="/flows"  notionHref={NOTION_DB_LINKS.coFlowDates} source="FLOWS hub" />
-          <DataCountRow label="Check-ins"    count={data.coFlowCheckins.length} emoji="✅" internalPath="/care"   source="KV store" />
+          <DataCountRow label="Tasks"        count={data.tasks.length}          emoji="⛲️" internalPath="/#waiting"  notionHref={NOTION_DB_LINKS.tasks} source="MOVES hub" />
+          <DataCountRow label="Stations"     count={data.stations.length}       emoji="🗂️" internalPath="/#waiting"  notionHref={NOTION_DB_LINKS.stations} source="PEOPLE hub" />
+          <DataCountRow label="Forum posts"  count={data.forum.length}          emoji="💬" internalPath="/"  notionHref={NOTION_DB_LINKS.forum} source="CONTENT hub" />
+          <DataCountRow label="Messages"     count={data.messages.length}       emoji="📨" internalPath="/people"   source="KV store" />
+          <DataCountRow label="Workshops"    count={data.workshops.length}      emoji="🛠️" internalPath="/gatherings"  source="KV store" />
+          <DataCountRow label="CoFlow dates" count={data.coFlowDates.length}    emoji="🫧" internalPath="/gatherings"  notionHref={NOTION_DB_LINKS.coFlowDates} source="FLOWS hub" />
+          <DataCountRow label="Check-ins"    count={data.coFlowCheckins.length} emoji="✅" internalPath="/people"   source="KV store" />
           <DataCountRow label="Well notes"   count={data.wellNotes.length}      emoji="💧" internalPath="/"       source="KV store" />
           <DataCountRow label="Brain dumps"  count={data.brainDumps.length}     emoji="🧠" internalPath="/"       source="KV store" />
           <DataCountRow label="Announcements" count={data.announcements.length} emoji="📢" internalPath="/"       source="KV store" />

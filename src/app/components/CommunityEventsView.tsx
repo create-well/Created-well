@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { localDateString } from '../../lib/dateLabel';
@@ -13,6 +13,7 @@ import {
   isBookClub,
   isGroupEvent,
   isCommunityFlow,
+  isSloCreateSeries,
 } from '../../lib/flows';
 
 type Tab = 'upcoming' | 'podyaps' | 'workshops' | 'moves' | 'team';
@@ -234,14 +235,14 @@ function PodyapsTab({ flows }: { flows: CoFlowDate[] }) {
       )}
       <div style={{ marginTop: 8, paddingTop: 10, borderTop: '1px solid rgba(0,0,0,0.06)', textAlign: 'center' }}>
         <button
-          onClick={() => navigate('/podyaps')}
+          onClick={() => navigate('/making')}
           style={{
             background: 'none', border: 'none', cursor: 'pointer',
             fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600,
             color: '#7B5FD4', textTransform: 'uppercase', letterSpacing: '0.04em',
           }}
         >
-          Full Podyap view &amp; preflight →
+          Full Making view &amp; preflight →
         </button>
       </div>
     </div>
@@ -251,10 +252,12 @@ function PodyapsTab({ flows }: { flows: CoFlowDate[] }) {
 // ── Workshops tab ─────────────────────────────────────────────────────────────
 
 function WorkshopsTab({ flows }: { flows: CoFlowDate[] }) {
-  const navigate = useNavigate();
   const [sub, setSub] = useState<'book-club' | 'workshops'>('workshops');
-  const bookClub  = flows.filter(isBookClub);
-  const workshops = flows.filter(isWorkshop);
+  // Workshops-proper filter (model of record, 2026-11-14): SLO Create
+  // is the core monthly offering, its own series, never a workshop —
+  // an SLO Create row never renders inside this tab.
+  const bookClub  = flows.filter(f => isBookClub(f) && !isSloCreateSeries(f));
+  const workshops = flows.filter(f => isWorkshop(f) && !isSloCreateSeries(f));
   const shown = sub === 'book-club' ? bookClub : workshops;
 
   return (
@@ -302,18 +305,6 @@ function WorkshopsTab({ flows }: { flows: CoFlowDate[] }) {
           {shown.sort((a, b) => b.date.localeCompare(a.date)).map(f => <FlowCard key={f.id} flow={f} />)}
         </div>
       )}
-      <div style={{ marginTop: 8, paddingTop: 10, borderTop: '1px solid rgba(0,0,0,0.06)', textAlign: 'center' }}>
-        <button
-          onClick={() => navigate('/workshops')}
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600,
-            color: 'var(--cr8w-primary, #7BA89D)', textTransform: 'uppercase', letterSpacing: '0.04em',
-          }}
-        >
-          Full Workshops view →
-        </button>
-      </div>
     </div>
   );
 }
@@ -527,6 +518,14 @@ export function CommunityEventsView({ defaultTab = 'upcoming' }: { defaultTab?: 
   const { data } = useDashboard();
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab);
 
+  // The tab input is watched, not only seeded (spec D): when the
+  // caller changes it while this view is mounted — an in-app link to
+  // /gatherings?tab=workshops followed from inside Gatherings — the
+  // visible tab changes to match.
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
+
   const allFlows = data.coFlowDates ?? [];
   const communityFlows = allFlows.filter(isCommunityFlow);
   const podyaps       = allFlows.filter(isPodyap);
@@ -543,7 +542,7 @@ export function CommunityEventsView({ defaultTab = 'upcoming' }: { defaultTab?: 
       {/* Page header */}
       <div style={{ padding: '16px 16px 0', marginBottom: 12 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 500, color: 'var(--cr8w-text, #2D2438)', lineHeight: 1.2 }}>
-          Community Events
+          Gatherings
         </div>
         <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', color: 'var(--text-muted, #8A7060)', marginTop: 2 }}>
           Podyaps · Book Club · Workshops · Wellshops

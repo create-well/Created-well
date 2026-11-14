@@ -7,11 +7,11 @@ import { AddTaskModal } from '../components/AddTaskModal';
 
 const VIEW_ROUTE_MAP: Record<string, string> = {
   hub: '/',
-  geyser: '/moves',
-  'community-events': '/flows',
-  podyaps: '/podyaps',
-  workshops: '/workshops',
-  coflow: '/care',
+  geyser: '/#waiting',
+  'community-events': '/gatherings',
+  podyaps: '/making',
+  workshops: '/gatherings?tab=workshops',
+  coflow: '/people',
   playground: '/',
 };
 
@@ -33,7 +33,7 @@ export function ThisWeekPage() {
 
   function handleNavigateGeyserStations() {
     ui.setMovesDefaultTab('stations');
-    navigate('/moves');
+    navigate('/#waiting');
   }
 
   const forumNotesForView = data.forum.map(f => ({

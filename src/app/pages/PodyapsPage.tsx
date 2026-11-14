@@ -219,7 +219,7 @@ export function PodyapsPage() {
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
           <button
-            onClick={() => navigate('/flows')}
+            onClick={() => navigate('/gatherings')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -235,7 +235,7 @@ export function PodyapsPage() {
               marginBottom: 8,
             }}
           >
-            ← All events (/flows)
+            ← All gatherings
           </button>
           <div style={{
             fontFamily: 'var(--font-label)', fontSize: '0.62rem', fontWeight: 700,
@@ -248,13 +248,13 @@ export function PodyapsPage() {
             fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800,
             color: 'var(--cr8w-text, #2D2438)', margin: 0, letterSpacing: '-0.02em',
           }}>
-            Podyaps 🎙️
+            Making 🎙️
           </h1>
           <p style={{
             fontFamily: 'var(--font-body)', fontSize: '0.8rem',
             color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5,
           }}>
-            Create Well's recorded gatherings — Podyaps, Book Clubs & more
+            Episodes and pieces, from topic to release.
           </p>
         </div>
 
@@ -351,7 +351,7 @@ export function PodyapsPage() {
             </div>
             <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
               <button
-                onClick={() => navigate('/care')}
+                onClick={() => navigate('/people')}
                 style={{
                   padding: '7px 14px', borderRadius: 8,
                   background: '#9B59E0', color: '#fff',
@@ -416,7 +416,7 @@ export function PodyapsPage() {
               Add a CoFlow date in Notion with theme "yapcast" or "playdate"
             </div>
             <button
-              onClick={() => navigate('/care')}
+              onClick={() => navigate('/people')}
               style={{
                 padding: '8px 18px', borderRadius: 8,
                 background: '#9B59E0', color: '#fff',

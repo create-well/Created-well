@@ -7,9 +7,10 @@ import { ThemeSelector } from './ThemeSelector';
 import { useDashboard } from '../../contexts/DashboardContext';
 
 const NAV_ITEMS: { path: string; label: string; emoji: string; end?: boolean }[] = [
-  { path: '/',           label: 'This Week', emoji: '💧', end: true },
-  { path: '/moves',      label: 'Moves',     emoji: '⛲️' },
-  { path: '/care',       label: 'Care',      emoji: '🫧' },
+  { path: '/',           label: 'Today',     emoji: '💧', end: true },
+  { path: '/gatherings', label: 'Gatherings', emoji: '🎨' },
+  { path: '/making',     label: 'Making',    emoji: '🎙️' },
+  { path: '/people',     label: 'People',    emoji: '🫧' },
   { path: '/money',      label: 'Money',     emoji: '💰' },
   { path: '/decisions',  label: 'Decisions', emoji: '⚡' },
   { path: '/system',     label: 'System',    emoji: '🔧' },
@@ -95,7 +96,6 @@ export function TopNav({ onSignOut }: TopNavProps) {
               end={item.end}
               className={navLinkClass}
             >
-              {item.path === '/moves' && <span className="geyser-pulse-dot" />}
               {item.emoji} {item.label}
             </NavLink>
           ))}
@@ -271,11 +271,10 @@ export function TopNav({ onSignOut }: TopNavProps) {
               to={item.path}
               end={item.end}
               className={({ isActive }) =>
-                `mobile-menu-link${item.path === '/moves' ? ' mobile-menu-link-geyser' : ''}${isActive ? ' active' : ''}`
+                `mobile-menu-link${isActive ? ' active' : ''}`
               }
               onClick={() => setMobileOpen(false)}
             >
-              {item.path === '/moves' && <span className="geyser-pulse-dot" />}
               {item.emoji} {item.label}
             </NavLink>
           ))}

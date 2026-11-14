@@ -31,16 +31,18 @@ function DepthTag({ children }: { children: React.ReactNode }) {
 function Panel({
   title,
   tag,
+  id,
   action,
   children,
 }: {
   title: string;
   tag?: string;
+  id?: string;
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <section className="home-panel" aria-label={title}>
+    <section className="home-panel" aria-label={title} id={id}>
       <div className="home-panel-head">
         <h2 className="home-panel-title">{title}</h2>
         {tag ? <DepthTag>{tag}</DepthTag> : null}
@@ -99,9 +101,10 @@ export function HomePanels({
 
       <Panel
         title="Tasks"
-        tag="MOVES"
+        tag="WAITING"
+        id="waiting"
         action={
-          <Link className="home-action-link" to="/moves" state={{ focusHeading: true }}>
+          <Link className="home-action-link" to="/#waiting" state={{ focusHeading: true }}>
             Open Tasks →
           </Link>
         }

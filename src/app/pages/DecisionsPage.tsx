@@ -371,7 +371,7 @@ export function DecisionsPage() {
             textTransform: 'uppercase', letterSpacing: '0.1em',
             color: 'var(--text-muted)', marginBottom: 6,
           }}>
-            Monica's Decision Queue
+            Decisions
           </div>
           <h1 style={{
             fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800,

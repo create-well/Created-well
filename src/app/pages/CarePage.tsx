@@ -18,7 +18,7 @@ export function CarePage() {
       state={state}
       emptyTitle="No care loop scheduled"
       emptyBody="The next right invitation will appear here when it's time. Nothing to act on right now."
-      restrictedTitle="Care Loop — consent required"
+      restrictedTitle="People (consent required)"
       restrictedBody="Contact CTAs and scheduling are suppressed until consent is confirmed. Reach out directly to update your settings."
       onRetry={actions.retrySync}
     >

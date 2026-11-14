@@ -169,7 +169,7 @@ export function MoneyPage() {
             color: 'var(--text-muted, #6B5F7A)',
             marginBottom: 6,
           }}>
-            Money, Real Only
+            Money
           </div>
           <h1 style={{
             fontFamily: 'var(--font-display)',

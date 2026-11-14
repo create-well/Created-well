@@ -251,6 +251,11 @@ test('a workshop-typed SLO Create row never enters the workshops tab', () => {
 });
 
 test('the tab source carries the composed workshops-proper filter', () => {
-  assert.match(community, /flows\.filter\(f => isWorkshop\(f\) && !isSloCreateSeries\(f\)\)/);
-  assert.match(community, /flows\.filter\(f => isBookClub\(f\) && !isSloCreateSeries\(f\)\)/);
+  // Phase 2a locator flip (packet K §3): the exclusion is
+  // field-first — seriesOf reads the projected Series field with
+  // the name guard as its fallback — so the composed strings name
+  // seriesOf, not isSloCreateSeries. The behavioral assertions
+  // above are unchanged.
+  assert.match(community, /flows\.filter\(f => isWorkshop\(f\) && seriesOf\(f\) !== 'SLO Create'\)/);
+  assert.match(community, /flows\.filter\(f => isBookClub\(f\) && seriesOf\(f\) !== 'SLO Create'\)/);
 });

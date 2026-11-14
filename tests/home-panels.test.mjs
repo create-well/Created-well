@@ -68,6 +68,61 @@ test('homeTasks: open only, due ascending, undated last', () => {
   assert.match(taskDueLabel(tasks[2]), /Oct 29/);
 });
 
+// ── Packet H §1 ordering: the queue tiebreaks. ─────────────────────
+test('homeTasks: due date dominates created_at (most overdue leads)', () => {
+  const tasks = [
+    { id: 1, title: 'newer but less due', status: 'todo', due_date: '2026-11-10', created_at: '2026-10-01T00:00:00Z' },
+    { id: 2, title: 'older and most overdue', status: 'todo', due_date: '2026-10-05', created_at: '2026-10-20T00:00:00Z' },
+  ];
+  assert.deepEqual(homeTasks(tasks).map((t) => t.id), [2, 1]);
+});
+
+test('homeTasks: same-day ties break by created_at, oldest first', () => {
+  const tasks = [
+    { id: 1, title: 'created later', status: 'todo', due_date: '2026-11-02', created_at: '2026-10-20T00:00:00Z' },
+    { id: 2, title: 'created earlier', status: 'blocked', due_date: '2026-11-02', created_at: '2026-10-11T00:00:00Z' },
+  ];
+  assert.deepEqual(homeTasks(tasks).map((t) => t.id), [2, 1]);
+});
+
+test('homeTasks: a missing created_at falls after carried ones in a tie; id breaks the rest', () => {
+  const tasks = [
+    { id: 9, title: 'no created_at, high id', status: 'todo', due_date: '2026-11-02' },
+    { id: 3, title: 'no created_at, low id', status: 'todo', due_date: '2026-11-02' },
+    { id: 7, title: 'carries created_at', status: 'todo', due_date: '2026-11-02', created_at: '2026-10-25T00:00:00Z' },
+  ];
+  assert.deepEqual(homeTasks(tasks).map((t) => t.id), [7, 3, 9]);
+});
+
+test('homeTasks: undated group orders by created_at, missing last, id final', () => {
+  const tasks = [
+    { id: 5, title: 'undated, no created_at', status: 'todo' },
+    { id: 2, title: 'undated, created later', status: 'todo', created_at: '2026-10-20T00:00:00Z' },
+    { id: 8, title: 'undated, created earlier', status: 'in_progress', created_at: '2026-10-02T00:00:00Z' },
+    { id: 1, title: 'dated beats every undated', status: 'todo', due_date: '2027-01-01' },
+  ];
+  assert.deepEqual(homeTasks(tasks).map((t) => t.id), [1, 8, 2, 5]);
+});
+
+test('homeTasks: order is deterministic — input order never changes the result', () => {
+  const a = { id: 4, title: 'a', status: 'todo', due_date: '2026-11-02', created_at: '2026-10-10T00:00:00Z' };
+  const b = { id: 9, title: 'b', status: 'todo', due_date: '2026-11-02', created_at: '2026-10-10T00:00:00Z' };
+  const c = { id: 6, title: 'c', status: 'blocked', created_at: '2026-10-10T00:00:00Z' };
+  const first = homeTasks([a, b, c]).map((t) => t.id);
+  const second = homeTasks([c, b, a]).map((t) => t.id);
+  assert.deepEqual(first, [4, 9, 6]);
+  assert.deepEqual(second, first);
+});
+
+test('homeTasks: dropped tasks never render and never count', () => {
+  const tasks = [
+    { id: 1, title: 'open', status: 'todo' },
+    { id: 2, title: 'dropped', status: 'dropped', due_date: '2026-10-01' },
+    { id: 3, title: 'done', status: 'done' },
+  ];
+  assert.deepEqual(homeTasks(tasks).map((t) => t.id), [1]);
+});
+
 test('startingSoon: 14-day window, sessions/events only, no projects', () => {
   const flows = [
     flow(1, '2026-10-30'),

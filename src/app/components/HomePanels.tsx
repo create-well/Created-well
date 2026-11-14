@@ -14,6 +14,14 @@ import {
   openAsksCareValue,
 } from '../../lib/homePanels';
 import { shortDateLabel } from '../../lib/dateLabel';
+import { TASK_ROLES } from './data';
+
+/** Queue row status wording (packet H §1): plain words on the row. */
+const TASK_STATUS_WORDS: Record<string, string> = {
+  todo: 'To do',
+  in_progress: 'In progress',
+  blocked: 'Blocked',
+};
 
 /**
  * FE-5 — the settled Home (design diff §4, D9–D15). Five panels in
@@ -62,7 +70,7 @@ export function HomePanels({
 }: {
   onNavigate: (view: string) => void;
 }) {
-  const { data } = useDashboard();
+  const { data, actions } = useDashboard();
   const now = new Date();
 
   const next = nextUpFlow(data.coFlowDates, now);
@@ -100,7 +108,7 @@ export function HomePanels({
       </Panel>
 
       <Panel
-        title="Tasks"
+        title="Waiting On Us"
         tag="WAITING"
         id="waiting"
         action={
@@ -109,23 +117,50 @@ export function HomePanels({
           </Link>
         }
       >
-        {tasks.length > 0 ? (
+        {data.syncStatus === 'loading' ? (
+          <p className="home-empty">Loading…</p>
+        ) : data.syncStatus === 'failed' ? (
           <>
+            <p className="home-empty">The waiting list could not load.</p>
+            <button type="button" className="home-action-link" onClick={() => actions.retrySync()}>
+              Retry →
+            </button>
+          </>
+        ) : (
+          <>
+            {data.syncStatus === 'stale' ? (
+              <p className="home-stale-marker">Last-good list — not a live read.</p>
+            ) : null}
             <div className="home-metric-row">
               <span className="home-metric">{tasks.length}</span>
               <span className="home-metric-label">open</span>
             </div>
-            <ul className="home-task-list">
-              {tasks.slice(0, 5).map((t) => (
-                <li key={t.id} className="home-task-row">
-                  <span className="home-task-title">{t.title}</span>
-                  <span className="home-task-due">{taskDueLabel(t)}</span>
-                </li>
-              ))}
-            </ul>
+            {tasks.length > 0 ? (
+              <ul className="home-task-list">
+                {tasks.map((t) => {
+                  const role = t.person ? TASK_ROLES[t.person] : undefined;
+                  const owner = role ? role.name : t.person;
+                  return (
+                    <li key={t.id} className="home-task-row">
+                      <span className="home-task-title">{t.title}</span>
+                      <span className="home-task-meta">
+                        {owner ? <span className="home-task-owner">{owner}</span> : null}
+                        {t.priority ? (
+                          <span className={`gcc-priority-badge ${t.priority}`}>{t.priority}</span>
+                        ) : null}
+                        <span className={`home-task-status${t.status === 'blocked' ? ' blocked' : ''}`}>
+                          {TASK_STATUS_WORDS[t.status] ?? t.status}
+                        </span>
+                        <span className="home-task-due">{taskDueLabel(t)}</span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="home-empty">No open tasks.</p>
+            )}
           </>
-        ) : (
-          <p className="home-empty">No open tasks.</p>
         )}
       </Panel>
 

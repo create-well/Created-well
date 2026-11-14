@@ -180,10 +180,12 @@ test('CommunityEventsView tab buttons: Making door in, Workshops door out', () =
 
 // ── The waiting anchor ──────────────────────────────────────────────
 
-test('HomePanels: the Tasks panel is the waiting anchor', () => {
+test('HomePanels: the Waiting On Us panel is the waiting anchor', () => {
+  // Pin locator flipped by Phase 1 (packet H): the panel title is now
+  // "Waiting On Us"; the anchor assertions below are unchanged.
   assert.match(homePanels, /id\?: string/);
   assert.match(homePanels, /<section className="home-panel" aria-label=\{title\} id=\{id\}>/);
-  const tasksPanel = homePanels.slice(homePanels.indexOf('title="Tasks"'), homePanels.indexOf('title="Tasks"') + 320);
+  const tasksPanel = homePanels.slice(homePanels.indexOf('title="Waiting On Us"'), homePanels.indexOf('title="Waiting On Us"') + 320);
   assert.match(tasksPanel, /tag="WAITING"/);
   assert.match(tasksPanel, /id="waiting"/);
   assert.match(tasksPanel, /to="\/#waiting"/);

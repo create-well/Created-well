@@ -2324,6 +2324,19 @@ a.gcc-pill-link:hover { background: var(--cr8w-card-bg, #F4F1ED); transform: tra
   font-family: var(--font-label); font-size: 0.82rem; color: var(--cr8w-text, #2D2438);
 }
 .home-task-due, .home-soon-date { color: var(--text-muted, #6B5F7A); white-space: nowrap; }
+/* Waiting On Us queue (packet H): the full list scrolls inside the
+   panel so a long queue never pushes the rest of Today down. */
+.home-task-list { max-height: min(360px, 50vh); overflow-y: auto; }
+.home-task-title { min-width: 0; }
+.home-task-meta { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.home-task-owner { color: var(--text-secondary, #443855); white-space: nowrap; }
+.home-task-status { color: var(--text-muted, #6B5F7A); white-space: nowrap; }
+.home-task-status.blocked { color: var(--status-blocked, #964226); font-weight: 700; }
+.home-stale-marker {
+  font-family: var(--font-label); font-size: 0.75rem; font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--status-blocked, #964226); margin: 0 0 6px;
+}
 .home-care-row {
   display: flex; align-items: baseline; gap: 10px; padding: 7px 0;
   border-top: 1px solid var(--border-soft, rgba(196,164,132,0.18));

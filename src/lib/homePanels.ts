@@ -23,6 +23,9 @@ export interface HomeTask {
   title: string;
   status: string;
   due_date?: string;
+  created_at?: string;
+  person?: string;
+  priority?: string;
 }
 
 export interface HomeForumPost {
@@ -97,22 +100,46 @@ export function nextUpDateLabel(f: HomeFlow | null): string {
 }
 
 /**
- * Tasks (§4 panel 2): open work, Due ascending, undated last.
- * "Now/Next" is the panel's frame; Task rows carry no lifecycle
- * stage in the payload, so ordering is the recipe's Due rule.
+ * Tasks (§4 panel 2): the Waiting On Us queue order (packet H §1).
+ * Open work only (done and dropped never render, never count).
+ * Dated tasks first, due_date ascending so the most overdue leads;
+ * same-day ties break by created_at ascending, oldest first, and a
+ * task with no created_at goes after the tasks that carry one.
+ * Undated tasks are always last, in the same created_at order.
+ * Final tiebreak everywhere: id ascending, so two renders of one
+ * payload never differ.
  */
+function createdAtTime(t: HomeTask): number {
+  if (!t.created_at) return Number.POSITIVE_INFINITY;
+  const ms = Date.parse(t.created_at);
+  return Number.isNaN(ms) ? Number.POSITIVE_INFINITY : ms;
+}
+
+function byCreatedThenId(a: HomeTask, b: HomeTask): number {
+  const ca = createdAtTime(a);
+  const cb = createdAtTime(b);
+  // Compare, never subtract: two missing created_at values are both
+  // +Infinity, and Infinity - Infinity is NaN, which would swallow
+  // the id tiebreak.
+  if (ca !== cb) return ca < cb ? -1 : 1;
+  return a.id - b.id;
+}
+
 export function homeTasks(tasks: HomeTask[]): HomeTask[] {
   const open = tasks.filter(
     (t) => t.status !== 'done' && t.status !== 'dropped',
   );
   const dated = open
     .filter((t) => parseDateValue(t.due_date) !== null)
-    .sort(
-      (a, b) =>
+    .sort((a, b) => {
+      const byDue =
         (parseDateValue(a.due_date)?.getTime() ?? 0) -
-        (parseDateValue(b.due_date)?.getTime() ?? 0),
-    );
-  const undated = open.filter((t) => parseDateValue(t.due_date) === null);
+        (parseDateValue(b.due_date)?.getTime() ?? 0);
+      return byDue !== 0 ? byDue : byCreatedThenId(a, b);
+    });
+  const undated = open
+    .filter((t) => parseDateValue(t.due_date) === null)
+    .sort(byCreatedThenId);
   return [...dated, ...undated];
 }
 

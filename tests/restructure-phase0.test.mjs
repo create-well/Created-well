@@ -180,13 +180,33 @@ test('CommunityEventsView tab buttons: Making door in, Workshops door out', () =
 
 // ── The waiting anchor ──────────────────────────────────────────────
 
-test('HomePanels: the Tasks panel is the waiting anchor', () => {
+test('HomePanels: the Waiting On Us panel is the waiting anchor', () => {
+  // Pin locator flipped by Phase 1 (packet H): the panel title is now
+  // "Waiting On Us"; the anchor assertions below are unchanged.
   assert.match(homePanels, /id\?: string/);
   assert.match(homePanels, /<section className="home-panel" aria-label=\{title\} id=\{id\}>/);
-  const tasksPanel = homePanels.slice(homePanels.indexOf('title="Tasks"'), homePanels.indexOf('title="Tasks"') + 320);
+  const tasksPanel = homePanels.slice(homePanels.indexOf('title="Waiting On Us"'), homePanels.indexOf('title="Waiting On Us"') + 320);
   assert.match(tasksPanel, /tag="WAITING"/);
   assert.match(tasksPanel, /id="waiting"/);
   assert.match(tasksPanel, /to="\/#waiting"/);
+});
+
+test('RootLayout: scroll-to-top skips hash-carrying arrivals (Phase 1 fix 2)', () => {
+  // QA's trace on fix head 07eb8756: the settle-scroll landed, then
+  // RootLayout's smooth scroll-to-top on the same /moves to /
+  // navigation animated the page back to 0 and won. The guard gives
+  // the anchor sole ownership of hash-carrying arrivals.
+  assert.match(rootLayout, /if \(location\.hash\) return;\n    window\.scrollTo\(\{ top: 0, behavior: 'smooth' \}\)/);
+});
+
+test('HomePanels: the waiting panel scrolls into view on settle under #waiting (Phase 1 fix)', () => {
+  // QA's 375px leg failed on head 5cb71fdd: the panel renders after
+  // the fragment's scroll moment, so nothing brought it into view.
+  // The fix scrolls on settle, gated on the hash and a settled
+  // syncStatus, once per hash arrival.
+  assert.match(homePanels, /location\.hash !== '#waiting'/);
+  assert.match(homePanels, /data\.syncStatus === 'loading' \|\| data\.syncStatus === 'failed'/);
+  assert.match(homePanels, /getElementById\('waiting'\)\?\.scrollIntoView\(\{ block: 'start' \}\)/);
 });
 
 test('ThisWeekPage: view targets are the new names, keys unchanged', () => {

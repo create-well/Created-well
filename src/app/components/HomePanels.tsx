@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link } from 'react-router';
+import React, { useEffect, useRef } from 'react';
+import { Link, useLocation } from 'react-router';
 import { useDashboard } from '../../contexts/DashboardContext';
 import {
   nextUpFlow,
@@ -71,7 +71,27 @@ export function HomePanels({
   onNavigate: (view: string) => void;
 }) {
   const { data, actions } = useDashboard();
+  const location = useLocation();
   const now = new Date();
+
+  // The waiting anchor (packet H redirect leg): when the route
+  // carries #waiting, bring the queue panel into view once the data
+  // settles. The browser's fragment scroll fires before the panel
+  // renders and RootLayout scrolls to top on the pathname change, so
+  // without this the settled panel can sit below the fold (QA's
+  // 375px measurement, Phase 1). Fires once per hash arrival; a
+  // later fresh-to-stale transition never re-scrolls.
+  const scrolledForHash = useRef<string | null>(null);
+  useEffect(() => {
+    if (location.hash !== '#waiting') {
+      scrolledForHash.current = null;
+      return;
+    }
+    if (data.syncStatus === 'loading' || data.syncStatus === 'failed') return;
+    if (scrolledForHash.current === location.hash) return;
+    scrolledForHash.current = location.hash;
+    document.getElementById('waiting')?.scrollIntoView({ block: 'start' });
+  }, [location.hash, data.syncStatus]);
 
   const next = nextUpFlow(data.coFlowDates, now);
   const tasks = homeTasks(data.tasks);

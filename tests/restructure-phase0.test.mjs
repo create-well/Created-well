@@ -191,6 +191,16 @@ test('HomePanels: the Waiting On Us panel is the waiting anchor', () => {
   assert.match(tasksPanel, /to="\/#waiting"/);
 });
 
+test('HomePanels: the waiting panel scrolls into view on settle under #waiting (Phase 1 fix)', () => {
+  // QA's 375px leg failed on head 5cb71fdd: the panel renders after
+  // the fragment's scroll moment, so nothing brought it into view.
+  // The fix scrolls on settle, gated on the hash and a settled
+  // syncStatus, once per hash arrival.
+  assert.match(homePanels, /location\.hash !== '#waiting'/);
+  assert.match(homePanels, /data\.syncStatus === 'loading' \|\| data\.syncStatus === 'failed'/);
+  assert.match(homePanels, /getElementById\('waiting'\)\?\.scrollIntoView\(\{ block: 'start' \}\)/);
+});
+
 test('ThisWeekPage: view targets are the new names, keys unchanged', () => {
   const block = thisWeekPage.slice(thisWeekPage.indexOf('const VIEW_ROUTE_MAP'), thisWeekPage.indexOf('};', thisWeekPage.indexOf('const VIEW_ROUTE_MAP')));
   const pairs = [...block.matchAll(/'?([\w-]+)'?: '([^']+)'/g)].map(m => [m[1], m[2]]);

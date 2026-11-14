@@ -51,6 +51,20 @@ export function isBookClub(f: CoFlowDate): boolean {
   return matchesFlowType(f, 'Book Club');
 }
 
+/**
+ * SLO Create is the core monthly offering — its own recurring series,
+ * never a workshop (model of record, 2026-11-14). The payload does
+ * not project the FLOWS Series property (projecting it would be a
+ * source change, outside the rename step), so series membership is
+ * read from the row's Name — sessions are filed "SLO Create (11/18)"
+ * — carried on title, with theme as its fallback, the same name
+ * resolution flowTitle uses.
+ */
+export function isSloCreateSeries(f: CoFlowDate): boolean {
+  const name = (f.title || f.theme || '').trim().toLowerCase();
+  return /^slo create\b/.test(name);
+}
+
 export function isGroupEvent(f: CoFlowDate): boolean {
   return isWorkshop(f) || isBookClub(f);
 }

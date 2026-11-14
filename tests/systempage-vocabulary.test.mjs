@@ -8,14 +8,20 @@
 // POST /money returns 410 and money is logged in the "Create Well —
 // Budget & P&L Bookkeeping" workbook; the money test below now pins
 // that truth instead of the Fix 2 quick-log claim.
+// Rider (restructure Phase 0, spec D, 2026-11-14): ROUTE_ARCHITECTURE
+// is rebuilt as the seven names; the /moves row that carried the
+// MOVES status-set string is dropped by design, so the first test
+// below now pins the row's absence instead of its text. The status
+// set itself is unchanged on the wire.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const page = await readFile(new URL('../src/app/pages/SystemPage.tsx', import.meta.url), 'utf8');
 
-test('MOVES status set is the published wire set', () => {
-  assert.match(page, /Status: Now \/ Next \/ Done \/ Blocked \/ Dropped/);
+test('the retired /moves architecture row is gone (spec D)', () => {
+  assert.doesNotMatch(page, /label: 'Moves: Now'/);
+  assert.doesNotMatch(page, /path: '\/moves'/);
   assert.doesNotMatch(page, /Not Started \/ In Progress \/ Done \/ Blocked/);
 });
 

@@ -26,12 +26,10 @@ export function RootLayout() {
   // Contract C1 (equivalent orientation): announce the destination view
   // on route change for assistive tech; the initial load stays silent.
   const VIEW_NAMES: Record<string, string> = {
-    '/': 'This Week',
-    '/moves': 'Next Moves',
-    '/care': 'Care',
-    '/flows': 'Flows',
-    '/podyaps': 'Podyaps',
-    '/workshops': 'Workshops',
+    '/': 'Today',
+    '/gatherings': 'Gatherings',
+    '/making': 'Making',
+    '/people': 'People',
     '/money': 'Money',
     '/decisions': 'Decisions',
     '/system': 'System',
@@ -127,10 +125,10 @@ export function RootLayout() {
         onDelete={actions.deleteMessage}
         onUpdate={actions.updateMessage}
         onUpdateFields={actions.updateMessageFields}
-        onNavigateToForum={() => { navigate('/moves'); }}
-        onNavigateToGeyser={() => { navigate('/moves'); }}
-        onNavigateToStations={() => { ui.setMovesDefaultTab('stations'); navigate('/moves'); }}
-        onNavigateToPlayD8s={() => { navigate('/care'); }}
+        onNavigateToForum={() => { navigate('/#waiting'); }}
+        onNavigateToGeyser={() => { navigate('/#waiting'); }}
+        onNavigateToStations={() => { ui.setMovesDefaultTab('stations'); navigate('/#waiting'); }}
+        onNavigateToPlayD8s={() => { navigate('/people'); }}
         activeAs={ui.chatActiveUser}
         onSetActiveAs={ui.setChatActiveUser}
         onAddWellNote={actions.addWellNote}

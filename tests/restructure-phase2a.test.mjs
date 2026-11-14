@@ -6,8 +6,9 @@
 // attended-names assembly), §1.3/§3 the seriesOf fallback chain
 // and board grouping, the field-first workshops exclusion, the
 // A3 population diff (base predicate vs head predicate over a
-// census-shaped fixture: zero losses, gains only from the
-// Podcast class §2 corrects), §4 detail resolution gated on
+// census-shaped fixture: zero losses; gains are the Podcast
+// class §2 corrects plus the series leg A6 adds, with an
+// absolute membership pin for the live SLO rows), §4 detail resolution gated on
 // settle (A2), the money slice's honest states, and the work
 // list join. Source-shape pins close the file.
 import test from 'node:test';
@@ -24,6 +25,7 @@ import {
   isCommunityFlow,
   isSloCreateSeries,
   seriesOf,
+  boardPopulation,
   groupFlowsBySeries,
   resolveGathering,
   moneySliceState,
@@ -214,9 +216,10 @@ test('§3: a Series = SLO Create row under a non-SLO name is excluded from works
 // The base predicate of record at 89f568b0: the parent's membership
 // rule (communityFlows, or all flows when none classify) over rows
 // whose flowType came from the BASE normalizer (the 7-value list,
-// no Podcast alias). matchesFlowType / isCommunityFlow themselves
-// did not change in this phase, so the diff isolates exactly what
-// §2 changed: the flowType assignment.
+// no Podcast alias). The head predicate is boardPopulation (K §3
+// as amended A6): the community slice plus the series leg.
+// matchesFlowType / isCommunityFlow themselves did not change in
+// this phase, so the diff isolates exactly what §2 and A6 changed.
 
 const BASE_FLOW_TYPES = ['Podyap', 'Workshop', 'Book Club', 'Open Studio', 'Pop-Up', 'Geyser', 'Internal'];
 function baseFlowType(typeRaw) {
@@ -227,7 +230,7 @@ function membership(rows) {
   return new Set((community.length > 0 ? community : rows).map((f) => f.id));
 }
 
-test('A3: population diff — zero losses; the one gain is the Podcast class §2 corrects', () => {
+test('A3: population diff — zero losses; gains are the Podcast class and the A6 series leg', () => {
   // Census-shaped fixture: one row per discriminating class in
   // the live corpus (Type census of record, 2026-11-14).
   const fixtures = [
@@ -244,12 +247,36 @@ test('A3: population diff — zero losses; the one gain is the Podcast class §2
   const baseRows = fixtures.map((pg) => ({ ...normalizeFlow(pg), flowType: baseFlowType(pg.properties.Type?.select?.name ?? '') }));
   const byPageId = new Map(fixtures.map((pg, i) => [headRows[i].id, pg.id]));
   const baseSet = membership(baseRows);
-  const headSet = membership(headRows);
+  const headSet = new Set(boardPopulation(headRows).map((f) => f.id));
   const losses = [...baseSet].filter((id) => !headSet.has(id)).map((id) => byPageId.get(id));
   const gains = [...headSet].filter((id) => !baseSet.has(id)).map((id) => byPageId.get(id));
   assert.deepEqual(losses, []);
-  assert.deepEqual(gains, ['pod-raw'],
-    'the one gain is the Podcast-typed row whose theme never classified it — §2\u2019s intended correction');
+  assert.deepEqual(gains, ['pod-raw', 'slo-wrapped', 'slo-1118'],
+    'pod-raw is §2\u2019s Podcast correction; slo-wrapped and slo-1118 enter on A6\u2019s series leg');
+});
+
+test('A6: the live SLO rows are IN the population — an absolute pin, not a diff', () => {
+  // The three live rows' property shapes of record (2026-11-14):
+  // Series filed, Theme empty, classifying outside the community
+  // slice — the exact shapes the frozen population excluded and
+  // a set diff could not see. This pin asserts membership
+  // absolutely.
+  const live = [
+    page({ Series: sel('SLO Create'), Name: title('SLO Create (11/18)') }, 'live-1118'),
+    page({ Series: sel('SLO Create'), Type: sel('Off-site'), Name: title('SLO Create night') }, 'live-night'),
+    page({ Series: sel('SLO Create'), Name: title('SLO Create: Mosaic Mirrors (10/15)') }, 'live-mosaic'),
+  ].map((pg) => normalizeFlow(pg));
+  for (const f of live) {
+    assert.equal(isCommunityFlow(f), false, 'the A6 premise: outside the community slice');
+    assert.equal(seriesOf(f), 'SLO Create');
+  }
+  const population = boardPopulation(live);
+  assert.deepEqual(new Set(population.map((f) => f.id)), new Set(live.map((f) => f.id)),
+    'all three live SLO rows render on the board');
+  const groups = groupFlowsBySeries(population);
+  assert.equal(groups[0].series, 'SLO Create');
+  assert.deepEqual(new Set(groups[0].flows.map((f) => f.id)), new Set(live.map((f) => f.id)),
+    'and they group together in the flagship group');
 });
 
 // ── §4 / A2: detail resolution and the money slice ───────────────────────────
@@ -294,6 +321,7 @@ test('source: the board, the detail route, and the settle gate are wired', () =>
   const routes = readFileSync(new URL('../src/app/routes.ts', import.meta.url), 'utf8');
   const detail = readFileSync(new URL('../src/app/pages/GatheringDetailPage.tsx', import.meta.url), 'utf8');
   assert.match(community, /function BoardTab/);
+  assert.match(community, /boardPopulation\(allFlows\)/);
   assert.match(community, /groupFlowsBySeries\(flows\)/);
   assert.match(community, /label: 'Board'/);
   assert.match(community, /navigate\(`\/gatherings\/\$\{flow\.id\}`\)/);

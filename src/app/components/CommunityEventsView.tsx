@@ -12,9 +12,9 @@ import {
   isWorkshop,
   isBookClub,
   isGroupEvent,
-  isCommunityFlow,
   seriesOf,
   groupFlowsBySeries,
+  boardPopulation,
 } from '../../lib/flows';
 
 type Tab = 'upcoming' | 'podyaps' | 'workshops' | 'moves' | 'team';
@@ -495,12 +495,13 @@ export function CommunityEventsView({ defaultTab = 'upcoming' }: { defaultTab?: 
   }, [defaultTab]);
 
   const allFlows = data.coFlowDates ?? [];
-  const communityFlows = allFlows.filter(isCommunityFlow);
   const podyaps       = allFlows.filter(isPodyap);
   const groupFlows    = allFlows.filter(isGroupEvent);
 
-  // Fall back to all flows when no typed community events exist yet
-  const upcomingFlows = (communityFlows.length > 0 ? communityFlows : allFlows);
+  // The board's population (packet K §3, as amended A6): the
+  // community-flows slice plus every row with a Series filed,
+  // falling back to all flows when the union is empty.
+  const upcomingFlows = boardPopulation(allFlows);
   const podyapFlows   = (podyaps.length > 0 ? podyaps : []);
   const groupFlowsFinal = (groupFlows.length > 0 ? groupFlows : []);
 

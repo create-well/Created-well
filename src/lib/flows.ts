@@ -138,6 +138,26 @@ export function compareFlowsInGroup(a: CoFlowDate, b: CoFlowDate): number {
  * Every input row lands in exactly one group; nothing is dropped
  * or duplicated (the A3 population rule, proven in tests).
  */
+/**
+ * The board's population (packet K §3, as amended A6): the
+ * community-flows slice, plus every row with a Series filed.
+ * The series leg is field-only — the projected Series value,
+ * not the name fallback (grouping keeps the fallback;
+ * membership does not). A6 exists because the frozen population
+ * excluded all 3 live SLO Create rows: Series filed, Theme
+ * empty, classifying outside the community slice, so the
+ * flagship group could never render. When the union is empty
+ * the board falls back to every flow, the parent's standing
+ * behavior.
+ */
+export function boardPopulation(flows: CoFlowDate[]): CoFlowDate[] {
+  const community = flows.filter(isCommunityFlow);
+  const member = new Set<CoFlowDate>(community);
+  const seriesFiled = flows.filter((f) => f.series !== undefined && !member.has(f));
+  const population = [...community, ...seriesFiled];
+  return population.length > 0 ? population : flows;
+}
+
 export function groupFlowsBySeries(flows: CoFlowDate[]): SeriesGroup[] {
   const byKey = new Map<string, CoFlowDate[]>();
   for (const f of flows) {

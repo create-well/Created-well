@@ -16,12 +16,15 @@ import {
   groupFlowsBySeries,
   boardPopulation,
   flowHeading,
+  depantyQueue,
+  DEPANTY_RULE_LABEL,
 } from '../../lib/flows';
 
-type Tab = 'upcoming' | 'podyaps' | 'workshops' | 'moves' | 'team';
+type Tab = 'upcoming' | 'depanty' | 'podyaps' | 'workshops' | 'moves' | 'team';
 
 const TABS: { key: Tab; label: string; emoji: string }[] = [
   { key: 'upcoming',   label: 'Board',              emoji: '📅' },
+  { key: 'depanty',    label: 'Depanty',            emoji: '🧺' },
   { key: 'podyaps',    label: 'Podyaps',             emoji: '🎙️' },
   { key: 'workshops',  label: 'Book Club + Shops',   emoji: '🎨' },
   { key: 'moves',      label: 'Moves',               emoji: '📋' },
@@ -129,6 +132,24 @@ function FlowCard({ flow }: { flow: CoFlowDate }) {
             }}
           >
             RSVP on Partiful ↗
+          </a>
+        </div>
+      )}
+
+      {/* Day-of entry (packet L §3): on the day itself, the card
+          offers the day-of door directly. */}
+      {flow.date && flow.date.slice(0, 10) === localDateString(new Date()) && (
+        <div>
+          <a
+            href={`/gatherings/${flow.id}/day-of`}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/gatherings/${flow.id}/day-of`); }}
+            style={{
+              fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 700,
+              color: 'var(--cr8w-primary-text, #466F64)', textDecoration: 'none',
+              letterSpacing: '0.02em',
+            }}
+          >
+            Run the day →
           </a>
         </div>
       )}
@@ -488,6 +509,94 @@ function TeamTab() {
   );
 }
 
+// ── Depanty queue (Phase 2b, packet L §1–§2, as amended) ────────────────────
+// Membership is computed by depantyQueue() — happened (or
+// carrying a linked open depanty Move, A1) and failing the
+// draft exit test. Rows open the 2a detail page; there is no
+// second editor, and leaving the queue is computed, never filed.
+
+function DepantyTab({ flows, tasks, syncStatus }: {
+  flows: CoFlowDate[];
+  tasks: Task[];
+  syncStatus?: string;
+}) {
+  const navigate = useNavigate();
+  const settled = syncStatus === 'fresh' || syncStatus === 'stale';
+  const queue = settled ? depantyQueue(flows, tasks, localDateString(new Date())) : [];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.78rem', color: 'var(--text-secondary, #6B5F7A)' }}>
+          {settled
+            ? `${queue.length} gathering${queue.length === 1 ? '' : 's'} to close out`
+            : 'Close-out queue'}
+        </div>
+        <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.68rem', color: 'var(--text-muted, #8A7060)' }}>
+          {DEPANTY_RULE_LABEL}
+        </div>
+        {syncStatus === 'stale' && (
+          <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', color: 'var(--text-muted, #8A7060)' }}>
+            Last-good read — not a live read.
+          </div>
+        )}
+      </div>
+
+      {!settled ? (
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--text-muted, #8A7060)' }}>
+          Loading the close-out queue…
+        </div>
+      ) : queue.length === 0 ? (
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--text-muted, #8A7060)' }}>
+          Nothing waiting to close out.
+        </div>
+      ) : queue.map(({ flow, exit, depantyMove, ageDays }) => (
+        <div
+          key={flow.id}
+          onClick={() => navigate(`/gatherings/${flow.id}`)}
+          style={{
+            background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 12,
+            padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)', cursor: 'pointer',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', fontWeight: 500, color: 'var(--cr8w-text, #2D2438)', lineHeight: 1.3, flex: 1 }}>
+              {flow.title || flow.theme || 'Untitled Flow'}
+            </div>
+            {statusPill(flow.status)}
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            {seriesOf(flow) && (
+              <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', color: 'var(--text-muted, #8A7060)' }}>
+                {seriesOf(flow)}
+              </span>
+            )}
+            <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', color: 'var(--text-muted, #8A7060)' }}>
+              {flow.date ? `📅 ${formatDate(flow.date)}` : 'date not filed'}
+            </span>
+            <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', color: 'var(--text-muted, #8A7060)' }}>
+              {ageDays !== undefined ? `${ageDays} day${ageDays === 1 ? '' : 's'} in queue` : 'date not filed'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {exit.failing.map((label) => (
+              <span key={label} style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', color: 'var(--status-blocked, #B3543F)' }}>
+                — {label}
+              </span>
+            ))}
+          </div>
+          {depantyMove && (
+            <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', color: 'var(--text-secondary, #6B5F7A)' }}>
+              📋 {depantyMove.title}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function CommunityEventsView({ defaultTab = 'upcoming' }: { defaultTab?: Tab } = {}) {
@@ -566,6 +675,7 @@ export function CommunityEventsView({ defaultTab = 'upcoming' }: { defaultTab?: 
       {/* Tab content */}
       <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
         {activeTab === 'upcoming'  && <BoardTab     flows={upcomingFlows} />}
+        {activeTab === 'depanty'   && <DepantyTab   flows={allFlows} tasks={data.tasks ?? []} syncStatus={data.syncStatus} />}
         {activeTab === 'podyaps'   && <PodyapsTab   flows={podyapFlows} />}
         {activeTab === 'workshops' && <WorkshopsTab flows={groupFlowsFinal} />}
         {activeTab === 'moves'     && <MovesTab     tasks={data.tasks ?? []} />}

@@ -285,6 +285,26 @@ test('A6: the run list falls back to linked Moves for FLOWS rows; agenda wins wh
   assert.equal(dayOfRunList(flow({ notionPageId: 'fx' }), []).source, 'none');
 });
 
+test('surface: the depanty queue mounts in Gatherings and reads the computed membership', () => {
+  const view = readFileSync(new URL('../src/app/components/CommunityEventsView.tsx', import.meta.url), 'utf8');
+  assert.match(view, /key: 'depanty',\s+label: 'Depanty'/);
+  assert.match(view, /depantyQueue\(flows, tasks, localDateString/);
+  assert.match(view, /DEPANTY_RULE_LABEL/);
+  // A5's honest age state and the failing-leg words ride the rows.
+  assert.match(view, /'date not filed'/);
+  assert.match(view, /exit\.failing\.map/);
+  // Rows open the 2a detail page; no second editor exists.
+  assert.match(view, /navigate\(`\/gatherings\/\$\{flow\.id\}`\)/);
+});
+
+test('surface: the detail checklist reads the one named exit test', () => {
+  const detail = readFileSync(new URL('../src/app/pages/GatheringDetailPage.tsx', import.meta.url), 'utf8');
+  assert.match(detail, /depantyExitTest\(flow, data\.tasks \?\? \[\]\)/);
+  assert.match(detail, /Gatherings → Depanty/);
+  // The day-of door is reachable from the detail page.
+  assert.match(detail, /\/gatherings\/\$\{flow\.id\}\/day-of/);
+});
+
 test('§4.3: the gear check derives from a linked Move, else reads not filed', () => {
   const f = flow({ notionPageId: 'f1' });
   assert.deepEqual(gearCheckState(f, []), { state: 'not filed' });

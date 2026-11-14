@@ -18,8 +18,12 @@ export function RootLayout() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
 
-  // Scroll to top on route change
+  // Scroll to top on route change. A hash-carrying arrival has its
+  // own scroll owner (the anchor's settle-scroll, e.g. /#waiting);
+  // this smooth animation otherwise outlives the anchor's instant
+  // scroll and drags the page back to 0 (Phase 1, QA trace).
   useEffect(() => {
+    if (location.hash) return;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [location.pathname]);
 

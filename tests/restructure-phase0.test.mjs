@@ -191,6 +191,14 @@ test('HomePanels: the Waiting On Us panel is the waiting anchor', () => {
   assert.match(tasksPanel, /to="\/#waiting"/);
 });
 
+test('RootLayout: scroll-to-top skips hash-carrying arrivals (Phase 1 fix 2)', () => {
+  // QA's trace on fix head 07eb8756: the settle-scroll landed, then
+  // RootLayout's smooth scroll-to-top on the same /moves to /
+  // navigation animated the page back to 0 and won. The guard gives
+  // the anchor sole ownership of hash-carrying arrivals.
+  assert.match(rootLayout, /if \(location\.hash\) return;\n    window\.scrollTo\(\{ top: 0, behavior: 'smooth' \}\)/);
+});
+
 test('HomePanels: the waiting panel scrolls into view on settle under #waiting (Phase 1 fix)', () => {
   // QA's 375px leg failed on head 5cb71fdd: the panel renders after
   // the fragment's scroll moment, so nothing brought it into view.

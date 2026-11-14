@@ -84,7 +84,6 @@ const SUGGESTED_IMPROVEMENTS = [
   { label: 'Hub hero: surface next Podyap card instead of generic CoFlow',      done: false },
   { label: 'Hub widget: last Notion sync timestamp visible on home page',        done: false },
   { label: 'Decision Queue (/decisions) connected to Notion database',           done: false },
-  { label: 'Money page (/money) — Phase 2 write bridge to MONEY DB',            done: false },
 ];
 
 function HealthRow({ label, value, status }: { label: string; value: string; status: 'ok' | 'warn' | 'error' | 'neutral' }) {

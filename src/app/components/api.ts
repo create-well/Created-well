@@ -229,6 +229,26 @@ export async function fetchDashboard(): Promise<SyncData> {
   }
 }
 
+/**
+ * Door check-in (Phase 2b, packet L §4.1): POST the guest's
+ * PEOPLE page id to the check-in route; the server unions it
+ * into the FLOWS page's Attended relation and returns the
+ * Attended id set after the write. The day-of door renders its
+ * checked state from that returned set — never from a
+ * locally-kept list.
+ */
+export async function checkInGuest(
+  flowPageId: string,
+  personPageId: string,
+): Promise<string[]> {
+  const data = await req<{ ok: boolean; attended: string[] }>(
+    'POST',
+    `/coflow-dates/${flowPageId}/check-in`,
+    { personPageId },
+  );
+  return data.attended;
+}
+
 // Username ↔ email resolution (server-side KV map; enables username sign-in)
 export async function lookupUsername(username: string): Promise<string> {
   const res = await fetch(`${BASE}/username-lookup`, {
@@ -424,6 +444,25 @@ export interface CoFlowDate {
   attendedNames?: string[];
   pleasureIn?: number;
   pleasureOut?: number;
+  /** Phase 2b projections (packet L, as amended A3/A4):
+      craftLead — the FLOWS Craft Lead relation resolved to a
+      PEOPLE name at payload assembly (the Flow Keeper pattern);
+      attendedIds — the FLOWS Attended relation's PEOPLE page
+      ids, projected by normalizeFlow (ids, never rendered as
+      names; the day-of door's checked state reads membership
+      here); eventStart/eventEnd — the linked EVENTS row's
+      start/end, projected at assembly (the partifulLink
+      pattern), which §5's day-of time rule reads; eventGuests —
+      that same EVENTS row's guest list (Events Attended
+      relation resolved to PEOPLE ids + names). eventGuests is
+      present (possibly empty) only when an EVENTS row is
+      linked: absent means no event row, an empty list means
+      linked-but-empty (A4's distinct states). */
+  craftLead?: string;
+  attendedIds?: string[];
+  eventStart?: string;
+  eventEnd?: string;
+  eventGuests?: { id: string; name: string }[];
   /** The related EVENTS row's Partiful link, projected through the
       flow's Events relation at payload assembly (register 1484, Leg 1).
       Only the link projects; absent when no related event carries one.

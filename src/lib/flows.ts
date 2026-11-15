@@ -271,6 +271,262 @@ export function compareWorkListTasks(a: Task, b: Task): number {
   return a.id - b.id;
 }
 
+// ── Phase 2b: depanty queue, exit test, day-of helpers ─────────────────────
+// Spec: packet L (as amended A1–A7). The exit rule is a DRAFT
+// for Monny's adoption call after Phase 2 (packet F's
+// disposition): the queue computes against the draft and labels
+// itself draft until adoption. The whole rule lives behind
+// depantyExitTest() — one named function — so an adoption
+// amendment changes exactly one place.
+
+/** The queue's draft label, rendered on the surface until the
+    exit rule is adopted. */
+export const DEPANTY_RULE_LABEL = 'Draft rule — adoption pending';
+
+/** An open Move whose title files it as depanty work ("Depanty — …"). */
+export function isDepantyMove(t: Task): boolean {
+  return (
+    t.status !== 'done' &&
+    t.status !== 'dropped' &&
+    /^depanty\b/i.test((t.title || '').trim())
+  );
+}
+
+export interface DepantyLeg {
+  pass: boolean;
+  /** The leg's word on the surface, passing or failing. */
+  label: string;
+}
+
+export interface DepantyExitResult {
+  pass: boolean;
+  numbers: DepantyLeg;
+  followUps: DepantyLeg;
+  retro: DepantyLeg;
+  /** The failing legs' labels, in rule order. Empty when passing. */
+  failing: string[];
+}
+
+/**
+ * The depanty exit test (packet L §2, draft): a gathering's
+ * close-out is finished when all three legs hold —
+ *   1. Numbers recorded, in A7's mechanical form: the Pleasure
+ *      rollups resolve AND (a non-zero value OR the Retro field
+ *      is filed). A bare 0/0 with Retro empty is UNRECORDED:
+ *      the rollups resolve 0 both for a free night and for a
+ *      night nobody closed, so counting it would let every
+ *      unfinished gathering exit silently.
+ *   2. Follow-ups owned and dated (A2): every OPEN Move linked
+ *      to the gathering carries an owner (Task.person, the
+ *      Owner-resolved payload field) and a due date. Zero
+ *      linked Moves passes vacuously.
+ *   3. Retro filed: the FLOWS Retro / session-notes field the
+ *      2a checklist already reads.
+ */
+export function depantyExitTest(flow: CoFlowDate, tasks: Task[]): DepantyExitResult {
+  const money = moneySliceState(flow);
+  let numbers: DepantyLeg;
+  if (money.kind !== 'numbers') {
+    numbers = { pass: false, label: 'numbers not recorded' };
+  } else if (money.in !== 0 || money.out !== 0 || !!flow.sessionNotes) {
+    numbers = { pass: true, label: 'numbers recorded' };
+  } else {
+    numbers = { pass: false, label: 'numbers unrecorded (0/0 filed, no note)' };
+  }
+
+  const open = gatheringWorkList(tasks, flow)
+    .filter((t) => t.status !== 'done' && t.status !== 'dropped');
+  const followUps: DepantyLeg = open.every((t) => !!t.person && !!t.due_date)
+    ? { pass: true, label: 'follow-ups owned and dated' }
+    : { pass: false, label: 'follow-ups need an owner or a date' };
+
+  const retro: DepantyLeg = flow.sessionNotes
+    ? { pass: true, label: 'retro filed' }
+    : { pass: false, label: 'retro not filed' };
+
+  const failing = [numbers, followUps, retro].filter((l) => !l.pass).map((l) => l.label);
+  return { pass: failing.length === 0, numbers, followUps, retro, failing };
+}
+
+/** The date part of a flow's date (the payload carries a plain
+    date or a full ISO datetime). */
+function flowDatePart(f: CoFlowDate): string {
+  return (f.date || '').slice(0, 10);
+}
+
+/**
+ * "Has happened" (packet L §1): the gathering's date is past,
+ * or its Stage is Wrapped or Depanty. Stage alone never admits
+ * a row whose exit test passes — membership also requires the
+ * exit test to fail (depantyQueue below).
+ */
+export function gatheringHappened(f: CoFlowDate, today: string): boolean {
+  const d = flowDatePart(f);
+  if (d && d < today) return true;
+  return f.stage === 'Wrapped' || f.stage === 'Depanty';
+}
+
+export interface DepantyQueueRow {
+  flow: CoFlowDate;
+  exit: DepantyExitResult;
+  /** The linked open depanty Move, when one is filed. */
+  depantyMove?: Task;
+  /** Whole days since the gathering's date; undefined when the
+      row carries no date (A5: the surface renders "date not
+      filed", never a stage-derived guess). */
+  ageDays?: number;
+}
+
+/**
+ * The depanty queue's membership (packet L §1, as amended A1):
+ * a gathering is in when its close-out is unfinished AND it has
+ * happened — OR it carries a linked open depanty Move (A1: the
+ * Move is the team's own filing, and admits its gathering
+ * regardless of date or stage; HD Book Club Vol 003, no Date and
+ * no Stage with a depanty Move due 2026-11-08, is the live
+ * case). Order: oldest first by date; dateless rows after dated
+ * rows (A5 — they have no age to rank by), id the final
+ * tiebreak, compared never subtracted.
+ */
+export function depantyQueue(
+  flows: CoFlowDate[],
+  tasks: Task[],
+  today: string,
+): DepantyQueueRow[] {
+  const rows: DepantyQueueRow[] = [];
+  for (const flow of flows) {
+    const linked = flow.notionPageId
+      ? tasks.filter((t) => t.flowPageId && t.flowPageId === flow.notionPageId)
+      : [];
+    const depantyMove = linked.find(isDepantyMove);
+    if (!gatheringHappened(flow, today) && !depantyMove) continue;
+    const exit = depantyExitTest(flow, tasks);
+    if (exit.pass) continue;
+    const d = flowDatePart(flow);
+    let ageDays: number | undefined;
+    if (d) {
+      const ms = Date.parse(`${today}T00:00:00Z`) - Date.parse(`${d}T00:00:00Z`);
+      if (Number.isFinite(ms)) ageDays = Math.max(0, Math.floor(ms / 86_400_000));
+    }
+    rows.push({ flow, exit, depantyMove, ageDays });
+  }
+  return rows.sort((a, b) => {
+    const da = flowDatePart(a.flow), db = flowDatePart(b.flow);
+    if (da !== db) {
+      if (!da) return 1;
+      if (!db) return -1;
+      return da < db ? -1 : 1;
+    }
+    return a.flow.id - b.flow.id;
+  });
+}
+
+// ── Day-of helpers (packet L §3–§5) ────────────────────────────────────────
+
+export interface DayOfTimes {
+  /** The start/end the day-of header shows (ISO strings). */
+  start?: string;
+  end?: string;
+  /** Which source the shown times come from. */
+  source: 'events' | 'flows' | 'none';
+  /** True while the FLOWS and EVENTS starts disagree (§5). */
+  conflict: boolean;
+  /** The FLOWS start, carried so the surface can flag it. */
+  flowsStart?: string;
+}
+
+/**
+ * The day-of time rule (packet L §5): while both sources carry
+ * a start and they disagree, day-of shows the EVENTS time (the
+ * guest-facing row) with the conflict flagged; the FLOWS start
+ * rides along for the flag's wording. When they agree, or only
+ * one source carries a time, that time shows with no flag. The
+ * instants compare parsed, so a date-only FLOWS value and a
+ * datetime EVENTS value for the same midnight agree.
+ */
+export function dayOfTimes(flow: CoFlowDate): DayOfTimes {
+  const flowsStart = flow.date || undefined;
+  const eventsStart = flow.eventStart || undefined;
+  if (eventsStart) {
+    const conflict = !!flowsStart &&
+      Date.parse(eventsStart) !== Date.parse(flowsStart);
+    return {
+      start: eventsStart,
+      end: flow.eventEnd || flow.endTime || undefined,
+      source: 'events',
+      conflict,
+      flowsStart,
+    };
+  }
+  if (flowsStart) {
+    return {
+      start: flowsStart,
+      end: undefined,
+      source: 'flows',
+      conflict: false,
+      flowsStart,
+    };
+  }
+  return { source: 'none', conflict: false };
+}
+
+export interface RunListRow {
+  text: string;
+  detail?: string;
+}
+
+export interface RunList {
+  source: 'agenda' | 'moves' | 'none';
+  rows: RunListRow[];
+}
+
+/**
+ * The day-of run list (packet L §4.2, as amended A6): the
+ * payload's Agenda Items when present — a case that reaches
+ * FLOWS gatherings only through D8s-shaped rows, since
+ * agendaItems is empty by construction on FLOWS-normalized
+ * rows — and otherwise the linked Moves in the work list's
+ * order, which is the operative run list for FLOWS gatherings.
+ */
+export function dayOfRunList(flow: CoFlowDate, tasks: Task[]): RunList {
+  if (flow.agendaItems && flow.agendaItems.length > 0) {
+    return {
+      source: 'agenda',
+      rows: flow.agendaItems.map((item) => ({ text: item.text, detail: item.lead || undefined })),
+    };
+  }
+  const linked = gatheringWorkList(tasks, flow);
+  if (linked.length > 0) {
+    return {
+      source: 'moves',
+      rows: linked.map((t) => ({
+        text: t.title,
+        detail: t.due_date || undefined,
+      })),
+    };
+  }
+  return { source: 'none', rows: [] };
+}
+
+export type GearCheckState =
+  | { state: 'done'; move: Task }
+  | { state: 'not yet'; move: Task }
+  | { state: 'not filed' };
+
+/**
+ * Omar's gear and valve check (packet L §4.3, adopted): its
+ * state derives from a linked Move whose title names the gear
+ * or valve check when one exists; otherwise "not filed". No
+ * live Move carries such a title today, so every live gathering
+ * reads "not filed" at first — honest, and expected.
+ */
+export function gearCheckState(flow: CoFlowDate, tasks: Task[]): GearCheckState {
+  const move = gatheringWorkList(tasks, flow)
+    .find((t) => /gear|valve/i.test(t.title || ''));
+  if (!move) return { state: 'not filed' };
+  return move.status === 'done' ? { state: 'done', move } : { state: 'not yet', move };
+}
+
 export function isCommunityFlow(f: CoFlowDate): boolean {
   const theme = (f.theme || '').toLowerCase();
   const type = (f.flowType || '').toLowerCase();

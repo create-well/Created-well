@@ -30,6 +30,7 @@ export const router = createBrowserRouter([
       { index: true,         ...page(() => import('./pages/ThisWeekPage'), 'ThisWeekPage') },
       { path: 'gatherings', ...page(() => import('./pages/FlowsPage'), 'FlowsPage') },
       { path: 'gatherings/:id', ...page(() => import('./pages/GatheringDetailPage'), 'GatheringDetailPage') },
+      { path: 'gatherings/:id/day-of', ...page(() => import('./pages/GatheringDayOfPage'), 'GatheringDayOfPage') },
       { path: 'making',     ...page(() => import('./pages/PodyapsPage'), 'PodyapsPage') },
       { path: 'people',     ...page(() => import('./pages/CarePage'), 'CarePage') },
       { path: 'money',      ...page(() => import('./pages/MoneyPage'), 'MoneyPage') },

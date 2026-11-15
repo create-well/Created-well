@@ -8,14 +8,15 @@ import {
   resolveGathering,
   moneySliceState,
   gatheringWorkList,
+  depantyExitTest,
 } from '../../lib/flows';
 
 // ── Gathering detail (Phase 2a, packet K §4) ────────────────────────────────
 // One gathering, everything attached on one page: header, basics
 // and public side, people, the work list joined on the Flow
 // relation, the money slice from the row's own rollups, capture,
-// and the depanty checklist as read-only state (the depanty
-// queue and its exit rule are Phase 2b). This page is the detail
+// and the depanty checklist as read-only state, reading the
+// one named exit test since Phase 2b. This page is the detail
 // pattern Phase 3 copies for People, so its section order is
 // fixed: header, basics, people, work, money, capture, depanty.
 // Not-found is gated on settle (amendment A2): while the payload
@@ -65,31 +66,17 @@ function GatheringDetail({ flow }: { flow: CoFlowDate }) {
   const series = seriesOf(flow);
   const hostPerson = flow.host ? PERSONS[flow.host] : null;
   const work = gatheringWorkList(data.tasks ?? [], flow);
-  const openWork = work.filter((t) => t.status !== 'done' && t.status !== 'dropped');
   const money = moneySliceState(flow);
   const notes = flow.sessionNotes || flow.notes;
-  const followUpsReady =
-    openWork.length > 0 && openWork.every((t) => !!t.person && !!t.due_date);
+  // Phase 2b: the checklist reads the one named exit test
+  // (packet L §2), so the detail and the depanty queue can never
+  // disagree about what "closed out" means.
+  const exit = depantyExitTest(flow, data.tasks ?? []);
 
   const checklist: { done: boolean; label: string }[] = [
-    {
-      done: money.kind === 'numbers',
-      label: money.kind === 'numbers'
-        ? 'Numbers recorded'
-        : 'Numbers not recorded here yet',
-    },
-    {
-      done: followUpsReady,
-      label: work.length === 0
-        ? 'No follow-ups linked yet'
-        : followUpsReady
-          ? 'Every open follow-up has an owner and a date'
-          : 'Some follow-ups still need an owner or a date',
-    },
-    {
-      done: !!flow.sessionNotes,
-      label: flow.sessionNotes ? 'Retro filed' : 'Retro not filed yet',
-    },
+    { done: exit.numbers.pass, label: exit.numbers.pass ? 'Numbers recorded' : exit.numbers.label },
+    { done: exit.followUps.pass, label: exit.followUps.pass ? 'Follow-ups owned and dated' : exit.followUps.label },
+    { done: exit.retro.pass, label: exit.retro.pass ? 'Retro filed' : exit.retro.label },
   ];
 
   return (
@@ -106,6 +93,14 @@ function GatheringDetail({ flow }: { flow: CoFlowDate }) {
           <span>📅 {flow.date ? formatDate(flow.date) : 'Date not set yet.'}{flow.timeRange ? ` · ${flow.timeRange}` : ''}</span>
           {flow.location && flow.location !== 'TBD' && <span>📍 {flow.location}</span>}
           {hostPerson && <span style={{ color: hostPerson.color }}>{hostPerson.emoji} {hostPerson.name}</span>}
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <Link
+            to={`/gatherings/${flow.id}/day-of`}
+            style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 700, color: 'var(--cr8w-primary-text, #466F64)', textDecoration: 'none' }}
+          >
+            Run the day →
+          </Link>
         </div>
       </div>
 
@@ -202,7 +197,7 @@ function GatheringDetail({ flow }: { flow: CoFlowDate }) {
           ))}
         </ul>
         <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.68rem', color: 'var(--text-muted, #8A7060)', marginTop: 8 }}>
-          State only. The queue for closing gatherings comes later.
+          State only. The close-out queue lives in Gatherings → Depanty.
         </div>
       </DetailSection>
     </div>

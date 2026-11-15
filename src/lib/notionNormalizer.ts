@@ -528,6 +528,7 @@ export function normalizeMoney(page: NotionPage): MoneyRecord {
 //   Date            : Date
 //   Status          : Select (Upcoming / Active / Archived / Wrapped / Cancelled)
 //   Flow Keeper     : Relation → PEOPLE (accountable holder)
+//   Craft Lead      : Relation → PEOPLE (the session's craft holder)
 //   Attended        : Relation → PEOPLE (who came)
 //   Attendees Actual: Number
 //   Pleasure In/Out : Rollup (number) — the row's recorded money
@@ -609,6 +610,12 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
     attendeesActual: getNumberValue(pick(p, 'Attendees Actual')),
     pleasureIn:      getNumberValue(pick(p, 'Pleasure In')),
     pleasureOut:     getNumberValue(pick(p, 'Pleasure Out')),
+    // Phase 2b (packet L §4.1, A4): the Attended relation's
+    // PEOPLE page ids. The day-of door's checked state reads
+    // membership here and the check-in write unions into this
+    // relation; names resolve separately (attendedNames) and
+    // ids are never rendered as names.
+    attendedIds:     getRelationIds(pick(p, 'Attended')),
     rsvp:         {},
     agendaItems:  [],
     agendaLocked: false,
@@ -619,6 +626,97 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
     status:       FLOW_STATUS_MAP[rawStatus] ?? 'idea',
     created_at:   page.created_time,
   };
+}
+
+/**
+ * Craft Lead names per flow, resolved at payload assembly
+ * (Phase 2b, packet L amendment A3a; the Flow Keeper pattern):
+ * flow page id -> the PEOPLE name its Craft Lead relation's
+ * first target resolves to. Unresolved ids are dropped — an id
+ * is never rendered as a name.
+ */
+export function buildFlowCraftLeads(
+  flowsPages: NotionPage[],
+  peoplePages: NotionPage[],
+): Map<string, string> {
+  const nameById = new Map<string, string>();
+  for (const person of peoplePages) {
+    const name = getText(pick(person.properties, 'Name', 'Title'));
+    if (name) nameById.set(person.id, name);
+  }
+  const result = new Map<string, string>();
+  for (const flow of flowsPages) {
+    const id = getRelationFirstId(pick(flow.properties, 'Craft Lead'));
+    const name = id ? nameById.get(id) : undefined;
+    if (name) result.set(flow.id, name);
+  }
+  return result;
+}
+
+export interface FlowEventInfo {
+  /** The linked EVENTS row's Date start/end, verbatim (ISO). */
+  start: string;
+  end: string;
+  /** The row's guests: PEOPLE page id + resolved name, in filed
+      order. Unresolved ids are dropped, never rendered raw. */
+  guests: { id: string; name: string }[];
+}
+
+/**
+ * Linked-EVENTS info per flow, projected at payload assembly
+ * (Phase 2b, packet L amendments A3b/A4; the buildFlowPartifulLinks
+ * pattern): for each FLOWS page, its first Events-relation target
+ * that exists among the EVENTS pages in hand lends its Date
+ * start/end (§5's day-of time rule) and its guest list (the
+ * "Related to PEOPLE (Events Attended)" relation). A flow with
+ * no linked EVENTS row is absent from the map — the day-of door
+ * renders its no-event-row state from that absence, distinct
+ * from a linked row whose guest list is empty.
+ */
+export function buildFlowEventInfo(
+  flowsPages: NotionPage[],
+  eventsPages: NotionPage[],
+  peoplePages: NotionPage[],
+): Map<string, FlowEventInfo> {
+  const eventById = new Map<string, NotionPage>();
+  for (const ev of eventsPages) eventById.set(ev.id, ev);
+  const nameById = new Map<string, string>();
+  for (const person of peoplePages) {
+    const name = getText(pick(person.properties, 'Name', 'Title'));
+    if (name) nameById.set(person.id, name);
+  }
+  const result = new Map<string, FlowEventInfo>();
+  for (const fl of flowsPages) {
+    const rel = pick(fl.properties, 'Events');
+    if (!rel || rel.type !== 'relation') continue;
+    for (const target of (rel as NPropRelation).relation) {
+      const ev = eventById.get(target.id);
+      if (!ev) continue;
+      const dateProp = pick(ev.properties, 'Date');
+      const range = dateProp && dateProp.type === 'date'
+        ? (dateProp as NPropDate).date
+        : null;
+      const guestIds = getRelationIds(pick(
+        ev.properties,
+        'Related to PEOPLE (Events Attended)',
+        'Events Attended',
+        'Attended',
+      ));
+      const guests = guestIds
+        .map((id) => {
+          const name = nameById.get(id);
+          return name ? { id, name } : null;
+        })
+        .filter((g): g is { id: string; name: string } => g !== null);
+      result.set(fl.id, {
+        start: range?.start ?? '',
+        end: range?.end ?? '',
+        guests,
+      });
+      break;
+    }
+  }
+  return result;
 }
 
 /**

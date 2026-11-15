@@ -305,6 +305,79 @@ test('surface: the detail checklist reads the one named exit test', () => {
   assert.match(detail, /\/gatherings\/\$\{flow\.id\}\/day-of/);
 });
 
+test('§4.1: the check-in write unions, re-reads first, and is idempotent', async () => {
+  process.env.NOTION_SECRET = 'test-secret';
+  const { unionRelationIds, checkInFlowGuest } = await import('../api/_notionWriter.ts');
+  assert.deepEqual(unionRelationIds(['a', 'b'], 'c'), ['a', 'b', 'c']);
+  assert.deepEqual(unionRelationIds(['a', 'b'], 'b'), ['a', 'b']);
+
+  const FLOW = '40f24acf-799d-8158-b9dc-fa9d03123546';
+  const GUEST = '30f24acf-799d-8158-b9dc-fa9d03123546';
+  let attended = ['person-earlier'];
+  const calls = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url: String(url), method: init?.method ?? 'GET', body: init?.body });
+    if ((init?.method ?? 'GET') === 'GET') {
+      return {
+        ok: true,
+        json: async () => ({
+          properties: { Attended: { type: 'relation', relation: attended.map((id) => ({ id })) } },
+        }),
+      };
+    }
+    const parsed = JSON.parse(init.body);
+    attended = parsed.properties.Attended.relation.map((r) => r.id);
+    return { ok: true, json: async () => ({}) };
+  };
+  try {
+    const first = await checkInFlowGuest(FLOW, GUEST);
+    assert.deepEqual(first, ['person-earlier', GUEST]);
+    // GET (the re-read) precedes the PATCH, and the PATCH writes
+    // the full unioned relation.
+    assert.equal(calls[0].method, 'GET');
+    const patch = calls.find((c) => c.method === 'PATCH');
+    assert.deepEqual(
+      JSON.parse(patch.body).properties.Attended.relation,
+      [{ id: 'person-earlier' }, { id: GUEST }],
+    );
+    // Second check-in of the same guest: same set, no new write.
+    const patchCount = calls.filter((c) => c.method === 'PATCH').length;
+    const second = await checkInFlowGuest(FLOW, GUEST);
+    assert.deepEqual(second, ['person-earlier', GUEST]);
+    assert.equal(calls.filter((c) => c.method === 'PATCH').length, patchCount);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('§4.1: the route is session-shaped, validates page ids, and sits before generic CRUD', () => {
+  const server = readFileSync(new URL('../api/server.ts', import.meta.url), 'utf8');
+  const routeAt = server.indexOf("sub === 'check-in'");
+  const crudAt = server.indexOf('Generic CRUD for list resources');
+  assert.ok(routeAt > 0 && crudAt > 0 && routeAt < crudAt);
+  assert.match(server, /checkInFlowGuest\(id, personPageId\)/);
+  assert.match(server, /isNotionPageId\(personPageId\)/);
+  const api = readFileSync(new URL('../src/app/components/api.ts', import.meta.url), 'utf8');
+  assert.match(api, /`\/coflow-dates\/\$\{flowPageId\}\/check-in`/);
+});
+
+test('surface: the day-of route and page carry the specced sections and states', () => {
+  const routes = readFileSync(new URL('../src/app/routes.ts', import.meta.url), 'utf8');
+  assert.match(routes, /gatherings\/:id\/day-of/);
+  const dayOf = readFileSync(new URL('../src/app/pages/GatheringDayOfPage.tsx', import.meta.url), 'utf8');
+  for (const section of ['Door check-in', 'Run list', 'Role holders', 'Gear and valve check', 'Capture']) {
+    assert.match(dayOf, new RegExp(section.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  // §5's flag wording and A4's two distinct door states.
+  assert.match(dayOf, /FLOWS says \{formatTime\(times\.flowsStart\)\} — unconfirmed/);
+  assert.match(dayOf, /No event row linked — door list unavailable/);
+  assert.match(dayOf, /Event row linked, no guests filed yet/);
+  assert.match(dayOf, /Not today — this gathering is on/);
+  // Checked state updates only from the server's returned set.
+  assert.match(dayOf, /setAttended\(next\)/);
+});
+
 test('§4.3: the gear check derives from a linked Move, else reads not filed', () => {
   const f = flow({ notionPageId: 'f1' });
   assert.deepEqual(gearCheckState(f, []), { state: 'not filed' });

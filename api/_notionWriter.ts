@@ -231,6 +231,55 @@ export async function notionArchive(pageId: string): Promise<void> {
   await notionFetch('PATCH', `/pages/${pageId}`, { archived: true });
 }
 
+// ── Phase 2b: door check-in write (packet L §4.1, adopted) ──────────────────
+// The phase's one new write: union one guest's PEOPLE page id
+// into a FLOWS page's Attended relation. The contract is A4's:
+// read the page's current Attended, union, write the full
+// relation; re-reading immediately before writing is the R2
+// mitigation, and the union makes the write idempotent —
+// checking in the same guest twice writes the same set.
+
+/** Pure union: current ids plus the new one, order preserved,
+    duplicates impossible. Exported for the pin tests. */
+export function unionRelationIds(current: string[], add: string): string[] {
+  return current.includes(add) ? [...current] : [...current, add];
+}
+
+interface NotionPagePropertiesResponse {
+  properties?: Record<string, { type?: string; relation?: { id: string }[] }>;
+}
+
+/** Read a FLOWS page's current Attended relation ids. */
+export async function readFlowAttendedIds(pageId: string): Promise<string[]> {
+  const page = await notionFetch<NotionPagePropertiesResponse>('GET', `/pages/${pageId}`);
+  const attended = page.properties?.['Attended'];
+  if (!attended || attended.type !== 'relation' || !Array.isArray(attended.relation)) {
+    return [];
+  }
+  return attended.relation.map((r) => r.id);
+}
+
+/**
+ * Check one guest in: returns the Attended id set after the
+ * write (the set as read, when the guest was already in it —
+ * no write is issued then). The caller surfaces the returned
+ * set as the door's checked state; nothing is ever kept
+ * locally-only.
+ */
+export async function checkInFlowGuest(
+  pageId: string,
+  personPageId: string,
+): Promise<string[]> {
+  const current = await readFlowAttendedIds(pageId);
+  const next = unionRelationIds(current, personPageId);
+  if (next.length !== current.length) {
+    await notionUpdate(pageId, {
+      Attended: { relation: next.map((id) => ({ id })) },
+    });
+  }
+  return next;
+}
+
 // ── MONEY quick log (M-1b, 2026-11-04) ────────────────────────────────────────
 // The Money view's quick log creates ONE canonical MONEY row. Unlike the
 // four registry types below, money has no KV shadow list: MONEY is

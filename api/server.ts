@@ -13,7 +13,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive, validateMoneyCreate, isNotionPageId } from './_notionWriter.js';
+import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive, validateMoneyCreate, isNotionPageId, checkInFlowGuest } from './_notionWriter.js';
 import { applyCors, requireSession, requireSessionOrCron } from './_auth.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
@@ -154,6 +154,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         calendarEvents: map['cr8w_calendar_events'] ?? [],
         decisions: map['cr8w_decisions'] ?? [],
       });
+      return;
+    }
+
+    // ── Door check-in (Phase 2b, packet L §4.1) ──────────────────────────────
+    // POST /coflow-dates/<flowsPageId>/check-in { personPageId } —
+    // the phase's one new write: union the guest's PEOPLE page id
+    // into the FLOWS page's Attended relation (the writer reads
+    // the current relation immediately before writing; the union
+    // is idempotent). Both ids must be Notion page ids; anything
+    // else is refused before a write is attempted. Session-gated
+    // by the handler's auth gate above, like every non-open route.
+    if (resource === 'coflow-dates' && sub === 'check-in' && method === 'POST') {
+      const payload = (await body(req)) as { personPageId?: unknown };
+      const personPageId = payload?.personPageId;
+      if (!id || !isNotionPageId(id) || typeof personPageId !== 'string' || !isNotionPageId(personPageId)) {
+        res.status(400).json({ error: 'check-in needs a FLOWS page id and a PEOPLE page id' });
+        return;
+      }
+      try {
+        const attended = await checkInFlowGuest(id, personPageId);
+        res.json({ ok: true, attended });
+      } catch (e) {
+        res.status(502).json({
+          error: 'notion_write_failed',
+          detail: e instanceof Error ? e.message.slice(0, 200) : 'unknown',
+        });
+      }
       return;
     }
 

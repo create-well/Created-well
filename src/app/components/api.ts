@@ -229,6 +229,26 @@ export async function fetchDashboard(): Promise<SyncData> {
   }
 }
 
+/**
+ * Door check-in (Phase 2b, packet L §4.1): POST the guest's
+ * PEOPLE page id to the check-in route; the server unions it
+ * into the FLOWS page's Attended relation and returns the
+ * Attended id set after the write. The day-of door renders its
+ * checked state from that returned set — never from a
+ * locally-kept list.
+ */
+export async function checkInGuest(
+  flowPageId: string,
+  personPageId: string,
+): Promise<string[]> {
+  const data = await req<{ ok: boolean; attended: string[] }>(
+    'POST',
+    `/coflow-dates/${flowPageId}/check-in`,
+    { personPageId },
+  );
+  return data.attended;
+}
+
 // Username ↔ email resolution (server-side KV map; enables username sign-in)
 export async function lookupUsername(username: string): Promise<string> {
   const res = await fetch(`${BASE}/username-lookup`, {

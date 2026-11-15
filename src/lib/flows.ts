@@ -139,6 +139,20 @@ export function compareFlowsInGroup(a: CoFlowDate, b: CoFlowDate): number {
  * or duplicated (the A3 population rule, proven in tests).
  */
 /**
+ * A flow card's heading (micro-packet 2026-11-14, exec
+ * commission on the Phase 2a landing observation): the row's
+ * filed Name leads — title first, theme as the fallback, the
+ * honest placeholder last. Before this, FlowCard read the
+ * Theme only, so the board's SLO cards read "Untitled Flow"
+ * and "Off-site" while their detail pages carried the proper
+ * names. The theme still renders on the card, second, when it
+ * differs from the title.
+ */
+export function flowHeading(f: CoFlowDate): string {
+  return f.title || f.theme || 'Untitled Flow';
+}
+
+/**
  * The board's population (packet K §3, as amended A6): the
  * community-flows slice, plus every row whose seriesOf
  * resolves — the filed Series, or the name-guard fallback for

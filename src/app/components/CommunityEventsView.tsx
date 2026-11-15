@@ -15,6 +15,7 @@ import {
   seriesOf,
   groupFlowsBySeries,
   boardPopulation,
+  flowHeading,
 } from '../../lib/flows';
 
 type Tab = 'upcoming' | 'podyaps' | 'workshops' | 'moves' | 'team';
@@ -73,8 +74,15 @@ function FlowCard({ flow }: { flow: CoFlowDate }) {
       cursor: 'pointer',
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', fontWeight: 500, color: 'var(--cr8w-text, #2D2438)', lineHeight: 1.3, flex: 1 }}>
-          {flow.theme || 'Untitled Flow'}
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', fontWeight: 500, color: 'var(--cr8w-text, #2D2438)', lineHeight: 1.3 }}>
+            {flowHeading(flow)}
+          </div>
+          {flow.theme && flow.title && flow.theme !== flow.title && (
+            <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', color: 'var(--text-muted, #8A7060)', marginTop: 2 }}>
+              {flow.theme}
+            </div>
+          )}
         </div>
         {statusPill(flow.status)}
       </div>

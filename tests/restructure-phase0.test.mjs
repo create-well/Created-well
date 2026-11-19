@@ -103,7 +103,9 @@ test('RootLayout: MessageDrawer doors land on the new names', () => {
   assert.match(rootLayout, /onNavigateToForum=\{\(\) => \{ navigate\('\/\#waiting'\); \}\}/);
   assert.match(rootLayout, /onNavigateToGeyser=\{\(\) => \{ navigate\('\/\#waiting'\); \}\}/);
   assert.match(rootLayout, /onNavigateToStations=\{\(\) => \{ ui\.setMovesDefaultTab\('stations'\); navigate\('\/\#waiting'\); \}\}/);
-  assert.match(rootLayout, /onNavigateToPlayD8s=\{\(\) => \{ navigate\('\/people'\); \}\}/);
+  // Phase 3 (packet M §4, A6): the PlayD8s door split into the
+  // vetting and team tabs; the prop is tab-parameterized now.
+  assert.match(rootLayout, /onNavigateToPeople=\{\(tab\) => \{ navigate\(tab === 'vetting' \? '\/people\?tab=vetting' : '\/people\?tab=team'\); \}\}/);
 });
 
 // ── System page: architecture rows and inventory doors ──────────────
@@ -154,7 +156,9 @@ test('page titles carry the new names', () => {
 
 test('PodyapsPage doors: backlink to Gatherings, CoFlow buttons to People', () => {
   assert.match(podyapsPage, /navigate\('\/gatherings'\)/);
-  assert.equal([...podyapsPage.matchAll(/navigate\('\/people'\)/g)].length, 2);
+  // Phase 3 (packet M §4): both CoFlow buttons land on the Team
+  // board tab of the People surface.
+  assert.equal([...podyapsPage.matchAll(/navigate\('\/people\?tab=team'\)/g)].length, 2);
   assert.doesNotMatch(podyapsPage, /navigate\('\/(flows|care|podyaps)'\)/);
 });
 
@@ -218,7 +222,9 @@ test('ThisWeekPage: view targets are the new names, keys unchanged', () => {
     ['community-events', '/gatherings'],
     ['podyaps', '/making'],
     ['workshops', '/gatherings?tab=workshops'],
-    ['coflow', '/people'],
+    // Phase 3 (packet M §4.2): the coflow key renamed 'team' and
+    // its target deepened to the Team board tab.
+    ['team', '/people?tab=team'],
     ['playground', '/'],
   ]);
   assert.match(thisWeekPage, /handleNavigateGeyserStations\(\) \{\s+ui\.setMovesDefaultTab\('stations'\);\s+navigate\('\/\#waiting'\);/);

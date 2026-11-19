@@ -5,6 +5,8 @@ import { shortDateLabel } from '../../lib/dateLabel';
 import {
   sortPendingDecisions, decidedDecisions,
   buildDecisionCreate, buildDecideUpdate, buildDeferUpdate,
+  waitingForOwner,
+  type DecisionOwner,
 } from '../../lib/decisionsView';
 import { kvSliceError } from '../../lib/kvSliceState';
 import type { DecisionRecord } from '../components/api';
@@ -230,12 +232,13 @@ function AddDecisionForm({
   onAdd,
   onCancel,
 }: {
-  onAdd: (d: { question: string; context: string; urgency: DecisionRecord['urgency'] }) => Promise<void>;
+  onAdd: (d: { question: string; context: string; urgency: DecisionRecord['urgency']; owner?: DecisionOwner }) => Promise<void>;
   onCancel: () => void;
 }) {
   const [question, setQuestion] = useState('');
   const [context, setContext] = useState('');
   const [urgency, setUrgency] = useState<DecisionRecord['urgency']>('this-week');
+  const [owner, setOwner] = useState<DecisionOwner>('monny');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -245,7 +248,7 @@ function AddDecisionForm({
     setBusy(true);
     setError('');
     try {
-      await onAdd({ question: question.trim(), context: context.trim(), urgency });
+      await onAdd({ question: question.trim(), context: context.trim(), urgency, owner });
       onCancel();
     } catch {
       setError('That did not save. Check the connection and try again.');
@@ -307,6 +310,31 @@ function AddDecisionForm({
           );
         })}
       </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Waiting for
+        </span>
+        {(['monny', 'bingle'] as DecisionOwner[]).map(o => {
+          const selected = owner === o;
+          return (
+            <button
+              key={o}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => setOwner(o)}
+              style={{
+                padding: '4px 10px', borderRadius: 6, cursor: 'pointer', minHeight: 44,
+                fontFamily: 'var(--font-label)', fontSize: '0.65rem', fontWeight: selected ? 800 : 600,
+                border: `1px solid ${selected ? 'var(--cr8w-primary, #7BA89D)' : 'var(--border-soft)'}`,
+                background: selected ? 'var(--cr8w-primary, #7BA89D)' : 'none',
+                color: selected ? '#fff' : 'var(--text-muted)',
+              }}
+            >
+              {o === 'monny' ? 'Monny' : 'Bingle'}
+            </button>
+          );
+        })}
+      </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="submit" disabled={busy} style={{
           padding: '6px 16px', borderRadius: 8, minHeight: 44,
@@ -336,7 +364,6 @@ function AddDecisionForm({
 export function DecisionsPage() {
   const { data, actions } = useDashboard();
   const [adding, setAdding] = useState(false);
-  const [showDecided, setShowDecided] = useState(false);
 
   const state =
     data.syncStatus === 'loading' ? 'loading' :
@@ -346,6 +373,10 @@ export function DecisionsPage() {
   const records = data.decisions || [];
   const pending = sortPendingDecisions(records);
   const decided = decidedDecisions(records);
+  // Two queues (packets C/F): every pending item waits in its owner's
+  // queue; unowned records derive to 'monny' at read (decisionsView).
+  const waitingMonny = waitingForOwner(records, 'monny');
+  const waitingBingle = waitingForOwner(records, 'bingle');
   // Honesty (packet CC): a failed KV read degrades the slice to
   // empty server-side; an empty queue under a read failure names the
   // failure instead of claiming the queue is clear.
@@ -355,7 +386,7 @@ export function DecisionsPage() {
     await actions.deleteDecision(id);
   }
 
-  async function addDecision(d: { question: string; context: string; urgency: DecisionRecord['urgency'] }) {
+  async function addDecision(d: { question: string; context: string; urgency: DecisionRecord['urgency']; owner?: DecisionOwner }) {
     await actions.addDecision(buildDecisionCreate(d));
   }
 
@@ -438,8 +469,8 @@ export function DecisionsPage() {
           )}
         </div>
 
-        {/* Pending decisions */}
-        {pending.length === 0 && !adding ? (
+        {/* Pending decisions — the two owners' queues */}
+        {(waitingMonny.length + waitingBingle.length) === 0 && !adding ? (
           decisionsReadError ? (
             <div style={{
               padding: '32px 0',
@@ -472,36 +503,51 @@ export function DecisionsPage() {
           </div>
           )
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-            {pending.map(d => (
-              <DecisionCard key={d.id} decision={d} onDecide={decide} onDefer={defer} onDelete={removeDecision} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 22, marginBottom: 24 }}>
+            {([
+              ['monny', 'Waiting For Monny', waitingMonny],
+              ['bingle', 'Waiting For Bingle', waitingBingle],
+            ] as const).map(([owner, label, queue]) => (
+              <section key={owner}>
+                <div style={{
+                  fontFamily: 'var(--font-label)', fontSize: '0.62rem', fontWeight: 700,
+                  textTransform: 'uppercase', letterSpacing: '0.08em',
+                  color: 'var(--text-muted)', marginBottom: 8,
+                }}>
+                  {label} · {queue.length}
+                </div>
+                {queue.length === 0 ? (
+                  <div style={{
+                    fontFamily: 'var(--font-body)', fontSize: '0.8rem',
+                    color: 'var(--text-muted)', fontStyle: 'italic',
+                  }}>
+                    Nothing waiting for {owner === 'monny' ? 'Monny' : 'Bingle'}.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {queue.map(d => (
+                      <DecisionCard key={d.id} decision={d} onDecide={decide} onDefer={defer} onDelete={removeDecision} />
+                    ))}
+                  </div>
+                )}
+              </section>
             ))}
           </div>
         )}
 
-        {/* Decided archive */}
+        {/* Made — the decided list, visible by design (packets C/F) */}
         {decided.length > 0 && (
           <div>
-            <button
-              onClick={() => setShowDecided(v => !v)}
-              aria-expanded={showDecided}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontFamily: 'var(--font-label)', fontSize: '0.7rem', fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.08em',
-                color: 'var(--text-muted)',
-                padding: '8px 0', marginBottom: 10,
-              }}
-            >
-              <span style={{ transform: showDecided ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▶</span>
-              Decided ({decided.length})
-            </button>
-            {showDecided && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {decided.map(d => <DecisionCard key={d.id} decision={d} onDecide={decide} onDefer={defer} onDelete={removeDecision} />)}
-              </div>
-            )}
+            <div style={{
+              fontFamily: 'var(--font-label)', fontSize: '0.62rem', fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '0.08em',
+              color: 'var(--text-muted)', marginBottom: 8,
+            }}>
+              Made · {decided.length}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {decided.map(d => <DecisionCard key={d.id} decision={d} onDecide={decide} onDefer={defer} onDelete={removeDecision} />)}
+            </div>
           </div>
         )}
       </div>

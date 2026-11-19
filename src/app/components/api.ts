@@ -371,13 +371,19 @@ export interface DecisionRecord {
   question: string;
   context: string;
   urgency: 'now' | 'this-week' | 'when-clear';
+  /** The queue the item waits in. Records filed before the field
+      existed carry none; the view derives them to 'monny' — the
+      program's owner of record — never a hidden third queue. */
+  owner?: 'monny' | 'bingle';
   status: 'pending' | 'decided';
   answer?: string;
   decided_at?: string;
   created_at?: string;
 }
 
-export type DecisionCreate = Pick<DecisionRecord, 'question' | 'context' | 'urgency'>;
+export type DecisionCreate = Pick<DecisionRecord, 'question' | 'context' | 'urgency'> & {
+  owner?: DecisionRecord['owner'];
+};
 
 export const createDecision = (d: DecisionCreate) => req<DecisionRecord>('POST', '/decisions', d);
 export const updateDecision = (id: number, updates: Partial<DecisionRecord>) => req<DecisionRecord>('PUT', `/decisions/${id}`, updates);

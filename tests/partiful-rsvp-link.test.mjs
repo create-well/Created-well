@@ -3,13 +3,17 @@
 // carries the field; this leg renders it in exactly two seats and
 // nowhere else — the D8s session view's internal team RSVP is not a
 // Partiful surface and stays untouched.
+//
+// Phase 3 (packet M §4.1): the D8s session view retired; its
+// check-in successor is the Team board, which inherits the
+// no-Partiful line below.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const events = readFileSync(new URL('../src/app/components/CommunityEventsView.tsx', import.meta.url), 'utf8');
 const hub = readFileSync(new URL('../src/app/components/HubView.tsx', import.meta.url), 'utf8');
-const d8s = readFileSync(new URL('../src/app/components/CoFlowD8sView.tsx', import.meta.url), 'utf8');
+const d8s = readFileSync(new URL('../src/app/components/people/TeamBoard.tsx', import.meta.url), 'utf8');
 
 test('the flow card offers the Partiful door when its record carries a link, upcoming only', () => {
   assert.match(events, /const showRsvp = !!flow\.partifulLink && \(!flow\.date \|\| flow\.date >= localDateString\(new Date\(\)\)\)/);
@@ -29,7 +33,7 @@ test('the Next Up expanded row offers the same door beside its sibling actions',
   assert.match(hub, /🎉 RSVP on Partiful ↗/);
 });
 
-test('the D8s session view carries no Partiful reference', () => {
+test('the Team board (the D8s check-in successor) carries no Partiful reference', () => {
   assert.doesNotMatch(d8s, /partiful/i);
 });
 

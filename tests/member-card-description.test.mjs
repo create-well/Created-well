@@ -4,8 +4,9 @@
 // consent/pathway to-do in its tail: not a person fact, never a
 // card field, no trimmed line, no badge. The card's description
 // slot carries the structured Roles string only. The DETAIL view
-// (PersonView) carries the prose IN FULL until the data cleanup
-// lands, so the to-do stays reachable in product.
+// (the person detail page; PersonView until Phase 3 retired it
+// into /people/:id) carries the prose IN FULL until the data
+// cleanup lands, so the to-do stays reachable in product.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -14,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { normalizePerson } from '../src/lib/notionNormalizer.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const personView = readFileSync(join(root, 'src/app/components/PersonView.tsx'), 'utf8');
+const personView = readFileSync(join(root, 'src/app/pages/PersonDetailPage.tsx'), 'utf8');
 
 const page = (roles, description) => ({
   id: '11111111-2222-3333-4444-555555555555',
@@ -39,6 +40,6 @@ test('with Roles, the card field is the structured Roles string', () => {
 });
 
 test('the detail view carries the prose in full', () => {
-  assert.ok(personView.includes('personRecord?.descriptionFull'));
-  assert.ok(personView.includes('{personRecord.descriptionFull}'));
+  assert.ok(personView.includes('person.descriptionFull'));
+  assert.ok(personView.includes('{person.descriptionFull}'));
 });

@@ -10,21 +10,19 @@
 // MomentumItem type whose only consumer this was.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const person = readFileSync(join(root, 'src/app/components/PersonView.tsx'), 'utf8');
 const layout = readFileSync(join(root, 'src/app/RootLayout.tsx'), 'utf8');
 const data = readFileSync(join(root, 'src/app/components/data.ts'), 'utf8');
 
 test('no sparks capture surface remains in PersonView', () => {
-  assert.ok(!person.includes('Capture a spark'));
-  assert.ok(!person.includes('spark-input'));
-  assert.ok(!person.includes('addSpark'));
-  assert.ok(!person.includes('onAddMomentum'));
-  assert.ok(!person.includes('momentumItems'));
+  // Phase 3 (packet M §2.2): PersonView retired into the person
+  // detail route; the pin's strongest form is the file's absence —
+  // no sparks capture can return on a surface that does not exist.
+  assert.ok(!existsSync(join(root, 'src/app/components/PersonView.tsx')));
 });
 
 test('the RootLayout call site passes no momentum props', () => {

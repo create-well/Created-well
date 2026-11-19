@@ -85,6 +85,22 @@ export function PodyapsPage() {
         {/* Next podyap session + Preflight */}
         <SessionsStrip sessions={data.coFlowDates.filter(isPodyap)} />
 
+        {/* Team check-in door (Phase 3 behavior, kept on the rebuilt
+            page: recording day runs on the Team board's check-ins) */}
+        <div style={{ marginTop: 10 }}>
+          <button
+            onClick={() => navigate('/people?tab=team')}
+            style={{
+              padding: '7px 14px', borderRadius: 8,
+              background: '#9B59E0', color: '#fff',
+              fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600,
+              border: 'none', cursor: 'pointer',
+            }}
+          >
+            Team check-in
+          </button>
+        </div>
+
         {/* Release status (G-11 Consumer 2) */}
         <ReleaseStatusStrip />
 

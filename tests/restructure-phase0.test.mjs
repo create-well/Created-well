@@ -156,9 +156,12 @@ test('page titles carry the new names', () => {
 
 test('PodyapsPage doors: backlink to Gatherings, CoFlow buttons to People', () => {
   assert.match(podyapsPage, /navigate\('\/gatherings'\)/);
-  // Phase 3 (packet M §4): both CoFlow buttons land on the Team
-  // board tab of the People surface.
-  assert.equal([...podyapsPage.matchAll(/navigate\('\/people\?tab=team'\)/g)].length, 2);
+  // Phase 3 (packet M §4): the CoFlow buttons land on the Team board
+  // tab of the People surface. Phase 4 (packet S §4): the hero and
+  // fallback sections that carried the two buttons retired in the
+  // /making rebuild; the door survives once, beside the sessions
+  // strip, and this pin now guards the single surviving door.
+  assert.equal([...podyapsPage.matchAll(/navigate\('\/people\?tab=team'\)/g)].length, 1);
   assert.doesNotMatch(podyapsPage, /navigate\('\/(flows|care|podyaps)'\)/);
 });
 

@@ -53,9 +53,15 @@ test('KV-owned collections carry no NOTION_DB_LINKS entry or href (exec decision
   // The old parallel-generation targets those rows pointed at are gone from the file.
   assert.doesNotMatch(page, /81fc482da44d43cb9c426952654944ab/);
   assert.doesNotMatch(page, /08a0e011142a4512a3dc8075800db7db/);
-  for (const label of ['Messages', 'Workshops', 'Check-ins', 'Well notes', 'Brain dumps', 'Announcements']) {
+  // Packet CC leg C3: Workshops left the KV slice — FLOWS is the
+  // store of record, so its row names FLOWS (Notion) and counts the
+  // same derivation Gatherings renders.
+  for (const label of ['Messages', 'Check-ins', 'Well notes', 'Brain dumps', 'Announcements']) {
     assert.match(page, new RegExp(`label="${label}"[^>]*source="KV store"`), `${label} row`);
   }
+  assert.doesNotMatch(page, /label="Workshops"[^>]*source="KV store"/);
+  assert.match(page, /label="Workshops"[^>]*source="FLOWS \(Notion\)"/);
+  assert.match(page, /const workshopsCount = data\.coFlowDates\.filter\(\s+\(f\) => isWorkshop\(f\) && seriesOf\(f\) !== 'SLO Create',/);
 });
 
 test('decisions line names the KV resource, not a pending connection', () => {

@@ -22,10 +22,10 @@ test('the tab strips carry a 44px box height', () => {
   assert.ok(hits.length >= 2, 'main tabs and workshops sub-tabs');
 });
 
-test('the member filter pills take the hit layer, box unchanged', () => {
-  assert.ok(view.includes('className="cr-hit44"'));
-  assert.ok(view.includes("padding: '4px 10px',"));
-});
+// The member-filter-pill legs retired with the Moves tab (packet CC
+// leg C3): the pills were the tab's role filter, the file's only
+// cr-hit44 consumer. The hit-layer rule itself stays pinned below —
+// the class remains available for future small controls.
 
 test('the hit layer is a vertical-only 44px expansion', () => {
   assert.ok(css.includes('.cr-hit44 { position: relative; }'));

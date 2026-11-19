@@ -10,28 +10,12 @@ import { NotesFromTheWell } from './NotesFromTheWell';
 import { ArriveState, shouldShowArriveState } from './ArriveState';
 import { HomePanels } from './HomePanels';
 import CalendarAgenda from './CalendarAgenda';
-import type { Task, Station, WellNote, Workshop, CoFlowDate, CoFlowCheckin, InviteCounts, CalendarEventKV } from './api';
+import type { Task, Station, WellNote, CoFlowDate, CoFlowCheckin, InviteCounts, CalendarEventKV } from './api';
 import * as api from './api';
 import { milestoneLabel } from '../../lib/nextUpLabel';
 import { coFlowTitle, startMinutes } from '../../lib/calendarAgenda';
-import { shortDateLabel, calendarDayDiff, localDateString, parseDateValue } from '../../lib/dateLabel';
-
-// ── Wellshop category → workshop tag matching ────────────────────────────────
-const WELLSHOP_TAG_MAP: Record<string, string[]> = {
-  wellshop: ['wellshop', 'reflection', 'grounding', 'journaling', 'inner', 'nurture', 'decomprocess'],
-  expresshop: ['expresshop', 'expression', 'sharing', 'presenting', 'pitching', 'storytelling', 'outer'],
-  playshop: ['playshop', 'play', 'creative', 'show-and-tell', 'experiment', 'fun'],
-};
-
-function matchesCategory(workshop: Workshop, categoryKey: string): boolean {
-  const keywords = WELLSHOP_TAG_MAP[categoryKey] || [];
-  const titleLower = workshop.title.toLowerCase();
-  const descLower = workshop.description.toLowerCase();
-  const tagSet = (workshop.tags || []).map(t => t.toLowerCase());
-  return keywords.some(kw =>
-    tagSet.includes(kw) || titleLower.includes(kw) || descLower.includes(kw)
-  );
-}
+import { shortDateLabel, calendarDayDiff, localDateString } from '../../lib/dateLabel';
+import { isWorkshop, seriesOf } from '../../lib/flows';
 
 interface HubViewProps {
   onNavigate: (view: string) => void;
@@ -47,7 +31,6 @@ interface HubViewProps {
   onDeleteWellNote?: (id: number) => Promise<void>;
   onAddWellNote: (content: string) => void;
   onLandWellNote: (id: number) => void;
-  workshops?: Workshop[];
   coFlowDates?: CoFlowDate[];
   coFlowCheckins?: CoFlowCheckin[];
   actionItems?: Task[];
@@ -348,7 +331,7 @@ function getGreeting() {
   return 'Good evening';
 }
 
-export function HubView({ onNavigate, onNavigateStations, onOpenGeyserGathering, announcements, brainDumps, onAddBrainDump, onDeleteBrainDump, onUpdateBrainDump, activeUser, wellNotes, onAddWellNote, onLandWellNote, onDeleteWellNote, workshops = [], coFlowDates = [], coFlowCheckins = [], actionItems = [], stations = [] }: HubViewProps) {
+export function HubView({ onNavigate, onNavigateStations, onOpenGeyserGathering, announcements, brainDumps, onAddBrainDump, onDeleteBrainDump, onUpdateBrainDump, activeUser, wellNotes, onAddWellNote, onLandWellNote, onDeleteWellNote, coFlowDates = [], coFlowCheckins = [], actionItems = [], stations = [] }: HubViewProps) {
   const [showSynergy, setShowSynergy] = useState(false);
   const [openSynergySections, setOpenSynergySections] = useState<Set<string>>(new Set());
   const [showAllDumps, setShowAllDumps] = useState(false);
@@ -1075,6 +1058,71 @@ export function HubView({ onNavigate, onNavigateStations, onOpenGeyserGathering,
 
         {calendarTab === 'wellshop' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* ── Upcoming workshops — FLOWS is the store of record
+                (packet CC, leg C3): one list, derived exactly like
+                Gatherings' workshops tab (isWorkshop && seriesOf is
+                not 'SLO Create'), soonest first, top 4. The KV
+                menu's per-category split had no FLOWS-field
+                equivalent, so the category cards no longer claim
+                it — and no UI surface reads the KV workshops slice
+                anymore. ── */}
+            {(() => {
+              const today = localDateString();
+              const upcoming = coFlowDates
+                .filter(f => isWorkshop(f) && seriesOf(f) !== 'SLO Create')
+                .filter(f => (f.date || '') >= today)
+                .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+                .slice(0, 4);
+              return upcoming.length > 0 ? (
+                <div style={{
+                  padding: '8px 12px',
+                  background: 'rgba(255,255,255,0.6)', borderRadius: 10,
+                  border: '1px solid rgba(var(--cr8w-primary-rgb, 123,168,157),0.25)',
+                }}>
+                  {upcoming.map(f => (
+                    <div key={f.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '6px 0',
+                      borderBottom: '1px solid rgba(44,28,16,0.05)',
+                    }}>
+                      <span style={{
+                        fontFamily: 'var(--font-label)', fontSize: '0.6rem', fontWeight: 700,
+                        color: 'var(--cr8w-primary-text, #466F64)', textTransform: 'uppercase', minWidth: 55,
+                      }}>
+                        {shortDateLabel(f.date)}
+                      </span>
+                      <span style={{
+                        fontFamily: 'var(--font-label)', fontSize: '0.82rem',
+                        color: '#2C1C10', flex: 1,
+                      }}>{f.title || f.theme}</span>
+                      <span style={{
+                        fontFamily: 'var(--font-label)', fontSize: '0.58rem', fontWeight: 600,
+                        color: 'var(--text-muted)', textTransform: 'uppercase',
+                      }}>{f.stage}</span>
+                    </div>
+                  ))}
+                  <div style={{ textAlign: 'center', marginTop: 6 }}>
+                    <span
+                      style={{ fontFamily: 'var(--font-label)', fontSize: '0.6rem', color: 'var(--cr8w-primary-text, #466F64)', fontWeight: 600, cursor: 'pointer' }}
+                      onClick={() => onNavigate('workshops')}
+                    >view all in workshops {'\u2192'}</span>
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  padding: '8px 12px',
+                  fontFamily: 'var(--font-label)', fontSize: '0.78rem',
+                  color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center',
+                }}>
+                  no upcoming workshops yet — <span
+                    style={{ color: 'var(--cr8w-primary-text, #466F64)', cursor: 'pointer', fontWeight: 600, fontStyle: 'normal' }}
+                    onClick={() => onNavigate('workshops')}
+                  >add one in workshops</span>
+                </div>
+              );
+            })()}
+
             {([
               { key: 'wellshop', emoji: '\uD83E\uDEB7', title: 'wellshop', subtitle: 'inner nurture', accent: '#A8B5A0', desc: 'journaling, reflection, grounding, decomprocessing' },
               { key: 'expresshop', emoji: '\uD83C\uDFA4', title: 'expresshop', subtitle: 'outer expression', accent: '#E8967D', desc: 'sharing, presenting, pitching, storytelling' },
@@ -1209,61 +1257,6 @@ export function HubView({ onNavigate, onNavigateStations, onOpenGeyserGathering,
                         })}
                       </div>
                     </div>
-
-                    {/* ── Upcoming workshops from real data ── */}
-                    {(() => {
-                      const matched = workshops
-                        .filter(w => matchesCategory(w, cat.key) && (w.status === 'scheduled' || w.status === 'planning'))
-                        .sort((a, b) => (parseDateValue(a.date)?.getTime() ?? 0) - (parseDateValue(b.date)?.getTime() ?? 0))
-                        .slice(0, 4);
-                      return matched.length > 0 ? (
-                        <div style={{
-                          marginTop: 8, padding: '8px 12px',
-                          background: 'rgba(255,255,255,0.6)', borderRadius: 10,
-                          border: `1px solid ${cat.accent}25`,
-                        }}>
-                          {matched.map(w => (
-                            <div key={w.id} style={{
-                              display: 'flex', alignItems: 'center', gap: 8,
-                              padding: '6px 0',
-                              borderBottom: '1px solid rgba(44,28,16,0.05)',
-                            }}>
-                              <span style={{
-                                fontFamily: 'var(--font-label)', fontSize: '0.6rem', fontWeight: 700,
-                                color: cat.accent, textTransform: 'uppercase', minWidth: 55,
-                              }}>
-                                {shortDateLabel(w.date)}
-                              </span>
-                              <span style={{
-                                fontFamily: "var(--font-label)", fontSize: '0.82rem',
-                                color: '#2C1C10', flex: 1,
-                              }}>{w.title}</span>
-                              <span style={{
-                                fontFamily: 'var(--font-label)', fontSize: '0.58rem', fontWeight: 600,
-                                color: 'var(--text-muted)', textTransform: 'uppercase',
-                              }}>{w.status}</span>
-                            </div>
-                          ))}
-                          <div style={{ textAlign: 'center', marginTop: 6 }}>
-                            <span
-                              style={{ fontFamily: 'var(--font-label)', fontSize: '0.6rem', color: cat.accent, fontWeight: 600, cursor: 'pointer' }}
-                              onClick={() => onNavigate('workshops')}
-                            >view all in workshops {'\u2192'}</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{
-                          marginTop: 8, padding: '8px 12px',
-                          fontFamily: "var(--font-label)", fontSize: '0.78rem',
-                          color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center',
-                        }}>
-                          no upcoming {cat.key}s yet — <span
-                            style={{ color: cat.accent, cursor: 'pointer', fontWeight: 600, fontStyle: 'normal' }}
-                            onClick={() => onNavigate('workshops')}
-                          >add one in workshops</span>
-                        </div>
-                      );
-                    })()}
 
                     {/* ── Past Sessions ── */}
                     <div style={{ marginTop: 10 }}>

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { useDashboard } from '../../contexts/DashboardContext';
 import { localDateString } from '../../lib/dateLabel';
 import {
-  PERSONS, TASK_ROLES, HD_PROFILES,
+  PERSONS, HD_PROFILES,
   formatDate,
 } from './data';
 import type { CoFlowDate, Task } from './api';
@@ -20,14 +20,13 @@ import {
   DEPANTY_RULE_LABEL,
 } from '../../lib/flows';
 
-type Tab = 'upcoming' | 'depanty' | 'podyaps' | 'workshops' | 'moves' | 'team';
+type Tab = 'upcoming' | 'depanty' | 'podyaps' | 'workshops' | 'team';
 
 const TABS: { key: Tab; label: string; emoji: string }[] = [
   { key: 'upcoming',   label: 'Board',              emoji: '📅' },
   { key: 'depanty',    label: 'Depanty',            emoji: '🧺' },
   { key: 'podyaps',    label: 'Podyaps',             emoji: '🎙️' },
   { key: 'workshops',  label: 'Book Club + Shops',   emoji: '🎨' },
-  { key: 'moves',      label: 'Moves',               emoji: '📋' },
   { key: 'team',       label: 'Team',                emoji: '✨' },
 ];
 
@@ -305,119 +304,6 @@ function WorkshopsTab({ flows }: { flows: CoFlowDate[] }) {
     </div>
   );
 }
-
-// ── Moves tab ─────────────────────────────────────────────────────────────────
-
-function MovesTab({ tasks }: { tasks: Task[] }) {
-  const [filter, setFilter] = useState<string>('all');
-  const shown = filter === 'all' ? tasks : tasks.filter(t => t.person === filter);
-  const active = shown.filter(t => t.status !== 'done').sort((a, b) => {
-    const priority = { high: 0, medium: 1, low: 2 };
-    return (priority[a.priority] ?? 1) - (priority[b.priority] ?? 1);
-  });
-  const done = shown.filter(t => t.status === 'done');
-
-  const ROLE_KEYS = ['all', ...Object.keys(TASK_ROLES)];
-
-  function statusColor(s: Task['status']) {
-    // The --status-* shade set (cr8w.css): one deep shade per
-    // status, AA as small text on white and cream. The old iOS
-    // system hexes failed at 1.90-3.08:1 and Next/Dropped shared
-    // one fallback color; both defects end here.
-    return s === 'in_progress' ? 'var(--status-now)'
-      : s === 'done' ? 'var(--status-done)'
-      : s === 'blocked' ? 'var(--status-blocked)'
-      : s === 'dropped' ? 'var(--status-dropped)'
-      : 'var(--status-next)';
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Filter row */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {ROLE_KEYS.map(key => {
-          const role = key === 'all' ? null : TASK_ROLES[key];
-          const isActive = filter === key;
-          return (
-            <button
-              key={key}
-              className="cr-hit44"
-              onClick={() => setFilter(key)}
-              style={{
-                padding: '4px 10px',
-                borderRadius: 20,
-                border: isActive ? `1.5px solid ${role?.color || 'var(--cr8w-primary, #7BA89D)'}` : '1px solid rgba(0,0,0,0.1)',
-                background: isActive ? `${role?.color || '#7BA89D'}15` : 'transparent',
-                color: isActive ? (role?.color || 'var(--cr8w-primary, #7BA89D)') : 'var(--text-muted)',
-                fontFamily: 'var(--font-label)',
-                fontSize: '0.7rem',
-                fontWeight: isActive ? 700 : 500,
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-              }}
-            >
-              {key === 'all' ? 'All' : `${role?.emoji} ${role?.name}`}
-            </button>
-          );
-        })}
-      </div>
-
-      {active.length === 0 && done.length === 0 ? (
-        <EmptyState emoji="📋" title="No moves yet" body="Tasks from MOVES in Notion will appear here." />
-      ) : (
-        <>
-          {active.map(t => (
-            <div key={t.id} style={{
-              background: '#fff',
-              border: '1px solid rgba(0,0,0,0.07)',
-              borderLeft: `3px solid ${statusColor(t.status)}`,
-              borderRadius: 10,
-              padding: '10px 12px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--cr8w-text, #2D2438)', lineHeight: 1.35, flex: 1 }}>{t.title}</div>
-                <span style={{
-                  padding: '2px 7px', borderRadius: 7, fontSize: '0.6rem', fontWeight: 700,
-                  fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.04em',
-                  background: t.status === 'blocked' ? 'var(--status-blocked)' : `color-mix(in srgb, ${statusColor(t.status)} 8%, transparent)`,
-                  color: t.status === 'blocked' ? '#F6EBDF' : statusColor(t.status), flexShrink: 0,
-                }}>
-                  {t.status === 'in_progress' ? 'Now' : t.status === 'todo' ? 'Next' : t.status === 'blocked' ? 'Blocked' : t.status === 'dropped' ? 'Dropped' : t.status === 'done' ? 'Done' : t.status}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {t.person && TASK_ROLES[t.person] && (
-                  <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.68rem', color: TASK_ROLES[t.person].color }}>
-                    {TASK_ROLES[t.person].emoji} {TASK_ROLES[t.person].name}
-                  </span>
-                )}
-                {t.due_date && (
-                  <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                    Due {formatDate(t.due_date)}
-                  </span>
-                )}
-                {t.category && (
-                  <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.68rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.04)', padding: '1px 6px', borderRadius: 6 }}>
-                    {t.category}
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-          {done.length > 0 && (
-            <div style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>
-              Done this cycle ({done.length})
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
 // ── Team tab ──────────────────────────────────────────────────────────────────
 
 function TeamTab() {
@@ -678,7 +564,6 @@ export function CommunityEventsView({ defaultTab = 'upcoming' }: { defaultTab?: 
         {activeTab === 'depanty'   && <DepantyTab   flows={allFlows} tasks={data.tasks ?? []} syncStatus={data.syncStatus} />}
         {activeTab === 'podyaps'   && <PodyapsTab   flows={podyapFlows} />}
         {activeTab === 'workshops' && <WorkshopsTab flows={groupFlowsFinal} />}
-        {activeTab === 'moves'     && <MovesTab     tasks={data.tasks ?? []} />}
         {activeTab === 'team'      && <TeamTab />}
       </div>
     </div>

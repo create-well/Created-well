@@ -22,7 +22,7 @@ const systemPage = await read('../src/app/pages/SystemPage.tsx');
 const community = await read('../src/app/components/CommunityEventsView.tsx');
 const flowsPage = await read('../src/app/pages/FlowsPage.tsx');
 const podyapsPage = await read('../src/app/pages/PodyapsPage.tsx');
-const carePage = await read('../src/app/pages/CarePage.tsx');
+const carePage = await read('../src/app/pages/PeoplePage.tsx');
 const moneyPage = await read('../src/app/pages/MoneyPage.tsx');
 const decisionsPage = await read('../src/app/pages/DecisionsPage.tsx');
 const thisWeekPage = await read('../src/app/pages/ThisWeekPage.tsx');
@@ -35,7 +35,7 @@ test('routes: the seven section pages mount at the new paths', () => {
   for (const [path, page] of [
     ['gatherings', 'FlowsPage'],
     ['making', 'PodyapsPage'],
-    ['people', 'CarePage'],
+    ['people', 'PeoplePage'],
     ['money', 'MoneyPage'],
     ['decisions', 'DecisionsPage'],
     ['system', 'SystemPage'],

@@ -7,6 +7,22 @@ import {
   isAuthenticated,
   getStoredProfile,
 } from "./components/AuthGate";
+import { captureRecoveryMarker, recoveryLatched } from "../lib/recoveryEntry";
+
+// ── Password recovery: latch the marker at module-eval time (R-0) ───────────
+// Runs when this module is first evaluated — before React mounts and before
+// any Supabase client can parse and strip the URL hash. The Nov 5 hold read
+// the hash from the gate's mount effect and subscribed for the
+// PASSWORD_RECOVERY event; both are races the client can win, and on
+// 2026-11-06 it won: a fresh recovery link signed straight into the
+// dashboard with no set-password form. The latch in sessionStorage is the
+// structural evidence: AuthGate holds on it, App refuses to enter on it,
+// and only a completed password set or an explicit sign-out clears it.
+(function captureRecoveryArrival() {
+  try {
+    captureRecoveryMarker(window.location.hash, sessionStorage);
+  } catch {}
+})();
 import { useThemeInit } from "./components/ThemeProvider";
 import { GCAL_CLIENT_ID, GCAL_REDIRECT_URI } from "./components/data";
 
@@ -222,7 +238,12 @@ export default function App() {
   usePWA();
 
   const [authed, setAuthed] = useState(
-    () => !!DEV_BYPASS_PROFILE || isAuthenticated()
+    // R-0: a latched recovery never enters on the stored session — the
+    // gate renders instead and holds at the set-new-password form. The
+    // latch is module-captured above, so this read cannot lose the race.
+    () =>
+      (!!DEV_BYPASS_PROFILE || isAuthenticated()) &&
+      !recoveryLatched(sessionStorage)
   );
   const [chatActiveUser, setChatActiveUser] = useState(() => {
     if (DEV_BYPASS_PROFILE) return DEV_BYPASS_PROFILE;

@@ -32,6 +32,7 @@ export const router = createBrowserRouter([
       { path: 'gatherings/:id', ...page(() => import('./pages/GatheringDetailPage'), 'GatheringDetailPage') },
       { path: 'gatherings/:id/day-of', ...page(() => import('./pages/GatheringDayOfPage'), 'GatheringDayOfPage') },
       { path: 'making',     ...page(() => import('./pages/PodyapsPage'), 'PodyapsPage') },
+      { path: 'making/:id', ...page(() => import('./pages/MakingDetailPage'), 'MakingDetailPage') },
       { path: 'people',     ...page(() => import('./pages/PeoplePage'), 'PeoplePage') },
       { path: 'people/:id', ...page(() => import('./pages/PersonDetailPage'), 'PersonDetailPage') },
       { path: 'money',      ...page(() => import('./pages/MoneyPage'), 'MoneyPage') },

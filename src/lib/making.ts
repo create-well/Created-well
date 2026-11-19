@@ -214,6 +214,35 @@ export function gateHolder(gate: string | null | undefined): string | null {
   return GATE_HOLDERS[gate] ?? null;
 }
 
+export type PostResolution =
+  | { state: 'loading' }
+  | { state: 'found'; post: ForumPost }
+  | { state: 'not-found' };
+
+// Detail-page resolution in the Phase 3 resolvePerson shape: never a
+// false not-found while the payload is unsettled; matches on the
+// forum stableId, and also accepts the CONTENT page id.
+export function resolvePost(
+  posts: ForumPost[] | undefined,
+  syncStatus: string,
+  id: number | string,
+): PostResolution {
+  const settled = syncStatus === 'fresh' || syncStatus === 'stale';
+  if (!settled) return { state: 'loading' };
+  const numeric = typeof id === 'number' ? id : Number(id);
+  const pageId = String(id);
+  const post = (posts ?? []).find((p) => p.id === numeric || p.notionPageId === pageId);
+  return post ? { state: 'found', post } : { state: 'not-found' };
+}
+
+// The row's parent episode, when the Parent Episode relation is filed
+// and the parent row rides the same slice. The relation id and the
+// slice's notionPageId share the Notion page-id address space.
+export function parentEpisodeOf(post: ForumPost, posts: ForumPost[]): ForumPost | null {
+  if (!post.parentEpisodeId) return null;
+  return posts.find((p) => p.notionPageId === post.parentEpisodeId) ?? null;
+}
+
 // Public appearance is a NAME join (the accepted Phase 1 limitation):
 // a row appears when a public item carries its suffix-stripped name.
 // The detail page labels this as name-matched, never as the row's own

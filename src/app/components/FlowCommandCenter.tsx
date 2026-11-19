@@ -549,7 +549,7 @@ export function FlowCommandCenter() {
       {/* Data source provenance */}
       <div className="flex items-center gap-2 border-t border-border pt-3 font-['Blinker'] text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
         <Radio className="size-3 text-primary" aria-hidden="true" />
-        Data source · cr8w_coflow_dates · GET /api/server/sync · useDashboard().data.coFlowDates
+        Data source · FLOWS (Notion) · useDashboard().data.coFlowDates
       </div>
     </section>
   );

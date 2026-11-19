@@ -4,6 +4,7 @@ import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { CalendarConnectCard } from '../components/CalendarConnectCard';
 import { freshnessBand } from '../../lib/freshnessLabel';
+import { latestSyncOkAt } from '../../lib/syncLedger';
 import { isWorkshop, seriesOf } from '../../lib/flows';
 import { ReleaseVerificationPanel } from '../components/ReleaseVerificationPanel';
 import { sessionAccessToken } from '../components/api';
@@ -48,19 +49,19 @@ const CONTENT_CHANNELS = [
 
 const ROUTE_ARCHITECTURE = [
   { path: '/',          label: 'Today',      emoji: '💧',
-    sources: 'CONTENT hub (brain dumps · well notes · announcements) + FLOWS hub' },
+    sources: 'MOVES (tasks) · PEOPLE (stations) · CONTENT (forum) · FLOWS (gatherings) · KV store (brain dumps · well notes · announcements · check-ins)' },
   { path: '/gatherings', label: 'Gatherings', emoji: '🎨',
     sources: 'FLOWS hub — all Types · workshops' },
   { path: '/making',    label: 'Making',     emoji: '🎙️',
-    sources: 'FLOWS hub — Type: Podyap (Status: Upcoming / Active / Archived)' },
+    sources: 'CONTENT hub (production board · queues) + FLOWS (podyap sessions)' },
   { path: '/people',    label: 'People',     emoji: '🫧',
-    sources: 'PEOPLE hub (messages, check-ins, well notes)' },
+    sources: 'PEOPLE hub (people · stations · consent census) + KV store (messages · check-ins)' },
   { path: '/money',     label: 'Money',      emoji: '💰',
     sources: 'Create Well — Budget & P&L Bookkeeping workbook (Transactions) — cr8w_money KV feed; dashboard read only; quick log retired (POST /money returns 410, log money in the workbook)' },
   { path: '/decisions', label: 'Decisions',  emoji: '⚡',
     sources: 'cr8w_decisions KV resource — dashboard read/write (no Notion counterpart, by design)' },
   { path: '/system',    label: 'System',     emoji: '🔧',
-    sources: 'all hub collections · build info · API ID Registry' },
+    sources: 'sync health · data inventory · build info' },
 ];
 
 const SUGGESTED_IMPROVEMENTS = [
@@ -338,11 +339,21 @@ export function SystemPage() {
     band && data.lastSynced ? `${band} · last loaded ${relativeTime(data.lastSynced)}` :
     'No successful load yet';
 
+  // "Last sync" names a source-sync fact, so it reads the sync ledger
+  // (payload syncFreshness → sync_delivery_state), never the payload
+  // load time above — that is a transport fact, not a sync fact.
+  const lastSyncAt = latestSyncOkAt(data.syncFreshness);
+
   // The custom-domain state lives on this surface, the one that owns the
   // configuration (UX ruling 1497): it used to render as a standing banner
   // in the RootLayout stack on every origin but the custom domain. The row
-  // reads the viewer's actual hostname at render, nothing stored.
-  const onCustomDomain = window.location.hostname === 'createwell.monnyfest.co';
+  // reads the viewer's actual hostname at render, nothing stored. The
+  // custom domain itself is dash.cr8w.com — the domain assigned to this
+  // project per the Vercel record (verified 2026-11-19). The old target,
+  // createwell.monnyfest.co, is not assigned to this project, so the row
+  // never names it.
+  const CUSTOM_DOMAIN = 'dash.cr8w.com';
+  const onCustomDomain = window.location.hostname === CUSTOM_DOMAIN;
 
   // Packet CC leg C3: FLOWS is the workshops store of record — the
   // same derivation Gatherings renders (isWorkshop && not SLO Create).
@@ -390,8 +401,8 @@ export function SystemPage() {
           <HealthRow label="API connection" value={syncLabel} status={syncColor} />
           <HealthRow
             label="Last sync"
-            value={data.lastSynced ? data.lastSynced.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' }) : 'Never'}
-            status={data.lastSynced ? 'neutral' : 'warn'}
+            value={lastSyncAt ? relativeTime(lastSyncAt) : 'Not reported'}
+            status={lastSyncAt ? 'neutral' : 'warn'}
           />
           <HealthRow
             label="Run history"
@@ -424,10 +435,15 @@ export function SystemPage() {
               })}
             </div>
           )}
+          {/* Consent census, not a permission: the row reports how many
+              care profiles have consent filed. It never reads "Granted" —
+              a complete census is a count, not a grant (packet honesty). */}
           <HealthRow
-            label="Permissions: Care consent"
-            value={data.permissions.careConsent ? 'Granted' : 'Not granted'}
-            status={data.permissions.careConsent ? 'ok' : 'warn'}
+            label="Care consent census"
+            value={data.peopleCare
+              ? `${data.peopleCare.total - data.peopleCare.consentGaps} of ${data.peopleCare.total} filed`
+              : 'Not reported'}
+            status={data.peopleCare && data.peopleCare.total > 0 && data.peopleCare.consentGaps === 0 ? 'ok' : 'warn'}
           />
           {/* The domain notice as a plain row in this card's idiom. The
               value is a full sentence, so it takes the page's readable
@@ -452,7 +468,7 @@ export function SystemPage() {
               color: 'var(--text-secondary, #443855)', fontWeight: 600,
               textAlign: 'right',
             }}>
-              {onCustomDomain ? "Live — you're viewing via the custom domain" : "Setting up — you're viewing via the direct link"}
+              {onCustomDomain ? "Live — you're viewing via the custom domain" : `Direct link — the team domain is ${CUSTOM_DOMAIN}`}
             </span>
           </div>
         </div>
@@ -549,7 +565,7 @@ export function SystemPage() {
         }}>
           <HealthRow label="Router"     value="react-router v7 · data mode"      status="ok" />
           <HealthRow label="Data layer" value="DashboardContext · typed payload"  status="ok" />
-          <HealthRow label="API"        value="Supabase edge functions"           status="neutral" />
+          <HealthRow label="API"        value="Vercel serverless (api/) + Supabase KV store" status="neutral" />
           <HealthRow label="Env"        value={import.meta.env.MODE || 'production'} status="neutral" />
         </div>
 

@@ -25,9 +25,15 @@ test('RootLayout renders no domain banner and keeps no dismissal state', () => {
 });
 
 test('the domain state renders as a System surface row keyed on the real hostname', () => {
+  // Honesty remainder (2026-11-19): the row keys on dash.cr8w.com, the
+  // domain the Vercel record shows assigned to this project (verified).
+  // createwell.monnyfest.co was never assigned here; "Setting up" claimed
+  // a configuration state the hostname read cannot establish.
   assert.match(system, /Custom domain/);
-  assert.match(system, /window\.location\.hostname === 'createwell\.monnyfest\.co'/);
-  assert.match(system, /Setting up — you're viewing via the direct link/);
+  assert.match(system, /const CUSTOM_DOMAIN = 'dash\.cr8w\.com'/);
+  assert.match(system, /window\.location\.hostname === CUSTOM_DOMAIN/);
+  assert.match(system, /Direct link — the team domain is/);
+  assert.doesNotMatch(system, /Setting up — you're viewing via the direct link/);
 });
 
 test('the domain row value takes the readable text color, not a status tone', () => {

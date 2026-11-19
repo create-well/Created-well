@@ -464,7 +464,9 @@ export function dayOfTimes(flow: CoFlowDate): DayOfTimes {
   if (flowsStart) {
     return {
       start: flowsStart,
-      end: undefined,
+      // Follow-up 1: the FLOWS Date's own end rides along when
+      // filed, so the FLOWS-only header can span it.
+      end: flow.dateEnd || undefined,
       source: 'flows',
       conflict: false,
       flowsStart,

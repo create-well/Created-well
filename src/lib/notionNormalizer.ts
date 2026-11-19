@@ -602,10 +602,22 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
     getText(pick(p, 'Time Range', 'Time')) ||
     (startTime && endTime ? `${startTime} – ${endTime}` : '');
 
+  // The FLOWS Date read was start-only (getDate drops the range's
+  // end), which is why a FLOWS-only day-of header lost the Date's
+  // own end (Phase 2b landing follow-up 1, Checkpoint 2
+  // 2026-11-15). The range reads once here; the end rides as
+  // dateEnd and §5's day-of time rule consumes it only in the
+  // FLOWS-only branch — the linked-EVENTS path is untouched.
+  const dateProp = pick(p, 'Date', 'Session Date', 'Meeting Date');
+  const dateRange = dateProp && dateProp.type === 'date'
+    ? (dateProp as NPropDate).date
+    : null;
+
   return {
     id:           stableId(page.id),
     notionPageId: page.id,
-    date:         getDate(pick(p, 'Date', 'Session Date', 'Meeting Date')),
+    date:         dateRange?.start ?? '',
+    dateEnd:      dateRange?.end || undefined,
     timeRange,
     startTime:    startTime || undefined,
     endTime:      endTime   || undefined,
@@ -647,15 +659,17 @@ export function normalizeFlow(page: NotionPage): CoFlowDate {
 }
 
 /**
- * Craft Lead names per flow, resolved at payload assembly
- * (Phase 2b, packet L amendment A3a; the Flow Keeper pattern):
- * flow page id -> the PEOPLE name its Craft Lead relation's
- * first target resolves to. Unresolved ids are dropped — an id
- * is never rendered as a name.
+ * Names for a FLOWS relation→PEOPLE holder, resolved at payload
+ * assembly: flow page id -> the PEOPLE name the relation's first
+ * target resolves to. Unresolved ids are dropped — an id is never
+ * rendered as a name. Shared by the Craft Lead and Flow Keeper
+ * projections (Phase 2b amendment A3a and the day-of micro-packet's
+ * follow-up 2, the same pattern).
  */
-export function buildFlowCraftLeads(
+function buildFlowRelationNames(
   flowsPages: NotionPage[],
   peoplePages: NotionPage[],
+  relation: string,
 ): Map<string, string> {
   const nameById = new Map<string, string>();
   for (const person of peoplePages) {
@@ -664,11 +678,35 @@ export function buildFlowCraftLeads(
   }
   const result = new Map<string, string>();
   for (const flow of flowsPages) {
-    const id = getRelationFirstId(pick(flow.properties, 'Craft Lead'));
+    const id = getRelationFirstId(pick(flow.properties, relation));
     const name = id ? nameById.get(id) : undefined;
     if (name) result.set(flow.id, name);
   }
   return result;
+}
+
+/**
+ * Craft Lead names per flow (Phase 2b, packet L amendment A3a).
+ */
+export function buildFlowCraftLeads(
+  flowsPages: NotionPage[],
+  peoplePages: NotionPage[],
+): Map<string, string> {
+  return buildFlowRelationNames(flowsPages, peoplePages, 'Craft Lead');
+}
+
+/**
+ * Flow Keeper names per flow (Phase 2b landing follow-up 2): the
+ * A3a Craft Lead pattern applied to the Flow Keeper relation, so
+ * the day-of Role holders line renders the keeper's PEOPLE name
+ * instead of the raw relation id that normalizeFlow's host
+ * fallback carried.
+ */
+export function buildFlowKeepers(
+  flowsPages: NotionPage[],
+  peoplePages: NotionPage[],
+): Map<string, string> {
+  return buildFlowRelationNames(flowsPages, peoplePages, 'Flow Keeper');
 }
 
 export interface FlowEventInfo {

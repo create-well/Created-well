@@ -81,9 +81,9 @@ export function RootLayout() {
         onDelete={actions.deleteMessage}
         onUpdate={actions.updateMessage}
         onUpdateFields={actions.updateMessageFields}
-        onNavigateToForum={() => { navigate('/#waiting'); }}
-        onNavigateToGeyser={() => { navigate('/#waiting'); }}
-        onNavigateToStations={() => { navigate('/#waiting'); }}
+        onNavigateToWell={() => { navigate('/#well'); }}
+        onNavigateToFlows={() => { navigate('/gatherings'); }}
+        onNavigateToStations={() => { navigate('/people?tab=team'); }}
         onNavigateToPeople={(tab) => { navigate(tab === 'vetting' ? '/people?tab=vetting' : '/people?tab=team'); }}
         activeAs={ui.chatActiveUser}
         onSetActiveAs={ui.setChatActiveUser}

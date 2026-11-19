@@ -10,8 +10,8 @@ interface MessageDrawerProps {
   onDelete: (id: number) => void;
   onUpdate: (id: number, content: string) => Promise<void>;
   onUpdateFields: (id: number, fields: Partial<Message>) => Promise<void>;
-  onNavigateToForum?: () => void;
-  onNavigateToGeyser?: () => void;
+  onNavigateToWell?: () => void;
+  onNavigateToFlows?: () => void;
   onNavigateToStations?: () => void;
   onNavigateToPeople?: (tab: 'vetting' | 'team') => void;
   activeAs: string;
@@ -138,7 +138,7 @@ const navLinkStyle: React.CSSProperties = {
 // ─────────────────────────────────────────────────────────────────────────────
 export function MessageDrawer({
   messages, onSend, onDelete, onUpdate, onUpdateFields,
-  onNavigateToForum, onNavigateToGeyser, onNavigateToStations, onNavigateToPeople,
+  onNavigateToWell, onNavigateToFlows, onNavigateToStations, onNavigateToPeople,
   activeAs, onSetActiveAs, onAddWellNote,
 }: MessageDrawerProps) {
   const [open,           setOpen]           = useState(false);
@@ -409,12 +409,12 @@ export function MessageDrawer({
     if (lower.includes('check-in') || lower.includes('wednesday') || lower.includes('co-flow'))
       return { label: 'Go to team check-in \u2192', action: onNavigateToPeople ? () => onNavigateToPeople('team') : null };
     if (lower.includes('the well') || lower.includes('forum') || lower.includes('well post') || lower.includes('well drop') || lower.includes('posted') || lower.includes('[forum]'))
-      return { label: 'Go to The Well \u2192', action: onNavigateToForum || null };
+      return { label: 'Go to The Well \u2192', action: onNavigateToWell || null };
     if (lower.includes('station'))
       return { label: 'Go to Stations \u2192', action: onNavigateToStations || null };
     if (lower.includes('flow') || lower.includes('geyser') || lower.includes('task'))
-      return { label: 'Go to Flows \u2192', action: onNavigateToGeyser || null };
-    return { label: 'Go to The Well \u2192', action: onNavigateToForum || null };
+      return { label: 'Go to Flows \u2192', action: onNavigateToFlows || null };
+    return { label: 'Go to The Well \u2192', action: onNavigateToWell || null };
   }
 
   function handleNavClick(msgId: number, action: (() => void) | null) {

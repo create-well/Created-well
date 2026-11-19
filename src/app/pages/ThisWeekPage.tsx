@@ -7,7 +7,6 @@ import { AddTaskModal } from '../components/AddTaskModal';
 
 const VIEW_ROUTE_MAP: Record<string, string> = {
   hub: '/',
-  geyser: '/#waiting',
   'community-events': '/gatherings',
   podyaps: '/making',
   workshops: '/gatherings?tab=workshops',
@@ -28,8 +27,14 @@ export function ThisWeekPage() {
     navigate(VIEW_ROUTE_MAP[view] ?? '/');
   }
 
-  function handleNavigateGeyserStations() {
-    navigate('/#waiting');
+  function handleNavigateStations() {
+    navigate('/people?tab=team');
+  }
+
+  // Packet CC Map 2, door 5: a Geyser-class event's button opens its
+  // own gathering record — never a class-level route.
+  function handleOpenGeyserGathering(id: number) {
+    navigate(`/gatherings/${id}`);
   }
 
   const forumNotesForView = data.forum.map(f => ({
@@ -45,7 +50,8 @@ export function ThisWeekPage() {
     >
       <HubView
         onNavigate={handleNavigate}
-        onNavigateGeyserStations={handleNavigateGeyserStations}
+        onNavigateStations={handleNavigateStations}
+        onOpenGeyserGathering={handleOpenGeyserGathering}
         announcements={data.announcements}
         brainDumps={data.brainDumps}
         onAddBrainDump={actions.addBrainDump}

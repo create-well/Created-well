@@ -330,6 +330,21 @@ export interface ForumPost {
   // normalizeContent. Surfaces that reshape forum rows into notes or
   // posts exclude flagged rows; the content snapshot keeps them.
   registryMirror?: boolean;
+  // CONTENT gate projections (Phase 4, packet T), set by normalizeContent:
+  // the raw fielded values. Selects/dates/urls/relations unfiled read
+  // null, never ''; readyToRelease is the formula boolean, false unless
+  // the property evaluates to a true boolean.
+  status?: string | null;
+  audience?: string | null;
+  isFinal?: boolean;
+  currentGate?: string | null;
+  topicStage?: string | null;
+  clipStatus?: string | null;
+  publishDate?: string | null;
+  link?: string | null;
+  where?: string | null;
+  readyToRelease?: boolean;
+  parentEpisodeId?: string | null;
 }
 
 export interface ForumReply {

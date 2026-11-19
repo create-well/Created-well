@@ -11,7 +11,8 @@
 //   FLOWS  : Name, Type, Date, Status, Phase, Flow Keeper (Relation→PEOPLE),
 //             Hard Stop, Desired Body-Feel, Public URL, Retro
 //   CONTENT: Name, Flow (Relation→FLOWS), Content Type, Audience,
-//             Status, Final?, Publish Date, URL, Where
+//             Status, Final?, Publish Date, URL, Where, Current Gate,
+//             Topic Stage, Clip Status, Link, Ready to Release?, Parent Episode
 
 import type { Task, Station, ForumPost, CoFlowDate, FlowType } from '../app/components/api';
 
@@ -160,6 +161,15 @@ function getUrl(p: NotionPropValue | undefined): string {
 function getCheckbox(p: NotionPropValue | undefined): boolean {
   if (!p || p.type !== 'checkbox') return false;
   return (p as NPropCheckbox).checkbox;
+}
+
+// A boolean formula property ({ type: 'formula', formula: { type:
+// 'boolean', boolean } }); any other shape reads false, never undefined.
+function getFormulaBoolean(p: NotionPropValue | undefined): boolean {
+  if (!p || p.type !== 'formula') return false;
+  const formula = (p as unknown as { formula?: { type?: string; boolean?: unknown } }).formula;
+  if (formula?.type !== 'boolean') return false;
+  return formula.boolean === true;
 }
 
 // Try property name aliases in order; return first found.
@@ -453,6 +463,9 @@ export function openAsksCareCounts(pages: NotionPage[]): { total: number; unansw
 //   Publish Date : Date
 //   URL          : URL
 //   Where        : Select (where the asset lives)
+//   Current Gate : Select, Topic Stage : Select, Clip Status : Select
+//   Link         : URL, Ready to Release? : Formula (boolean),
+//   Parent Episode : Relation → CONTENT (episode a clip belongs to)
 //
 // ForumPost is an imperfect mapping. content = Name, tag = Content Type.
 // author is empty for CONTENT (no author field); falls back to 'team'.
@@ -484,6 +497,20 @@ export function normalizeContent(page: NotionPage): ForumPost & { flowRelation: 
     author:       audienceRaw.toLowerCase() || 'team',
     content:      (name || 'Untitled') + extra,
     tag:          getSelect(pick(p, 'Content Type', 'Type', 'Tag', 'Category')) || undefined,
+    // Gate projections (Phase 4, packet T): the raw fielded values.
+    // Selects/dates/urls unfiled read '' from the getters and
+    // normalize to null here; readyToRelease is the formula boolean.
+    status:          statusRaw || null,
+    audience:        audienceRaw || null,
+    isFinal,
+    currentGate:     getSelect(pick(p, 'Current Gate')) || null,
+    topicStage:      getSelect(pick(p, 'Topic Stage')) || null,
+    clipStatus:      getSelect(pick(p, 'Clip Status')) || null,
+    publishDate:     getDate(pick(p, 'Publish Date')) || null,
+    link:            getUrl(pick(p, 'Link', 'URL')) || null,
+    where:           getSelect(pick(p, 'Where')) || null,
+    readyToRelease:  getFormulaBoolean(pick(p, 'Ready to Release?')),
+    parentEpisodeId: getRelationFirstId(pick(p, 'Parent Episode')) || null,
     created_at:   page.created_time,
   };
 }

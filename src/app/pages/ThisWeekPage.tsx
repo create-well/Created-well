@@ -11,7 +11,7 @@ const VIEW_ROUTE_MAP: Record<string, string> = {
   'community-events': '/gatherings',
   podyaps: '/making',
   workshops: '/gatherings?tab=workshops',
-  coflow: '/people',
+  team: '/people?tab=team',
   playground: '/',
 };
 

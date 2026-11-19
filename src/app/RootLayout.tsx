@@ -84,7 +84,7 @@ export function RootLayout() {
         onNavigateToForum={() => { navigate('/#waiting'); }}
         onNavigateToGeyser={() => { navigate('/#waiting'); }}
         onNavigateToStations={() => { ui.setMovesDefaultTab('stations'); navigate('/#waiting'); }}
-        onNavigateToPlayD8s={() => { navigate('/people'); }}
+        onNavigateToPeople={(tab) => { navigate(tab === 'vetting' ? '/people?tab=vetting' : '/people?tab=team'); }}
         activeAs={ui.chatActiveUser}
         onSetActiveAs={ui.setChatActiveUser}
         onAddWellNote={actions.addWellNote}

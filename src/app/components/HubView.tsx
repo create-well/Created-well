@@ -1773,7 +1773,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                             {/* Notification CTA for BHD events needing check-in */}
                             {needsCheckin && (
                               <div
-                                onClick={() => onNavigate('coflow')}
+                                onClick={() => onNavigate('team')}
                                 style={{
                                   background: 'rgba(255,149,0,0.08)',
                                   border: '1px solid rgba(255,149,0,0.25)',
@@ -1795,7 +1795,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                                   <div style={{
                                     fontFamily: 'var(--font-label)', fontSize: '0.58rem',
                                     color: 'rgba(138,106,32,0.7)',
-                                  }}>Submit your PlayD8s check-in: time confirmation, agenda items & vibe</div>
+                                  }}>Submit your Team check-in: time confirmation, agenda items & vibe</div>
                                 </div>
                                 <span style={{ fontSize: '0.7rem', color: '#8A6A20', flexShrink: 0, fontWeight: 600 }}>→</span>
                               </div>
@@ -1849,10 +1849,10 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                                 </a>
                               )}
 
-                              {/* In-app PlayD8s link (events carrying a co-flow record) */}
+                              {/* In-app Team check-in link (events carrying a co-flow record) */}
                               {isBHD && (
                                 <button
-                                  onClick={e => { e.stopPropagation(); onNavigate('coflow'); }}
+                                  onClick={e => { e.stopPropagation(); onNavigate('team'); }}
                                   style={{
                                     display: 'flex', alignItems: 'center', gap: 5,
                                     padding: '6px 12px', borderRadius: 8,
@@ -1865,7 +1865,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                                     letterSpacing: '0.02em',
                                   }}
                                 >
-                                  🚪 Open PlayD8s
+                                  🚪 Open Team check-in
                                 </button>
                               )}
 

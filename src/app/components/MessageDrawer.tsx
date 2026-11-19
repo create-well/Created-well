@@ -13,7 +13,7 @@ interface MessageDrawerProps {
   onNavigateToForum?: () => void;
   onNavigateToGeyser?: () => void;
   onNavigateToStations?: () => void;
-  onNavigateToPlayD8s?: () => void;
+  onNavigateToPeople?: (tab: 'vetting' | 'team') => void;
   activeAs: string;
   onSetActiveAs: (person: string) => void;
   onAddWellNote?: (content: string) => void;
@@ -138,7 +138,7 @@ const navLinkStyle: React.CSSProperties = {
 // ─────────────────────────────────────────────────────────────────────────────
 export function MessageDrawer({
   messages, onSend, onDelete, onUpdate, onUpdateFields,
-  onNavigateToForum, onNavigateToGeyser, onNavigateToStations, onNavigateToPlayD8s,
+  onNavigateToForum, onNavigateToGeyser, onNavigateToStations, onNavigateToPeople,
   activeAs, onSetActiveAs, onAddWellNote,
 }: MessageDrawerProps) {
   const [open,           setOpen]           = useState(false);
@@ -404,8 +404,10 @@ export function MessageDrawer({
   // ── Navigation detection ──────────────────────────────────────────────────
   function getNavTarget(content: string): { label: string; action: (() => void) | null } {
     const lower = content.toLowerCase();
-    if (lower.includes('playd8s') || lower.includes('check-in') || lower.includes('wednesday') || lower.includes('co-flow'))
-      return { label: 'Go to PlayD8s \u2192', action: onNavigateToPlayD8s || null };
+    if (lower.includes('playd8s'))
+      return { label: 'Go to vetting queue \u2192', action: onNavigateToPeople ? () => onNavigateToPeople('vetting') : null };
+    if (lower.includes('check-in') || lower.includes('wednesday') || lower.includes('co-flow'))
+      return { label: 'Go to team check-in \u2192', action: onNavigateToPeople ? () => onNavigateToPeople('team') : null };
     if (lower.includes('the well') || lower.includes('forum') || lower.includes('well post') || lower.includes('well drop') || lower.includes('posted') || lower.includes('[forum]'))
       return { label: 'Go to The Well \u2192', action: onNavigateToForum || null };
     if (lower.includes('station'))

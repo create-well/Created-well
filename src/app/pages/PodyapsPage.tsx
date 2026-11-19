@@ -351,7 +351,7 @@ export function PodyapsPage() {
             </div>
             <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
               <button
-                onClick={() => navigate('/people')}
+                onClick={() => navigate('/people?tab=team')}
                 style={{
                   padding: '7px 14px', borderRadius: 8,
                   background: '#9B59E0', color: '#fff',
@@ -359,7 +359,7 @@ export function PodyapsPage() {
                   border: 'none', cursor: 'pointer',
                 }}
               >
-                Open CoFlow D8s
+                Open Team check-in
               </button>
               <button
                 onClick={() => setExpandedId(expandedId === next.id ? null : next.id)}
@@ -416,7 +416,7 @@ export function PodyapsPage() {
               Add a CoFlow date in Notion with theme "yapcast"
             </div>
             <button
-              onClick={() => navigate('/people')}
+              onClick={() => navigate('/people?tab=team')}
               style={{
                 padding: '8px 18px', borderRadius: 8,
                 background: '#9B59E0', color: '#fff',
@@ -424,7 +424,7 @@ export function PodyapsPage() {
                 border: 'none', cursor: 'pointer',
               }}
             >
-              Open CoFlow D8s →
+              Open Team check-in →
             </button>
           </div>
         )}

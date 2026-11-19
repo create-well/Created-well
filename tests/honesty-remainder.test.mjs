@@ -76,7 +76,7 @@ test('the Build card names the real API surface', () => {
 
 test('route source strings attribute KV slices to the KV store', () => {
   assert.ok(system.includes('MOVES (tasks) · PEOPLE (stations) · CONTENT (forum) · FLOWS (gatherings) · KV store (brain dumps · well notes · announcements · check-ins)'));
-  assert.ok(system.includes('PEOPLE hub (people · stations · consent census) + KV store (messages · check-ins)'));
+  assert.ok(system.includes('PEOPLE hub (people · stations · consent census) + KV store (check-ins)'));
   assert.ok(system.includes('CONTENT hub (production board · queues) + FLOWS (podyap sessions)'));
   assert.doesNotMatch(system, /Type: Podyap \(Status: Upcoming \/ Active \/ Archived\)/);
   assert.doesNotMatch(system, /API ID Registry/);

@@ -127,7 +127,7 @@ test('SystemPage: ROUTE_ARCHITECTURE is the seven rows with sources carried over
   assert.match(block, /'FLOWS hub — all Types · workshops'/);
   // Honesty remainder (2026-11-19): messages and check-ins are KV store
   // slices, not PEOPLE hub content — the string names both sources.
-  assert.match(block, /'PEOPLE hub \(people · stations · consent census\) \+ KV store \(messages · check-ins\)'/);
+  assert.match(block, /'PEOPLE hub \(people · stations · consent census\) \+ KV store \(check-ins\)'/);
 });
 
 test('SystemPage: DataCountRow doors ride no redirect', () => {

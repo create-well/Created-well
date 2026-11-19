@@ -55,7 +55,7 @@ const ROUTE_ARCHITECTURE = [
   { path: '/making',    label: 'Making',     emoji: '🎙️',
     sources: 'CONTENT hub (production board · queues) + FLOWS (podyap sessions)' },
   { path: '/people',    label: 'People',     emoji: '🫧',
-    sources: 'PEOPLE hub (people · stations · consent census) + KV store (messages · check-ins)' },
+    sources: 'PEOPLE hub (people · stations · consent census) + KV store (check-ins)' },
   { path: '/money',     label: 'Money',      emoji: '💰',
     sources: 'Create Well — Budget & P&L Bookkeeping workbook (Transactions) — cr8w_money KV feed; dashboard read only; quick log retired (POST /money returns 410, log money in the workbook)' },
   { path: '/decisions', label: 'Decisions',  emoji: '⚡',

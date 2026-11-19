@@ -23,7 +23,7 @@ interface TopNavProps {
 }
 
 export function TopNav({ onSignOut }: TopNavProps) {
-  const { ui } = useDashboard();
+  const { ui, data } = useDashboard();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -59,6 +59,15 @@ export function TopNav({ onSignOut }: TopNavProps) {
     ui.setActivePerson(key);
     setExpandedProfile(null);
     setMobileOpen(false);
+    // Phase 3 (packet M §2.2, R6): the PersonView overlay retired
+    // into the person detail route; the avatar menu's open action
+    // lands there. The slug is the person's Name lowercased (the
+    // buildOwnerSlugIndex convention); a person with no PEOPLE row
+    // lands on the Everyone list instead.
+    const station = (data.stations ?? []).find(
+      s => s.name.trim().toLowerCase() === key,
+    );
+    navigate(station ? `/people/${station.id}` : '/people');
   }
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>

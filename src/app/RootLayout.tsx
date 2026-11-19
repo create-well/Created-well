@@ -7,7 +7,6 @@ import { MessageDrawer } from './components/MessageDrawer';
 import { WelcomeModal } from './components/WelcomeModal';
 import { DecomprocessFAB } from './components/DecomprocessFAB';
 import { ToastContainer } from './components/Toast';
-import { PersonView } from './components/PersonView';
 import { AddTaskModal } from './components/AddTaskModal';
 import './cr8w.css';
 
@@ -66,53 +65,6 @@ export function RootLayout() {
       <main className="cr-main">
         <Outlet />
       </main>
-
-      {/* Persistent person view overlay — not a route */}
-      {ui.activePerson && (
-        <>
-          <div
-            onClick={() => ui.setActivePerson(null)}
-            style={{
-              position: 'fixed', inset: 0,
-              background: 'rgba(45,36,56,0.4)',
-              zIndex: 200, backdropFilter: 'blur(2px)',
-            }}
-          />
-          <div style={{
-            position: 'fixed', top: 0, right: 0, bottom: 0,
-            width: 'min(480px, 100vw)',
-            background: 'var(--cr8w-bg, #EAE3DB)',
-            zIndex: 201,
-            overflowY: 'auto',
-            boxShadow: '-8px 0 32px rgba(45,36,56,0.18)',
-          }}>
-            <button
-              onClick={() => ui.setActivePerson(null)}
-              style={{
-                position: 'sticky', top: 12, left: '100%', marginLeft: -44,
-                zIndex: 1, width: 32, height: 32, borderRadius: '50%',
-                background: 'var(--cr8w-card-bg)', border: '1px solid var(--border-soft)',
-                cursor: 'pointer', fontSize: '1rem', lineHeight: 1,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-              title="Close"
-            >
-              ×
-            </button>
-            <PersonView
-              key={ui.activePerson}
-              person={ui.activePerson}
-              onNavigate={() => ui.setActivePerson(null)}
-              actionItems={data.tasks}
-              wellNotes={data.forum.filter(f => !f.registryMirror).map(f => ({ id: f.id, author: f.author, content: f.content, created_at: f.created_at }))}
-              stations={data.stations}
-              onAddTask={() => setShowAddTask(true)}
-              onUpdateTaskStatus={actions.updateTaskStatus}
-              onAddNote={(content: string, author: string) => actions.addForumPost({ author, content })}
-            />
-          </div>
-        </>
-      )}
 
       {showAddTask && (
         <AddTaskModal

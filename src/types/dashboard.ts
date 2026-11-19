@@ -38,6 +38,10 @@ export interface DashboardPayload {
   money: MoneyRecord[];
   /** Decision-queue records from the payload (D-1); empty when the payload carried none. */
   decisions: DecisionRecord[];
+  /** Per-slice read failures named by the payload (kv:<key> / source
+      name). A failed read degrades its slice to empty server-side;
+      surfaces name the failure instead of rendering a calm empty. */
+  sourceErrors?: Record<string, string>;
   syncStatus: SyncStatus;
   /** Legacy name: last successful payload load, not source observation time. */
   lastSynced: Date | null;

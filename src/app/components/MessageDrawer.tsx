@@ -6,6 +6,9 @@ import { toggleReactionMap } from '../../lib/messageReactions';
 
 interface MessageDrawerProps {
   messages: Message[];
+  /** Present when the messages KV slice's last read failed — the
+      list is a degraded empty, never a successfully empty one. */
+  messagesError?: string | null;
   onSend: (msg: Omit<Message, 'id' | 'created_at'>) => void;
   onDelete: (id: number) => void;
   onUpdate: (id: number, content: string) => Promise<void>;
@@ -70,8 +73,7 @@ const SENDER_COLORS: Record<string, string> = {
 // resource via onUpdateFields, the same path tags take. The former
 // localStorage-only map synced nowhere and is retired.
 
-// ── Local reply threads ───────────────────────────────────────────────────────
-type ChatReply = { id: number; author: string; content: string; ts: string };
+
 
 // ── Sync messages ─────────────────────────────────────────────────────────────
 type SyncMsg = Message & { isSync: true };
@@ -137,7 +139,7 @@ const navLinkStyle: React.CSSProperties = {
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 export function MessageDrawer({
-  messages, onSend, onDelete, onUpdate, onUpdateFields,
+  messages, messagesError, onSend, onDelete, onUpdate, onUpdateFields,
   onNavigateToWell, onNavigateToFlows, onNavigateToStations, onNavigateToPeople,
   activeAs, onSetActiveAs, onAddWellNote,
 }: MessageDrawerProps) {
@@ -155,9 +157,7 @@ export function MessageDrawer({
   const [msgType,        setMsgType]        = useState<MsgType>('message');
   const [sending,        setSending]        = useState(false);
   const [focusMode,      setFocusMode]      = useState(false);
-  const [replyToId,      setReplyToId]      = useState<number | null>(null);
-  const [chatReplies,    setChatReplies]    = useState<Record<number, ChatReply[]>>({});
-  const [openReplies,    setOpenReplies]    = useState<Set<number>>(new Set());
+
   const [msgMenu,        setMsgMenu]        = useState<number | null>(null);
   const [reactionPicker, setReactionPicker] = useState<number | null>(null);
   const [filterMode,     setFilterMode]     = useState<FilterMode>('all');
@@ -300,19 +300,12 @@ export function MessageDrawer({
     const quietMode = parseInt(localStorage.getItem('visibilityDial') || '1') === 0;
     const sendAuthor = quietMode ? 'a co-creator' : activeAs;
     try {
-      if (replyToId !== null) {
-        const reply: ChatReply = { id: Date.now(), author: sendAuthor, content: text.trim(), ts: 'just now' };
-        setChatReplies(prev => ({ ...prev, [replyToId]: [...(prev[replyToId] || []), reply] }));
-        setOpenReplies(prev => new Set([...prev, replyToId]));
-        setReplyToId(null);
-      } else {
         const msgPayload: Omit<Message, 'id' | 'created_at'> = {
           author: sendAuthor,
           content: TYPE_PREFIX[msgType] + text.trim(),
         };
         if (activeTag) msgPayload.tag = activeTag;
         await onSend(msgPayload);
-      }
       setText('');
       setActiveTag(null);
       setMsgType('message');
@@ -471,7 +464,7 @@ export function MessageDrawer({
   const focusFilteredOlder = focusMode ? olderMsgs.filter(m => isFocusMsg(m)) : olderMsgs;
 
   const activeP = PERSONS[activeAs];
-  const replyTarget = replyToId !== null ? messages.find(m => m.id === replyToId) : null;
+
 
   // ── Whether to show digest (only when new items) ──
   const hasNewItems = unreadCount > 0;
@@ -664,7 +657,6 @@ export function MessageDrawer({
     const showHead = !prev || prev.author !== msg.author || isSystemMsg(prev);
     const showTail = !next || next.author !== msg.author || isSystemMsg(next);
     const isMenu   = msgMenu === msg.id;
-    const replies  = chatReplies[msg.id] || [];
     const { prefix, body } = parseMsg(msg.content || '');
     const isEditing = editingId === msg.id;
     const isDelConfirm = deleteConfirmId === msg.id;
@@ -810,8 +802,6 @@ export function MessageDrawer({
         {isMenu && !isEditing && (
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: isMine ? 'flex-end' : 'flex-start', padding: '5px 38px 3px', gap: 5 }}
             onClick={e => e.stopPropagation()}>
-            <button onClick={() => { setReplyToId(msg.id); setMsgMenu(null); setTimeout(() => inputRef.current?.focus(), 100); }}
-              style={menuBtnStyle('#ebebf5')}>{'\u21A9'} Reply</button>
             <button onClick={() => setReactionPicker(reactionPicker === msg.id ? null : msg.id)}
               style={menuBtnStyle('#ebebf5')}>{'\u{1F600}'} React</button>
             {!(msg as SyncMsg).isSync && (
@@ -864,31 +854,6 @@ export function MessageDrawer({
                 );
               })}
             </div>
-          </div>
-        )}
-
-        {/* Reply thread */}
-        {replies.length > 0 && (
-          <div style={{ paddingLeft: isMine ? 0 : 38, paddingRight: isMine ? 38 : 0, marginTop: 3 }}>
-            <button onClick={e => { e.stopPropagation(); setOpenReplies(prev => { const s = new Set(prev); s.has(msg.id) ? s.delete(msg.id) : s.add(msg.id); return s; }); }}
-              style={{ background: 'none', border: 'none', color: '#4a4a4e', fontSize: '0.7rem', cursor: 'pointer', fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.04em', padding: '2px 0' }}>
-              {openReplies.has(msg.id) ? '\u25BE' : '\u25B8'} {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
-            </button>
-            {openReplies.has(msg.id) && (
-              <div style={{ borderLeft: '2px solid #3a3a3c', paddingLeft: 10, marginLeft: 4, marginTop: 5 }}>
-                {replies.map(r => {
-                  const rp = PERSONS[r.author];
-                  return (
-                    <div key={r.id} style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: '0.65rem', color: rp?.color || '#8e8e93', fontFamily: 'var(--font-label)', fontWeight: 600, marginBottom: 2 }}>
-                        {rp?.emoji} {rp?.name} <span style={{ color: '#4a4a4e' }}>{'\u00B7'} {r.ts}</span>
-                      </div>
-                      <div style={{ fontFamily: 'Montserrat, system-ui, sans-serif', fontSize: '0.82rem', color: '#ebebf5', background: '#28282a', borderRadius: 12, padding: '7px 11px', lineHeight: 1.4, display: 'inline-block' }}>{r.content}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -1284,6 +1249,14 @@ export function MessageDrawer({
           </div>
         )}
 
+        {/* KV read failure: the list is a degraded empty, not a
+            calm one — name the failure (packet CC honesty leg). */}
+        {allMsgs.length === 0 && messagesError && (
+          <div style={{ textAlign: 'center', color: '#D46B6B', fontSize: '0.78rem', padding: '24px 0', fontFamily: 'Montserrat, system-ui, sans-serif' }}>
+            Messages could not be read — the store failed on its last read. Nothing was lost on your device; the list is not empty.
+          </div>
+        )}
+
         {/* Filter empty state */}
         {filterMode !== 'all' && allMsgs.length === 0 && (
           <div style={{ textAlign: 'center', color: '#636366', fontSize: '0.78rem', padding: '24px 0', fontStyle: 'italic', fontFamily: 'Montserrat, system-ui, sans-serif' }}>
@@ -1353,20 +1326,6 @@ export function MessageDrawer({
           <div style={{ margin: '0 14px 4px', height: 1, background: activeTag ? `${TAG_META[activeTag]?.color || '#7BA89D'}44` : 'rgba(123,168,157,0.25)', borderRadius: 1 }} />
         )}
 
-        {/* Reply preview */}
-        {replyToId !== null && replyTarget && (
-          <div style={{ margin: '0 14px 5px', background: '#28282a', borderRadius: 10, borderLeft: '2.5px solid #7BA89D', padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontSize: '0.6rem', color: '#7BA89D', fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 1 }}>
-                {'\u21A9'} Replying to {PERSONS[replyTarget.author]?.name || replyTarget.author}
-              </div>
-              <div style={{ fontSize: '0.74rem', color: '#8e8e93', fontFamily: 'Montserrat, system-ui, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
-                {parseMsg(replyTarget.content || '').body.slice(0, 50)}
-              </div>
-            </div>
-            <button onClick={() => setReplyToId(null)} style={{ background: 'none', border: 'none', color: '#636366', cursor: 'pointer', fontSize: '1rem', padding: '0 4px', flexShrink: 0 }}>{'\u00D7'}</button>
-          </div>
-        )}
 
         {/* Input row */}
         {/* Titration Dial: quiet mode indicator in chat */}
@@ -1396,9 +1355,7 @@ export function MessageDrawer({
             onFocus={() => setInputFocused(true)}
             onBlur={() => setTimeout(() => setInputFocused(false), 200)}
             placeholder={
-              replyToId !== null
-                ? `Reply to ${PERSONS[replyTarget?.author || '']?.name || 'thread'}\u2026`
-                : activeTag
+              activeTag
                   ? `${TAG_META[activeTag]?.emoji} ${TAG_META[activeTag]?.label} message as ${activeP?.name}\u2026`
                   : msgType !== 'message'
                     ? `${MSG_TYPES.find(t => t.id === msgType)?.icon} ${MSG_TYPES.find(t => t.id === msgType)?.label} as ${activeP?.name}\u2026`

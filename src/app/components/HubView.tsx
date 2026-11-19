@@ -16,6 +16,7 @@ import { milestoneLabel } from '../../lib/nextUpLabel';
 import { coFlowTitle, startMinutes } from '../../lib/calendarAgenda';
 import { shortDateLabel, calendarDayDiff, localDateString } from '../../lib/dateLabel';
 import { isWorkshop, seriesOf } from '../../lib/flows';
+import { kvSliceError } from '../../lib/kvSliceState';
 
 interface HubViewProps {
   onNavigate: (view: string) => void;
@@ -35,6 +36,9 @@ interface HubViewProps {
   coFlowCheckins?: CoFlowCheckin[];
   actionItems?: Task[];
   stations?: Station[];
+  /** Per-slice read failures named by the payload (kv:<key>); a
+      degraded slice names its failure instead of a calm empty. */
+  sourceErrors?: Record<string, string>;
 }
 
 // ── Brand logo SVGs ──────────────────────────────────────────────────────────
@@ -331,7 +335,7 @@ function getGreeting() {
   return 'Good evening';
 }
 
-export function HubView({ onNavigate, onNavigateStations, onOpenGeyserGathering, announcements, brainDumps, onAddBrainDump, onDeleteBrainDump, onUpdateBrainDump, activeUser, wellNotes, onAddWellNote, onLandWellNote, onDeleteWellNote, coFlowDates = [], coFlowCheckins = [], actionItems = [], stations = [] }: HubViewProps) {
+export function HubView({ onNavigate, onNavigateStations, onOpenGeyserGathering, announcements, brainDumps, onAddBrainDump, onDeleteBrainDump, onUpdateBrainDump, activeUser, wellNotes, onAddWellNote, onLandWellNote, onDeleteWellNote, coFlowDates = [], coFlowCheckins = [], actionItems = [], stations = [], sourceErrors = {} }: HubViewProps) {
   const [showSynergy, setShowSynergy] = useState(false);
   const [openSynergySections, setOpenSynergySections] = useState<Set<string>>(new Set());
   const [showAllDumps, setShowAllDumps] = useState(false);
@@ -2259,7 +2263,11 @@ export function HubView({ onNavigate, onNavigateStations, onOpenGeyserGathering,
           {filteredDumps.length === 0 && brainDumps.length > 0 ? (
             <div className="hub-empty-dump">No dumps from {dumpFilter} yet</div>
           ) : brainDumps.length === 0 ? (
-            <div className="hub-empty-dump">No brain dumps yet — be the first to drop a thought 🧠</div>
+            kvSliceError(sourceErrors, 'kv:cr8w_braindumps') ? (
+              <div className="hub-empty-dump">Brain dumps could not be read — the store failed on its last read. This is not an empty list.</div>
+            ) : (
+              <div className="hub-empty-dump">No brain dumps yet — be the first to drop a thought 🧠</div>
+            )
           ) : (
             <div className="hub-dump-list">
               {visibleDumps.map(d => {
@@ -2328,6 +2336,9 @@ export function HubView({ onNavigate, onNavigateStations, onOpenGeyserGathering,
           carries the drawer's "Go to The Well" door (packet CC Map 2,
           door 3); HomePanels' hash-scroll effect brings it into view. */}
       <div id="well">
+        {kvSliceError(sourceErrors, 'kv:cr8w_well_notes') && (
+          <div className="hub-empty-dump">Well notes could not be read — the store failed on its last read. This is not an empty list.</div>
+        )}
         <NotesFromTheWell wellNotes={wellNotes} onAddNote={onAddWellNote} onLandNote={onLandWellNote} onDeleteNote={onDeleteWellNote} />
       </div>
 

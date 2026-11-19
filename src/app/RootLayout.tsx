@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { useDashboard } from '../contexts/DashboardContext';
 import { TopNav } from './components/TopNav';
+import { kvSliceError } from '../lib/kvSliceState';
 import { SyncStatusBar } from './components/SyncStatusBar';
 import { MessageDrawer } from './components/MessageDrawer';
 import { WelcomeModal } from './components/WelcomeModal';
@@ -84,6 +85,7 @@ export function RootLayout() {
         onNavigateToWell={() => { navigate('/#well'); }}
         onNavigateToFlows={() => { navigate('/gatherings'); }}
         onNavigateToStations={() => { navigate('/people?tab=team'); }}
+        messagesError={kvSliceError(data.sourceErrors, 'kv:cr8w_messages')}
         onNavigateToPeople={(tab) => { navigate(tab === 'vetting' ? '/people?tab=vetting' : '/people?tab=team'); }}
         activeAs={ui.chatActiveUser}
         onSetActiveAs={ui.setChatActiveUser}

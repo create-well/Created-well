@@ -74,23 +74,26 @@ export function HomePanels({
   const location = useLocation();
   const now = new Date();
 
-  // The waiting anchor (packet H redirect leg): when the route
-  // carries #waiting, bring the queue panel into view once the data
-  // settles. The browser's fragment scroll fires before the panel
-  // renders and RootLayout scrolls to top on the pathname change, so
-  // without this the settled panel can sit below the fold (QA's
-  // 375px measurement, Phase 1). Fires once per hash arrival; a
-  // later fresh-to-stale transition never re-scrolls.
+  // The waiting and well anchors (packet H redirect leg; packet CC
+  // Map 2, door 3): when the route carries #waiting or #well, bring
+  // that panel into view once the data settles. The browser's
+  // fragment scroll fires before the panel renders and RootLayout
+  // scrolls to top on the pathname change, so without this the
+  // settled panel can sit below the fold (QA's 375px measurement,
+  // Phase 1). Fires once per hash arrival; a later fresh-to-stale
+  // transition never re-scrolls.
   const scrolledForHash = useRef<string | null>(null);
   useEffect(() => {
-    if (location.hash !== '#waiting') {
+    const anchor =
+      location.hash === '#waiting' || location.hash === '#well' ? location.hash : null;
+    if (!anchor) {
       scrolledForHash.current = null;
       return;
     }
     if (data.syncStatus === 'loading' || data.syncStatus === 'failed') return;
-    if (scrolledForHash.current === location.hash) return;
-    scrolledForHash.current = location.hash;
-    document.getElementById('waiting')?.scrollIntoView({ block: 'start' });
+    if (scrolledForHash.current === anchor) return;
+    scrolledForHash.current = anchor;
+    document.getElementById(anchor.slice(1))?.scrollIntoView({ block: 'start' });
   }, [location.hash, data.syncStatus]);
 
   const next = nextUpFlow(data.coFlowDates, now);

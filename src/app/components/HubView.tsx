@@ -35,7 +35,8 @@ function matchesCategory(workshop: Workshop, categoryKey: string): boolean {
 
 interface HubViewProps {
   onNavigate: (view: string) => void;
-  onNavigateGeyserStations: () => void;
+  onNavigateStations: () => void;
+  onOpenGeyserGathering: (id: number) => void;
   announcements: Announcement[];
   brainDumps: BrainDump[];
   onAddBrainDump: (dump: Omit<BrainDump, 'id' | 'created_at'>) => void;
@@ -347,7 +348,7 @@ function getGreeting() {
   return 'Good evening';
 }
 
-export function HubView({ onNavigate, onNavigateGeyserStations, announcements, brainDumps, onAddBrainDump, onDeleteBrainDump, onUpdateBrainDump, activeUser, wellNotes, onAddWellNote, onLandWellNote, onDeleteWellNote, workshops = [], coFlowDates = [], coFlowCheckins = [], actionItems = [], stations = [] }: HubViewProps) {
+export function HubView({ onNavigate, onNavigateStations, onOpenGeyserGathering, announcements, brainDumps, onAddBrainDump, onDeleteBrainDump, onUpdateBrainDump, activeUser, wellNotes, onAddWellNote, onLandWellNote, onDeleteWellNote, workshops = [], coFlowDates = [], coFlowCheckins = [], actionItems = [], stations = [] }: HubViewProps) {
   const [showSynergy, setShowSynergy] = useState(false);
   const [openSynergySections, setOpenSynergySections] = useState<Set<string>>(new Set());
   const [showAllDumps, setShowAllDumps] = useState(false);
@@ -1872,10 +1873,14 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                               {/* Geyser link — Geyser-class events only (register 1378):
                                   the co-flow record's own Geyser marking, or the
                                   calendar event's own title naming it. Every KV
-                                  event used to qualify via the blanket 'cr8w' type. */}
-                              {((ev.coFlowDate && (ev.coFlowDate.flowType === 'Geyser' || ev.coFlowDate.theme === 'Geyser')) || /\bgeyser\b/i.test(ev.title)) && (
+                                  event used to qualify via the blanket 'cr8w' type.
+                                  Packet CC Map 2, door 5: the button opens the
+                                  event's own gathering record. A title-only
+                                  qualifier carries no record — nothing to open,
+                                  so no button renders. */}
+                              {((ev.coFlowDate && (ev.coFlowDate.flowType === 'Geyser' || ev.coFlowDate.theme === 'Geyser')) || /\bgeyser\b/i.test(ev.title)) && ev.coFlowDate && (
                                 <button
-                                  onClick={e => { e.stopPropagation(); onNavigate('geyser'); }}
+                                  onClick={e => { e.stopPropagation(); onOpenGeyserGathering(ev.coFlowDate!.id); }}
                                   style={{
                                     display: 'flex', alignItems: 'center', gap: 5,
                                     padding: '6px 12px', borderRadius: 8,
@@ -1922,7 +1927,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
               </a>
               <button
                 className="hub-tool-tile hub-tool-tile-internal"
-                onClick={() => onNavigateGeyserStations()}
+                onClick={() => onNavigateStations()}
               >
                 <div className="hub-tool-tile-logo" style={{ fontSize: '1.6rem', lineHeight: 1 }}>📍</div>
                 <span className="hub-tool-tile-label">Stations</span>
@@ -2326,8 +2331,12 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
         </div>{/* end .hub-col-secondary (mbody) */}
       </div>{/* end .hub-columns (brain dump + mbody) */}
 
-      {/* Notes from the Well — community exchange */}
-      <NotesFromTheWell wellNotes={wellNotes} onAddNote={onAddWellNote} onLandNote={onLandWellNote} onDeleteNote={onDeleteWellNote} />
+      {/* Notes from the Well — community exchange. The "well" anchor id
+          carries the drawer's "Go to The Well" door (packet CC Map 2,
+          door 3); HomePanels' hash-scroll effect brings it into view. */}
+      <div id="well">
+        <NotesFromTheWell wellNotes={wellNotes} onAddNote={onAddWellNote} onLandNote={onLandWellNote} onDeleteNote={onDeleteWellNote} />
+      </div>
 
       {/* Collective Synergy */}
       <div className="hub-section-sm">

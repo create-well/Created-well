@@ -99,12 +99,12 @@ test('RootLayout: the announcer carries exactly the seven names', () => {
   ]);
 });
 
-test('RootLayout: MessageDrawer doors land on the new names', () => {
-  assert.match(rootLayout, /onNavigateToForum=\{\(\) => \{ navigate\('\/\#waiting'\); \}\}/);
-  assert.match(rootLayout, /onNavigateToGeyser=\{\(\) => \{ navigate\('\/\#waiting'\); \}\}/);
-  // Packet CC leg 4: the movesDefaultTab setter is gone (dead state);
-  // the door still lands on '/#waiting'.
-  assert.match(rootLayout, /onNavigateToStations=\{\(\) => \{ navigate\('\/\#waiting'\); \}\}/);
+test('RootLayout: MessageDrawer doors land on their true destinations', () => {
+  // Packet CC Map 2: the drawer doors repoint — The Well to its
+  // anchor on Today, Flows to Gatherings, Stations to the team tab.
+  assert.match(rootLayout, /onNavigateToWell=\{\(\) => \{ navigate\('\/\#well'\); \}\}/);
+  assert.match(rootLayout, /onNavigateToFlows=\{\(\) => \{ navigate\('\/gatherings'\); \}\}/);
+  assert.match(rootLayout, /onNavigateToStations=\{\(\) => \{ navigate\('\/people\?tab=team'\); \}\}/);
   // Phase 3 (packet M §4, A6): the PlayD8s door split into the
   // vetting and team tabs; the prop is tab-parameterized now.
   assert.match(rootLayout, /onNavigateToPeople=\{\(tab\) => \{ navigate\(tab === 'vetting' \? '\/people\?tab=vetting' : '\/people\?tab=team'\); \}\}/);
@@ -213,9 +213,12 @@ test('HomePanels: the waiting panel scrolls into view on settle under #waiting (
   // the fragment's scroll moment, so nothing brought it into view.
   // The fix scrolls on settle, gated on the hash and a settled
   // syncStatus, once per hash arrival.
-  assert.match(homePanels, /location\.hash !== '#waiting'/);
+  // Packet CC Map 2, door 3 generalized the effect to both anchors
+  // (#waiting and #well); the settle gate and once-per-arrival
+  // scroll are unchanged in behavior.
+  assert.match(homePanels, /location\.hash === '#waiting' \|\| location\.hash === '#well'/);
   assert.match(homePanels, /data\.syncStatus === 'loading' \|\| data\.syncStatus === 'failed'/);
-  assert.match(homePanels, /getElementById\('waiting'\)\?\.scrollIntoView\(\{ block: 'start' \}\)/);
+  assert.match(homePanels, /getElementById\(anchor\.slice\(1\)\)\?\.scrollIntoView\(\{ block: 'start' \}\)/);
 });
 
 test('ThisWeekPage: view targets are the new names, keys unchanged', () => {
@@ -223,7 +226,6 @@ test('ThisWeekPage: view targets are the new names, keys unchanged', () => {
   const pairs = [...block.matchAll(/'?([\w-]+)'?: '([^']+)'/g)].map(m => [m[1], m[2]]);
   assert.deepEqual(pairs, [
     ['hub', '/'],
-    ['geyser', '/#waiting'],
     ['community-events', '/gatherings'],
     ['podyaps', '/making'],
     ['workshops', '/gatherings?tab=workshops'],
@@ -232,9 +234,8 @@ test('ThisWeekPage: view targets are the new names, keys unchanged', () => {
     ['team', '/people?tab=team'],
     ['playground', '/'],
   ]);
-  // Packet CC leg 4: the movesDefaultTab setter is gone (dead state);
-  // the handler still routes to '/#waiting'.
-  assert.match(thisWeekPage, /handleNavigateGeyserStations\(\) \{\s+navigate\('\/\#waiting'\);/);
+  // Packet CC Map 2, door 4: the Stations tile routes to the team tab.
+  assert.match(thisWeekPage, /handleNavigateStations\(\) \{\s+navigate\('\/people\?tab=team'\);/);
 });
 
 // ── The Kimi pin: SLO Create never renders inside the workshops tab ─

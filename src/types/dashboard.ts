@@ -117,8 +117,6 @@ export interface DashboardUI {
   setActivePerson: (person: string | null) => void;
   showWelcome: boolean;
   setShowWelcome: (v: boolean) => void;
-  movesDefaultTab: 'overview' | 'stations' | 'forum';
-  setMovesDefaultTab: (tab: 'overview' | 'stations' | 'forum') => void;
 }
 
 export interface DashboardContextValue {

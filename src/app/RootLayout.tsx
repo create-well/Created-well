@@ -83,7 +83,7 @@ export function RootLayout() {
         onUpdateFields={actions.updateMessageFields}
         onNavigateToForum={() => { navigate('/#waiting'); }}
         onNavigateToGeyser={() => { navigate('/#waiting'); }}
-        onNavigateToStations={() => { ui.setMovesDefaultTab('stations'); navigate('/#waiting'); }}
+        onNavigateToStations={() => { navigate('/#waiting'); }}
         onNavigateToPeople={(tab) => { navigate(tab === 'vetting' ? '/people?tab=vetting' : '/people?tab=team'); }}
         activeAs={ui.chatActiveUser}
         onSetActiveAs={ui.setChatActiveUser}

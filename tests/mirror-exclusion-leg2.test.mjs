@@ -1,18 +1,20 @@
 // Register 1435 Leg 2 (carriage: Leg 1, register 1442) — the
 // presentation reshapes exclude registryMirror-flagged rows.
-// Three sites: RootLayout's reshape into PersonView's
+// Original sites: RootLayout's reshape into PersonView's
 // wellNotes, MovesPage's reshape into the flows view's well
 // list, and MovesPage's forum prop into the flows view's forum
-// tab (filtered at the pass, so the exclusion scopes to that
-// view's consumption). The slice itself stays whole:
-// ContentFlowSnapshotPanel (the mirror rows' legitimate
-// surface) and HomePanels' contentReadyCounts carry no part of
-// this filter, pinned below.
+// tab. The slice itself stays whole: ContentFlowSnapshotPanel
+// (the mirror rows' legitimate surface) and HomePanels'
+// contentReadyCounts carry no part of this filter, pinned below.
 //
 // Phase 3 (packet M §2.2): PersonView retired, and RootLayout's
 // reshape into its wellNotes retired with it — the person detail
 // page renders no forum content at all, so the exclusion holds
-// there by absence. The two MovesPage reshapes keep their pins.
+// there by absence.
+// Ghost cleanup (packet CC): MovesPage is deleted — both of its
+// reshape sites retire with it, and the exclusion holds there by
+// absence as well. The surviving pins are the legitimate
+// surfaces' cleanliness and the retired sites' absence.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -21,15 +23,13 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const layout = readFileSync(join(root, 'src/app/RootLayout.tsx'), 'utf8');
-const moves = readFileSync(join(root, 'src/app/pages/MovesPage.tsx'), 'utf8');
 const panel = readFileSync(join(root, 'src/app/components/ContentFlowSnapshotPanel.tsx'), 'utf8');
 const panels = readFileSync(join(root, 'src/lib/homePanels.ts'), 'utf8');
 
-test('the surviving reshapes filter on the flag', () => {
-  assert.ok(moves.includes('data.forum.filter(f => !f.registryMirror).map(f => ({'));
-  assert.ok(moves.includes('forum={data.forum.filter(f => !f.registryMirror)}'));
-  // The RootLayout reshape site retired with PersonView (Phase 3);
-  // its absence is the pin now.
+test('the retired reshape sites hold by absence', () => {
+  // RootLayout's reshape retired with PersonView (Phase 3);
+  // MovesPage's two reshapes retired with the page (packet CC).
+  // Neither site may reintroduce the filter.
   assert.ok(!layout.includes('registryMirror'));
 });
 

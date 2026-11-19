@@ -1,6 +1,7 @@
 // Previously five red checks against the mutable forum-backed candidate.
 // These exercise the new snapshot adapter, status decision and actual panel;
-// browser/provider wiring is covered separately by the synthetic preview.
+// the consumer-wiring legs that read MovesPage retired with MovesPage in the
+// ghost cleanup (packet CC) — the context wiring pin stays.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -58,11 +59,8 @@ test('optimistic deletion by numeric ID does not remove source-authority rows',(
  const optimistic=source.filter(p=>p.id!==source[0].id); assert.equal(optimistic.length,1);
  const html=render(snapshot); assert.match(html,/\[ \] original A/); assert.match(html,/\[ \] original B/);
 });
-test('consumer and context use the separate snapshot and shared retry, not mutable forum',async()=>{
+test('the context builds the separate snapshot and shared retry, not mutable forum',async()=>{
  const context=await readFile(new URL('../src/contexts/DashboardContext.tsx',import.meta.url),'utf8');
- const moves=await readFile(new URL('../src/app/pages/MovesPage.tsx',import.meta.url),'utf8');
  assert.match(context,/snapshotFromDashboard\(data, usedFallback\)/);
  assert.match(context,/dashboardStatusForSnapshot\(sourceStatuses, contentSnapshot.status\)/);
- assert.match(moves,/<ContentFlowSnapshotPanel snapshot=\{data\.contentFlowSnapshot\} onRetry=\{actions\.retrySync\}/);
- assert.doesNotMatch(moves,/<ContentFlowPanel rows=\{data\.forum\}/);
 });

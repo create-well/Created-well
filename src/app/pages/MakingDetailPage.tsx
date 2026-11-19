@@ -157,7 +157,7 @@ function PostDetail({ post }: { post: ForumPost }) {
   );
 }
 
-export default function MakingDetailPage() {
+export function MakingDetailPage() {
   const { id } = useParams();
   const { data } = useDashboard();
   const resolution = resolvePost(data.forum, data.syncStatus, id ?? '');

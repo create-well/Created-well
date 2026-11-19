@@ -102,7 +102,9 @@ test('RootLayout: the announcer carries exactly the seven names', () => {
 test('RootLayout: MessageDrawer doors land on the new names', () => {
   assert.match(rootLayout, /onNavigateToForum=\{\(\) => \{ navigate\('\/\#waiting'\); \}\}/);
   assert.match(rootLayout, /onNavigateToGeyser=\{\(\) => \{ navigate\('\/\#waiting'\); \}\}/);
-  assert.match(rootLayout, /onNavigateToStations=\{\(\) => \{ ui\.setMovesDefaultTab\('stations'\); navigate\('\/\#waiting'\); \}\}/);
+  // Packet CC leg 4: the movesDefaultTab setter is gone (dead state);
+  // the door still lands on '/#waiting'.
+  assert.match(rootLayout, /onNavigateToStations=\{\(\) => \{ navigate\('\/\#waiting'\); \}\}/);
   // Phase 3 (packet M §4, A6): the PlayD8s door split into the
   // vetting and team tabs; the prop is tab-parameterized now.
   assert.match(rootLayout, /onNavigateToPeople=\{\(tab\) => \{ navigate\(tab === 'vetting' \? '\/people\?tab=vetting' : '\/people\?tab=team'\); \}\}/);
@@ -230,7 +232,9 @@ test('ThisWeekPage: view targets are the new names, keys unchanged', () => {
     ['team', '/people?tab=team'],
     ['playground', '/'],
   ]);
-  assert.match(thisWeekPage, /handleNavigateGeyserStations\(\) \{\s+ui\.setMovesDefaultTab\('stations'\);\s+navigate\('\/\#waiting'\);/);
+  // Packet CC leg 4: the movesDefaultTab setter is gone (dead state);
+  // the handler still routes to '/#waiting'.
+  assert.match(thisWeekPage, /handleNavigateGeyserStations\(\) \{\s+navigate\('\/\#waiting'\);/);
 });
 
 // ── The Kimi pin: SLO Create never renders inside the workshops tab ─

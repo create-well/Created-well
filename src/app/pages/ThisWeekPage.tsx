@@ -25,14 +25,10 @@ export function ThisWeekPage() {
     data.syncStatus === 'failed' ? 'failed' : 'fresh';
 
   function handleNavigate(view: string) {
-    if (view === 'geyser' || view === 'moves' || view === 'community-events') {
-      ui.setMovesDefaultTab('overview');
-    }
     navigate(VIEW_ROUTE_MAP[view] ?? '/');
   }
 
   function handleNavigateGeyserStations() {
-    ui.setMovesDefaultTab('stations');
     navigate('/#waiting');
   }
 

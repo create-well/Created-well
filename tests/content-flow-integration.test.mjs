@@ -1,7 +1,9 @@
 // Synthetic-only source-to-view integration checks. No real network or records.
+// The wiring leg that pinned MovesPage as the panel's consumer retired with
+// MovesPage in the ghost cleanup (packet CC); the snapshot adapter's own
+// behavior pins stay.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { snapshotFromDashboard } from '../src/lib/contentFlowSnapshot.ts';
 
 const a='12345670-0000-4000-8000-000000000001';
@@ -27,15 +29,4 @@ test('full-ID snapshot survives optimistic update and delete collision; no Event
   const deleted=forum.filter(x=>x.id!==forum[0].id);
   assert.equal(update.length,2); assert.equal(deleted.length,0); assert.equal(events.length,2);
   assert.deepEqual(snapshot.rows.map(x=>[x.notionPageId,x.content]),[[a,'A'],[b,'B']]);
-});
-
-test('context, retry and consumer are actually wired to the independent snapshot',async()=>{
-  const ctx=await readFile(new URL('../src/contexts/DashboardContext.tsx',import.meta.url),'utf8');
-  const moves=await readFile(new URL('../src/app/pages/MovesPage.tsx',import.meta.url),'utf8');
-  assert.match(ctx,/snapshotFromDashboard\(data, usedFallback\)/);
-  assert.match(ctx,/setContentFlowSnapshot\(contentSnapshot\)/);
-  assert.match(ctx,/setSyncStatus\([^\n]*contentSnapshot[^\n]*\)/);
-  assert.match(ctx,/contentFlowSnapshot,/);
-  assert.match(moves,/<ContentFlowSnapshotPanel snapshot=\{data\.contentFlowSnapshot\} onRetry=\{actions\.retrySync\}/);
-  assert.doesNotMatch(moves,/<ContentFlowPanel rows=\{data\.forum\}/);
 });

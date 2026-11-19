@@ -85,7 +85,6 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const [showWelcome, setShowWelcome] = useState(
     () => shouldShowOnboarding(initialProfile === 'event-support' ? 'monny' : initialProfile)
   );
-  const [movesDefaultTab, setMovesDefaultTab] = useState<'overview' | 'stations' | 'forum'>('overview');
 
   useEffect(() => {
     if (shouldShowOnboarding(chatActiveUser)) setShowWelcome(true);
@@ -763,8 +762,6 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     setActivePerson,
     showWelcome,
     setShowWelcome,
-    movesDefaultTab,
-    setMovesDefaultTab,
   };
 
   return (

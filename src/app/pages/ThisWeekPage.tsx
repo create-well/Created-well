@@ -62,7 +62,6 @@ export function ThisWeekPage() {
         onAddWellNote={actions.addWellNote}
         onLandWellNote={actions.landWellNote}
         onDeleteWellNote={actions.deleteWellNote}
-        workshops={data.workshops}
         coFlowDates={data.coFlowDates}
         coFlowCheckins={data.coFlowCheckins}
         actionItems={data.tasks}

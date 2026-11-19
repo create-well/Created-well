@@ -33,12 +33,10 @@ test('the iOS system hexes are gone from the component', () => {
   assert.ok(!view.includes('#FF453A'));
 });
 
-test('blocked renders solid; siblings derive their tint from the shade', () => {
-  assert.ok(view.includes("t.status === 'blocked' ? 'var(--status-blocked)'"));
-  assert.ok(view.includes("t.status === 'blocked' ? '#F6EBDF'"));
-  assert.ok(view.includes('color-mix(in srgb, ${statusColor(t.status)} 8%, transparent)'));
-  assert.ok(view.includes("borderLeft: `3px solid ${statusColor(t.status)}`"));
-});
+// The Moves-tab row legs retired with the tab (packet CC leg C3):
+// the solid-blocked treatment and the statusColor tint derivation
+// lived in MovesTab's row markup. The shade set, the iOS-hex
+// absence, and the surviving FlowCard pill stay pinned.
 
 test('the flow pill keys text and tint to the done/archived shades', () => {
   assert.ok(view.includes("'var(--status-archived)' : 'var(--status-done)'"));

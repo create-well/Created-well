@@ -4,6 +4,7 @@ import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { CalendarConnectCard } from '../components/CalendarConnectCard';
 import { freshnessBand } from '../../lib/freshnessLabel';
+import { isWorkshop, seriesOf } from '../../lib/flows';
 import { ReleaseVerificationPanel } from '../components/ReleaseVerificationPanel';
 import { sessionAccessToken } from '../components/api';
 import {
@@ -343,6 +344,12 @@ export function SystemPage() {
   // reads the viewer's actual hostname at render, nothing stored.
   const onCustomDomain = window.location.hostname === 'createwell.monnyfest.co';
 
+  // Packet CC leg C3: FLOWS is the workshops store of record — the
+  // same derivation Gatherings renders (isWorkshop && not SLO Create).
+  const workshopsCount = data.coFlowDates.filter(
+    (f) => isWorkshop(f) && seriesOf(f) !== 'SLO Create',
+  ).length;
+
   return (
     <ViewShell state="fresh">
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px 48px' }}>
@@ -491,7 +498,7 @@ export function SystemPage() {
           <DataCountRow label="Stations"     count={data.stations.length}       emoji="🗂️" internalPath="/#waiting"  notionHref={NOTION_DB_LINKS.stations} source="PEOPLE hub" />
           <DataCountRow label="Forum posts"  count={data.forum.length}          emoji="💬" internalPath="/"  notionHref={NOTION_DB_LINKS.forum} source="CONTENT hub" />
           <DataCountRow label="Messages"     count={data.messages.length}       emoji="📨" internalPath="/people"   source="KV store" />
-          <DataCountRow label="Workshops"    count={data.workshops.length}      emoji="🛠️" internalPath="/gatherings"  source="KV store" />
+          <DataCountRow label="Workshops"    count={workshopsCount}             emoji="🛠️" internalPath="/gatherings"  source="FLOWS (Notion)" />
           <DataCountRow label="CoFlow dates" count={data.coFlowDates.length}    emoji="🫧" internalPath="/gatherings"  notionHref={NOTION_DB_LINKS.coFlowDates} source="FLOWS hub" />
           <DataCountRow label="Check-ins"    count={data.coFlowCheckins.length} emoji="✅" internalPath="/people"   source="KV store" />
           <DataCountRow label="Well notes"   count={data.wellNotes.length}      emoji="💧" internalPath="/"       source="KV store" />

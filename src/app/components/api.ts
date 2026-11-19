@@ -474,6 +474,15 @@ export interface CoFlowDate {
   eventStart?: string;
   eventEnd?: string;
   eventGuests?: { id: string; name: string }[];
+  /** Phase 2b landing follow-ups (Checkpoint 2, 2026-11-15):
+      dateEnd — the FLOWS Date property's own end, projected by
+      normalizeFlow (the date read was start-only; §5's day-of
+      time rule reads it only when no EVENTS row is linked);
+      keeperName — the FLOWS Flow Keeper relation resolved to a
+      PEOPLE name at payload assembly (the A3a Craft Lead pattern;
+      an unresolved id is dropped, never rendered raw). */
+  dateEnd?: string;
+  keeperName?: string;
   /** The related EVENTS row's Partiful link, projected through the
       flow's Events relation at payload assembly (register 1484, Leg 1).
       Only the link projects; absent when no related event carries one.

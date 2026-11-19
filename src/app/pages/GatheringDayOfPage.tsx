@@ -17,11 +17,16 @@ import {
 // run list, role holders, gear check, capture. The header's time
 // block follows §5's rule (dayOfTimes): EVENTS time while the
 // sources disagree, flagged; the detail page keeps showing the
-// FLOWS time. The door's checked state reads the FLOWS Attended
-// relation; a tap writes through the §4.1 route and the surface
-// updates only from the server's returned set — a local-only
-// check-in state is forbidden (A4). Not-found is gated on
-// settle, like the detail page (K amendment A2's shape).
+// FLOWS time. Phase 2b landing follow-ups (Checkpoint 2,
+// 2026-11-15): the FLOWS-only header spans the FLOWS Date's own
+// end when one is filed (payload dateEnd), and the Flow Keeper
+// line renders the projected keeperName — the raw relation id the
+// host fallback carried is never shown. The door's checked state
+// reads the FLOWS Attended relation; a tap writes through the
+// §4.1 route and the surface updates only from the server's
+// returned set — a local-only check-in state is forbidden (A4).
+// Not-found is gated on settle, like the detail page (K amendment
+// A2's shape).
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -125,7 +130,7 @@ function DayOf({ flow }: { flow: CoFlowDate }) {
   const timeBlock = times.start
     ? times.source === 'events'
       ? `${formatTime(times.start)}${times.end ? ` – ${formatTime(times.end)}` : ''}`
-      : flow.timeRange || formatTime(times.start)
+      : flow.timeRange || (times.end ? `${formatTime(times.start)} – ${formatTime(times.end)}` : formatTime(times.start))
     : 'Time not set yet.';
 
   return (
@@ -177,7 +182,7 @@ function DayOf({ flow }: { flow: CoFlowDate }) {
       <DaySection title="Role holders">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={bodyText}>
-            Flow Keeper — {hostPerson ? hostPerson.name : flow.host || 'Unfilled'}
+            Flow Keeper — {flow.keeperName || hostPerson?.name || 'Unfilled'}
           </div>
           <div style={bodyText}>Craft Lead — {flow.craftLead || 'Unfilled'}</div>
           <div style={bodyText}>Door — Unfilled</div>

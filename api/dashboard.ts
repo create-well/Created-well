@@ -41,6 +41,7 @@ import {
   buildFlowPartifulLinks,
   buildFlowAttendedNames,
   buildFlowCraftLeads,
+  buildFlowKeepers,
   buildFlowEventInfo,
   normalizeEvent,
   normalizeFeedback,
@@ -250,6 +251,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // time rule; the guest list for the door). Same assembly
     // pattern as the two projections above.
     const craftLeads = buildFlowCraftLeads(flowsPages, peoplePages);
+    const keeperNames = buildFlowKeepers(flowsPages, peoplePages);
     const eventInfo = buildFlowEventInfo(flowsPages, eventsPages, peoplePages);
 
     const payload: SyncData = {
@@ -269,12 +271,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const partifulLink = partifulLinks.get(pg.id);
         const names = attendedNames.get(pg.id);
         const craftLead = craftLeads.get(pg.id);
+        const keeperName = keeperNames.get(pg.id);
         const ev = eventInfo.get(pg.id);
         return {
           ...d,
           ...(partifulLink ? { partifulLink } : {}),
           ...(names ? { attendedNames: names } : {}),
           ...(craftLead ? { craftLead } : {}),
+          // Follow-up 2: the Flow Keeper relation resolved to a
+          // PEOPLE name — the day-of line renders this, never the
+          // raw relation id that host carries as its fallback.
+          ...(keeperName ? { keeperName } : {}),
           // A linked EVENTS row projects even when its guest
           // list is empty and its Date is unset: eventGuests
           // present-but-empty is A4's linked-but-empty state,

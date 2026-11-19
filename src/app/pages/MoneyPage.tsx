@@ -61,10 +61,11 @@ export function MoneyPage() {
   const totals = moneyTotals(records);
   const recent = recentActivity(records, 5);
 
-  // The net figure is income − expenses over every record in the
-  // cr8w_money slice — the whole workbook feed, not a period window
-  // (no packet defines one, so the label says "to date", never "this
-  // period"). The dated span is derived from the records themselves.
+  // The net figure is directed income minus directed expenses over
+  // the cr8w_money slice — undirected records are counted separately
+  // and excluded (moneyView.ts) — the whole workbook feed, not a
+  // period window, so the label says "to date", never "this
+  // period". The dated span is derived from the records themselves.
   const datedSpans = records.map(r => r.date).filter((d): d is string => Boolean(d)).sort();
   const spanFrom = datedSpans[0] ?? null;
   const spanTo = datedSpans.length > 0 ? datedSpans[datedSpans.length - 1] : null;

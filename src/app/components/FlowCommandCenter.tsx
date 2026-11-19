@@ -68,12 +68,6 @@ function displayDate(date?: string) {
   );
 }
 
-function nextFriday(): string {
-  const d = new Date();
-  const delta = (5 - d.getDay() + 7) % 7 || 7;
-  d.setDate(d.getDate() + delta);
-  return localDateString(d);
-}
 
 function pickNextFlow(flows: CoFlowDate[]): CoFlowDate | undefined {
   const today = localDateString();
@@ -232,8 +226,11 @@ export function FlowCommandCenter() {
   const [selectedType, setSelectedType]       = useState<typeof EVENT_TYPES[number]>("Podyap");
 
   const flow          = useMemo(() => pickNextFlow(data.coFlowDates), [data.coFlowDates]);
-  const recordingDate = flow?.date || nextFriday();
-  const topic         = flow?.theme || "How do we make room for the work before it has a name?";
+  // Honesty (packet CC): no fabrication when no flow is on the board
+  // — the date and topic render as unnamed, never as an invented
+  // Friday or a standing placeholder topic.
+  const recordingDate = flow?.date;
+  const topic         = flow?.theme;
   const recoveryHours = useMemo(() => getRecoveryHours(data.coFlowDates), [data.coFlowDates]);
 
   function castResonance(vote: "mmm-hmm" | "unh-unh") {
@@ -339,8 +336,11 @@ export function FlowCommandCenter() {
                   Session topic
                 </span>
                 <p className="mt-1 font-['Montserrat'] text-sm leading-6 text-foreground">
-                  The topic is{" "}
-                  <span className="font-semibold">{topic}</span>
+                  {topic ? (
+                    <>The topic is <span className="font-semibold">{topic}</span></>
+                  ) : (
+                    'No flow is filed on the board yet — the topic lands when one is.'
+                  )}
                 </p>
               </div>
 
@@ -403,7 +403,7 @@ export function FlowCommandCenter() {
                     The Weeecording
                   </CardTitle>
                   <CardDescription className="mt-1 font-['Montserrat'] text-xs">
-                    {displayDate(recordingDate)} · {flow?.timeRange || "Time to be named"}
+                    {recordingDate ? displayDate(recordingDate) : 'Date to be named'} · {flow?.timeRange || "Time to be named"}
                   </CardDescription>
                 </div>
                 <Badge className="font-['Blinker'] text-[11px] uppercase tracking-[0.1em]">
@@ -475,10 +475,12 @@ export function FlowCommandCenter() {
             </CardHeader>
             <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6">
               {[
-                { role: "Flow Keeper", person: flow?.host || "Monny" },
-                { role: "Closer",      person: "Sunshine" },
-                { role: "Benediction", person: "Bingle" },
-                { role: "Tech Anchor", person: "Omar" },
+                // Honesty (packet CC): the holds read from the record
+                // — nothing is filed until the data says so.
+                { role: "Flow Keeper", person: flow?.keeperName || "Unfilled" },
+                { role: "Closer",      person: "Unfilled" },
+                { role: "Benediction", person: "Unfilled" },
+                { role: "Tech Anchor", person: "Unfilled" },
               ].map(({ role, person }) => (
                 <div
                   key={role}
@@ -495,7 +497,7 @@ export function FlowCommandCenter() {
                   Recording
                 </span>
                 <span className="rounded-md bg-muted px-2 py-0.5 font-['Montserrat'] text-xs text-foreground">
-                  {displayDate(recordingDate)} · {flow?.timeRange || "TBD"}
+                  {recordingDate ? displayDate(recordingDate) : 'Date to be named'} · {flow?.timeRange || "TBD"}
                 </span>
                 <span
                   className="rounded-md px-2 py-0.5 font-['Blinker'] text-[11px] font-bold uppercase tracking-[0.08em]"

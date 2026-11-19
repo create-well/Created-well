@@ -21,7 +21,8 @@ export function ThisWeekPage() {
 
   const state =
     data.syncStatus === 'loading' ? 'loading' :
-    data.syncStatus === 'failed' ? 'failed' : 'fresh';
+    data.syncStatus === 'failed' ? 'failed' :
+    data.syncStatus === 'stale' ? 'stale' : 'fresh';
 
   function handleNavigate(view: string) {
     navigate(VIEW_ROUTE_MAP[view] ?? '/');
@@ -66,6 +67,7 @@ export function ThisWeekPage() {
         coFlowCheckins={data.coFlowCheckins}
         actionItems={data.tasks}
         stations={data.stations}
+        sourceErrors={data.sourceErrors}
       />
       {showAddTask && (
         <AddTaskModal

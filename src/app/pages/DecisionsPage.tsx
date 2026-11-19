@@ -6,6 +6,7 @@ import {
   sortPendingDecisions, decidedDecisions,
   buildDecisionCreate, buildDecideUpdate, buildDeferUpdate,
 } from '../../lib/decisionsView';
+import { kvSliceError } from '../../lib/kvSliceState';
 import type { DecisionRecord } from '../components/api';
 
 const URGENCY_LABELS: Record<DecisionRecord['urgency'], string> = {
@@ -339,11 +340,16 @@ export function DecisionsPage() {
 
   const state =
     data.syncStatus === 'loading' ? 'loading' :
-    data.syncStatus === 'failed' ? 'failed' : 'fresh';
+    data.syncStatus === 'failed' ? 'failed' :
+    data.syncStatus === 'stale' ? 'stale' : 'fresh';
 
   const records = data.decisions || [];
   const pending = sortPendingDecisions(records);
   const decided = decidedDecisions(records);
+  // Honesty (packet CC): a failed KV read degrades the slice to
+  // empty server-side; an empty queue under a read failure names the
+  // failure instead of claiming the queue is clear.
+  const decisionsReadError = kvSliceError(data.sourceErrors, 'kv:cr8w_decisions');
 
   async function removeDecision(id: number) {
     await actions.deleteDecision(id);
@@ -362,7 +368,7 @@ export function DecisionsPage() {
   }
 
   return (
-    <ViewShell state={state} onRetry={() => {}}>
+    <ViewShell state={state} onRetry={() => { actions.retrySync(); }}>
       <div style={{ maxWidth: 620, margin: '0 auto', padding: '24px 16px 96px' }}>
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
@@ -434,6 +440,22 @@ export function DecisionsPage() {
 
         {/* Pending decisions */}
         {pending.length === 0 && !adding ? (
+          decisionsReadError ? (
+            <div style={{
+              padding: '32px 0',
+              textAlign: 'center',
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.82rem',
+              lineHeight: 1.6,
+            }}>
+              <div style={{ fontSize: '2rem', marginBottom: 10 }}>⚡</div>
+              <strong style={{ display: 'block', color: 'var(--cr8w-text)', marginBottom: 4 }}>
+                The decision queue could not be read
+              </strong>
+              The decision store failed on its last read — this is not an empty queue.
+            </div>
+          ) : (
           <div style={{
             padding: '32px 0',
             textAlign: 'center',
@@ -448,6 +470,7 @@ export function DecisionsPage() {
             </strong>
             A clear queue is a sign of good hygiene — not avoidance.
           </div>
+          )
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
             {pending.map(d => (

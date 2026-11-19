@@ -19,9 +19,12 @@ export function matchesFlowType(f: CoFlowDate, type: FlowType | string): boolean
   const theme = (f.theme || '').toLowerCase();
   if (theme === target) return true;
 
-  // Canonical aliases per CR8W Podyaps Production Bible & FLOWS schema
+  // Canonical aliases per CR8W Podyaps Production Bible & FLOWS schema.
+  // 'playdate' retired as a podyap alias in Phase 3 (packet M §4.6):
+  // the name belongs to the Playd8s vetting process, and the live
+  // census carries zero rows on it (0 of 38), so the cut moves no row.
   if (target === 'podyap') {
-    return ['podyap', 'yapcast', 'playdate'].includes(theme);
+    return ['podyap', 'yapcast'].includes(theme);
   }
   if (target === 'workshop') {
     return ['workshop', 'wellshop', 'expresshop', 'playshop'].includes(theme);

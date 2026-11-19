@@ -7,6 +7,7 @@
 //             Due, Status (Now/Next/Done/Blocked/Dropped), Type, Blocked By, Touchpoint
 //   PEOPLE : Name, Owner (Person), Roles, Consent, Consent Captured,
 //             Next Invitation, Pathway Stage, Bench Stage, Interest Signal
+//             Follow-up Moves (Relation → MOVES)
 //   FLOWS  : Name, Type, Date, Status, Phase, Flow Keeper (Relation→PEOPLE),
 //             Hard Stop, Desired Body-Feel, Public URL, Retro
 //   CONTENT: Name, Flow (Relation→FLOWS), Content Type, Audience,
@@ -344,6 +345,7 @@ export function normalizeMove(page: NotionPage, ownerSlugs?: ReadonlyMap<string,
 //   Consent         : Multi-select
 //   Consent Captured: Date
 //   Next Invitation : Date
+//   Follow-up Moves : Relation → MOVES (target page ids only)
 //   Pathway Stage   : Select
 //   Bench Stage     : Select (Observer / Shadow / Solo / Anchor)
 //   Interest Signal : Select
@@ -372,6 +374,17 @@ export function normalizePerson(page: NotionPage): Station {
   const description = roles;
   const descriptionFull = getText(pick(p, 'Description', 'Bio', 'Notes', 'About'));
 
+  // Consent + follow-up projections (Phase 3 L1), per person. The
+  // captured rule mirrors peopleCareCounts' census rule exactly:
+  // any Consent multi-select option OR a filed Consent Captured
+  // date. The Follow-up Moves relation is read here for the first
+  // time; target ids travel in filed order.
+  const consentChannels = getMultiSelect(pick(p, 'Consent'));
+  const consentCapturedDate = getDate(pick(p, 'Consent Captured'));
+  const consentCaptured = consentChannels.length > 0 || consentCapturedDate !== '';
+  const followUpMoveIds = getRelationIds(pick(p, 'Follow-up Moves'));
+  const nextInvitation = getDate(pick(p, 'Next Invitation'));
+
   return {
     id:           stableId(page.id),
     notionPageId: page.id,
@@ -380,6 +393,11 @@ export function normalizePerson(page: NotionPage): Station {
     status:       pathwayStage || getSelect(pick(p, 'Status', 'State')) || 'active',
     description,
     descriptionFull,
+    consentCaptured,
+    consentChannels,
+    consentCapturedDate: consentCapturedDate || undefined,
+    followUpMoveIds,
+    nextInvitation: nextInvitation || undefined,
     owner:        ownerRaw.toLowerCase(),
     created_at:   page.created_time,
   };

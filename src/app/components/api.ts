@@ -309,6 +309,17 @@ export interface Station {
   // views only — member cards render nothing from it (UX ruling,
   // register 1346).
   descriptionFull?: string;
+  // PEOPLE consent/follow-up projections (normalizePerson, Phase 3
+  // L1). Optional with the cached-payload fields above: a person
+  // object built from an older/cached payload without them still
+  // type-checks. consentCaptured mirrors peopleCareCounts' per-row
+  // rule (any Consent option or a Consent Captured date); channels
+  // and move ids are empty arrays, never undefined, when filed.
+  consentCaptured?: boolean;
+  consentChannels?: string[];
+  consentCapturedDate?: string;
+  followUpMoveIds?: string[];
+  nextInvitation?: string;
 }
 
 export interface ForumPost {

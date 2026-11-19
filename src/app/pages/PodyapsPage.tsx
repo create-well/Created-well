@@ -211,7 +211,7 @@ export function PodyapsPage() {
     <ViewShell
       state={state}
       emptyTitle="No podyaps scheduled"
-      emptyBody="Add a CoFlow date with theme 'yapcast' or 'playdate' in Notion to get started."
+      emptyBody="Add a CoFlow date with theme 'yapcast' in Notion to get started."
       onRetry={actions.retrySync}
     >
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px 48px' }}>
@@ -351,7 +351,7 @@ export function PodyapsPage() {
             </div>
             <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
               <button
-                onClick={() => navigate('/people')}
+                onClick={() => navigate('/people?tab=team')}
                 style={{
                   padding: '7px 14px', borderRadius: 8,
                   background: '#9B59E0', color: '#fff',
@@ -359,7 +359,7 @@ export function PodyapsPage() {
                   border: 'none', cursor: 'pointer',
                 }}
               >
-                Open CoFlow D8s
+                Open Team check-in
               </button>
               <button
                 onClick={() => setExpandedId(expandedId === next.id ? null : next.id)}
@@ -413,10 +413,10 @@ export function PodyapsPage() {
               fontFamily: 'var(--font-body)', fontSize: '0.75rem',
               color: 'var(--text-muted)', marginBottom: 12,
             }}>
-              Add a CoFlow date in Notion with theme "yapcast" or "playdate"
+              Add a CoFlow date in Notion with theme "yapcast"
             </div>
             <button
-              onClick={() => navigate('/people')}
+              onClick={() => navigate('/people?tab=team')}
               style={{
                 padding: '8px 18px', borderRadius: 8,
                 background: '#9B59E0', color: '#fff',
@@ -424,7 +424,7 @@ export function PodyapsPage() {
                 border: 'none', cursor: 'pointer',
               }}
             >
-              Open CoFlow D8s →
+              Open Team check-in →
             </button>
           </div>
         )}

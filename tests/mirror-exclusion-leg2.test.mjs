@@ -8,6 +8,11 @@
 // ContentFlowSnapshotPanel (the mirror rows' legitimate
 // surface) and HomePanels' contentReadyCounts carry no part of
 // this filter, pinned below.
+//
+// Phase 3 (packet M §2.2): PersonView retired, and RootLayout's
+// reshape into its wellNotes retired with it — the person detail
+// page renders no forum content at all, so the exclusion holds
+// there by absence. The two MovesPage reshapes keep their pins.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -20,10 +25,12 @@ const moves = readFileSync(join(root, 'src/app/pages/MovesPage.tsx'), 'utf8');
 const panel = readFileSync(join(root, 'src/app/components/ContentFlowSnapshotPanel.tsx'), 'utf8');
 const panels = readFileSync(join(root, 'src/lib/homePanels.ts'), 'utf8');
 
-test('all three reshapes filter on the flag', () => {
-  assert.ok(layout.includes('data.forum.filter(f => !f.registryMirror).map(f => ({'));
+test('the surviving reshapes filter on the flag', () => {
   assert.ok(moves.includes('data.forum.filter(f => !f.registryMirror).map(f => ({'));
   assert.ok(moves.includes('forum={data.forum.filter(f => !f.registryMirror)}'));
+  // The RootLayout reshape site retired with PersonView (Phase 3);
+  // its absence is the pin now.
+  assert.ok(!layout.includes('registryMirror'));
 });
 
 test('the legitimate surfaces carry no part of the filter', () => {

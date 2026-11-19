@@ -47,7 +47,7 @@ const DASHBOARD_SECTIONS = [
   },
   {
     emoji: '🎯',
-    name: 'PlayD8s',
+    name: 'Team check-in',
     desc: 'Weekly check-ins and creative play scheduling.',
   },
   {

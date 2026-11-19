@@ -258,7 +258,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     if (today.getDay() !== 3) return;
     const key = `cr8w_wed_reminder_${localDateString(today)}`;
     if (localStorage.getItem(key)) { wednesdayReminderSent.current = true; return; }
-    const reminderContent = "[REMINDER] 📋 It's Wednesday! Time to drop your weekly check-in on PlayD8s before the next behind h0es doors. Head to PlayD8s → Check-In tab.";
+    const reminderContent = "[REMINDER] 📋 It's Wednesday! Time to drop your weekly Team check-in before the next behind h0es doors. Head to People → Team tab.";
     if (messages.some(m => m.author === 'system' && m.content?.trim() === reminderContent)) {
       wednesdayReminderSent.current = true;
       localStorage.setItem(key, '1');
@@ -629,7 +629,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         const moodEmojis: Record<string, string> = { fire: '🔥', sun: '☀️', cloud: '☁️', rain: '🌧️', storm: '⛈️' };
         const moodStr = c.mood && moodEmojis[c.mood] ? ` ${moodEmojis[c.mood]}` : '';
         const agendaCount = c.agendaItems?.length || 0;
-        sendSystemMessage(`[UPDATE] ✅ ${authorLabel} dropped a PlayD8s check-in${moodStr}${agendaCount > 0 ? ` with ${agendaCount} agenda item${agendaCount > 1 ? 's' : ''}` : ''}. ${c.confirmTime ? 'Time confirmed ✓' : 'Time needs adjusting ⚠️'}`);
+        sendSystemMessage(`[UPDATE] ✅ ${authorLabel} dropped a Team check-in${moodStr}${agendaCount > 0 ? ` with ${agendaCount} agenda item${agendaCount > 1 ? 's' : ''}` : ''}. ${c.confirmTime ? 'Time confirmed ✓' : 'Time needs adjusting ⚠️'}`);
       } catch (e) { saveFailed(e, 'Add coflow checkin error:'); }
     },
     async deleteCoFlowCheckin(id: number) {

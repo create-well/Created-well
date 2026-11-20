@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GCAL_CLIENT_ID, GCAL_REDIRECT_URI } from '../app/components/data';
+import { googleEventsUrl, normalizeGoogleEvents, GCAL_SYNC_EXPIRED_MESSAGE, GCAL_SYNC_FAILED_MESSAGE } from './calendarSync.ts';
 
 // localStorage keys — all prefixed gcal_ per existing App.tsx convention
 const LS_FRESH = 'gcal_token_fresh';
@@ -174,25 +175,44 @@ export function useCalendarSync(): CalendarSyncState {
     setErrorMsg(null);
   }, []);
 
+  // Personal sync (Phase 6, packet OO §3): the stored token is used
+  // against the Google Calendar API directly, and the normalized
+  // events write through /calendar-events — whose server merge keeps
+  // them alongside the iCal feed's rows. The old path POSTed the
+  // token to /calendar-ical-sync, which never read it (the route is
+  // feed-only) and swallowed every failure into 'connected'. Now a
+  // failure is an error state with a human message; only a completed
+  // fetch + write earns 'connected' and a last-synced stamp.
   const syncNow = useCallback(async () => {
     const token = localStorage.getItem(LS_TOKEN);
     if (!token) return;
     setStatus('syncing');
     const BASE = resolveApiBase();
     try {
-      const res = await fetch(`${BASE}/calendar-ical-sync`, {
+      const res = await fetch(googleEventsUrl(new Date()), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        setErrorMsg(res.status === 401 ? GCAL_SYNC_EXPIRED_MESSAGE : GCAL_SYNC_FAILED_MESSAGE);
+        setStatus('error');
+        return;
+      }
+      const data = await res.json();
+      const events = normalizeGoogleEvents(data.items ?? []);
+      const post = await fetch(`${BASE}/calendar-events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ access_token: token }),
+        body: JSON.stringify({ events }),
       });
-      if (!res.ok) throw new Error(`Sync failed: ${res.status}`);
+      if (!post.ok) throw new Error(`Sync failed: ${post.status}`);
       const now = new Date();
       localStorage.setItem(LS_LAST_SYNCED, now.toISOString());
       setLastSynced(now);
+      setErrorMsg(null);
       setStatus('connected');
     } catch {
-      // Don't flip to error on sync failure — keep connected, just no update
-      setStatus('connected');
+      setErrorMsg(GCAL_SYNC_FAILED_MESSAGE);
+      setStatus('error');
     }
   }, []);
 

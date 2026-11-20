@@ -15,6 +15,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { NOTION_RESOURCES, notionCreate, notionUpdate, notionArchive, validateMoneyCreate, isNotionPageId, checkInFlowGuest } from './_notionWriter.js';
 import { applyCors, requireSession, requireSessionOrCron } from './_auth.js';
+import { mergeFeedWrite, mergePersonalWrite } from './_calendarEvents.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 function supabase() {
@@ -289,7 +290,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           creator: ev.creator || '',
           synced_at: new Date().toISOString(),
         }));
-        await setList('cr8w_calendar_events', normalized);
+        // Namespace merge (packet OO §2): a personal write replaces
+        // only the 'gcal-' rows; the iCal feed's rows survive.
+        const existingCal = await getList('cr8w_calendar_events');
+        await setList('cr8w_calendar_events', mergePersonalWrite(existingCal, normalized));
         res.json({ ok: true, count: normalized.length }); return;
       }
     }
@@ -297,6 +301,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ── Calendar iCal sync ───────────────────────────────────────────────────
     if (resource === 'calendar-ical-sync' && (method === 'POST' || method === 'GET')) {
       const b = await body(req).catch(() => ({}));
+      // Feed-only route (Phase 6, packet OO §3): a personal
+      // access_token is never read here. Refuse it truthfully instead
+      // of silently falling through to the feed, so no caller can
+      // present a feed sync as a personal one.
+      if (b?.access_token && !b?.url) {
+        res.status(400).json({ error: 'This route is feed-only (iCal URL); a personal access_token is not accepted here. Personal calendar sync runs through /calendar-events.' });
+        return;
+      }
       const icalUrl = b.url || process.env.CR8W_ICAL_URL || process.env.GCAL_CREATEWELL_ICS_URL;
       if (!icalUrl) {
         res.status(400).json({ error: 'Missing iCal URL. Pass url in body or set CR8W_ICAL_URL / GCAL_CREATEWELL_ICS_URL.' });
@@ -344,7 +356,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           else if (key === 'DESCRIPTION') cur.description = val;
           else if (key === 'UID') cur.uid = val;
         }
-        await setList('cr8w_calendar_events', events);
+        // Namespace merge (packet OO §2): a feed write replaces only
+        // the non-'gcal-' rows; personal rows survive.
+        const existingCal = await getList('cr8w_calendar_events');
+        await setList('cr8w_calendar_events', mergeFeedWrite(existingCal, events));
         res.json({ ok: true, count: events.length, synced_at: new Date().toISOString() });
         return;
       } catch (err: any) {

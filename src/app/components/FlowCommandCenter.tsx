@@ -14,6 +14,7 @@ import {
 import { useDashboard } from "../../contexts/DashboardContext";
 import type { CoFlowDate } from "./api";
 import { flowsProvenanceText } from "../../lib/freshnessLabel";
+import { getRecoveryHours } from "../../lib/recoveryHours";
 import { localDateString } from "../../lib/dateLabel";
 import type { SyncStatus } from "../../types/dashboard";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
@@ -76,20 +77,9 @@ function pickNextFlow(flows: CoFlowDate[]): CoFlowDate | undefined {
     .sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"))[0];
 }
 
-function getRecoveryHours(flows: CoFlowDate[]): number | null {
-  const now = Date.now();
-  const MAX_MS = 72 * 60 * 60 * 1000;
-  for (const f of flows) {
-    if (f.date && ARCHIVED.has(f.status)) {
-      const end = new Date(`${f.date}T22:00:00`).getTime();
-      const elapsed = now - end;
-      if (elapsed > 0 && elapsed < MAX_MS) {
-        return Math.ceil((MAX_MS - elapsed) / (60 * 60 * 1000));
-      }
-    }
-  }
-  return null;
-}
+// Recovery hours derive from each archived flow's own recorded End
+// Time — see src/lib/recoveryHours.ts (Phase 6, packet OO §4). No
+// recorded end, no window: nothing is assumed here.
 
 // ── Section 7: Sync Provenance Chip ───────────────────────────────────────────
 // Wording derives from the sync status at render (G-25): no state claims
@@ -231,7 +221,7 @@ export function FlowCommandCenter() {
   // Friday or a standing placeholder topic.
   const recordingDate = flow?.date;
   const topic         = flow?.theme;
-  const recoveryHours = useMemo(() => getRecoveryHours(data.coFlowDates), [data.coFlowDates]);
+  const recoveryHours = useMemo(() => getRecoveryHours(data.coFlowDates, Date.now()), [data.coFlowDates]);
 
   function castResonance(vote: "mmm-hmm" | "unh-unh") {
     setResonance(vote);

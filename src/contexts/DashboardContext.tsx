@@ -5,7 +5,7 @@ import * as api from '../app/components/api';
 import type { Task, Station, ForumPost, Message, BrainDump, Announcement, ForumReply } from '../app/components/api';
 import type { Workshop, WorkshopProgram, WorkshopResource } from '../app/components/api';
 import type { CoFlowDate, CoFlowCheckin, WellNote } from '../app/components/api';
-import type { MoneyRecord, MoneyCreate } from '../app/components/api';
+import type { MoneyRecord } from '../app/components/api';
 import type { DecisionRecord, DecisionCreate } from '../app/components/api';
 import { getStoredProfile } from '../app/components/AuthGate';
 import { shouldShowOnboarding } from '../app/components/WelcomeModal';
@@ -672,21 +672,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
       } catch (e) { saveFailed(e, 'Land well note error:'); }
     },
 
-    // Money (M-1): the created record comes back from the MONEY create
-    // route and joins the slice; the next payload load replaces the
-    // slice with the source of truth. Like addTask, failures rethrow —
-    // the quick log owns its failure surface and never shows a fake save.
-    async addMoney(item: MoneyCreate) {
-      try {
-        const created = await api.createMoney(item);
-        setMoney(prev => [...prev, created]);
-      } catch (e) {
-        console.error('Add money error:', e);
-        throw e;
-      }
-    },
-
-    // Decisions (D-1): same honesty contract as addMoney — state moves
+    // Decisions (D-1): the honesty contract — state moves
     // only with the server's returned record, and failures rethrow so
     // the card owns its error surface. A decision never shows decided
     // or deferred before the write lands.

@@ -3,7 +3,7 @@ import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { dateLabel } from '../../lib/dateLabel';
 import {
-  moneyDirection, moneyTotals, recentActivity,
+  moneyDirection, moneyTotals, ledgerOrder, needsCategoryQueue,
 } from '../../lib/moneyView';
 import { getSetting, setSetting } from '../components/api';
 import type { MoneyRecord } from '../components/api';
@@ -59,7 +59,8 @@ export function MoneyPage() {
   const { data, actions } = useDashboard();
   const records = data.money || [];
   const totals = moneyTotals(records);
-  const recent = recentActivity(records, 5);
+  const ledger = ledgerOrder(records);
+  const queue = needsCategoryQueue(records);
 
   // The net figure is directed income minus directed expenses over
   // the cr8w_money slice — undirected records are counted separately
@@ -183,7 +184,45 @@ export function MoneyPage() {
           </div>
         )}
 
-        {/* Recent Activity — last 5, merged, signed with word tags */}
+        {/* Needs a category — the workbook's uncategorized rows; this page only reads */}
+        <section style={{ marginBottom: 28 }}>
+          <div style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '0.9rem',
+            fontWeight: 700,
+            color: 'var(--cr8w-text, #2D2438)',
+            letterSpacing: '-0.01em',
+            marginBottom: 6,
+          }}>
+            Needs a category
+          </div>
+          <p style={{
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.75rem',
+            color: 'var(--text-muted, #6B5F7A)',
+            marginTop: 0,
+            marginBottom: 12,
+            lineHeight: 1.5,
+          }}>
+            Categorized in the Budget &amp; P&amp;L workbook. This page only reads.
+          </p>
+          {queue.length === 0 ? (
+            <div style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.78rem',
+              color: 'var(--text-muted, #6B5F7A)',
+              lineHeight: 1.5,
+            }}>
+              Nothing waiting on a category.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {queue.map(record => <ActivityRow key={record.id} record={record} />)}
+            </div>
+          )}
+        </section>
+
+        {/* Ledger — every record, newest first, signed with word tags */}
         <section style={{ marginBottom: 28 }}>
           <div style={{
             fontFamily: 'var(--font-display)',
@@ -193,9 +232,9 @@ export function MoneyPage() {
             letterSpacing: '-0.01em',
             marginBottom: 12,
           }}>
-            Recent activity
+            Ledger
           </div>
-          {recent.length === 0 ? (
+          {ledger.length === 0 ? (
             <div style={{
               padding: '20px 0',
               textAlign: 'center',
@@ -211,7 +250,7 @@ export function MoneyPage() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {recent.map(record => <ActivityRow key={record.id} record={record} />)}
+              {ledger.map(record => <ActivityRow key={record.id} record={record} />)}
             </div>
           )}
         </section>

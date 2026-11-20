@@ -234,8 +234,9 @@ test('A5: dateless rows carry no age and sort after dated rows', () => {
   assert.equal(queue[1].ageDays, undefined);
 });
 
-test('the queue labels itself draft until adoption', () => {
-  assert.match(DEPANTY_RULE_LABEL, /Draft rule/);
+test('the queue labels itself with the adopted team rule', () => {
+  assert.match(DEPANTY_RULE_LABEL, /Team rule: owner, numbers recorded, retro filed/);
+  assert.doesNotMatch(DEPANTY_RULE_LABEL, /Draft rule/);
 });
 
 // ── §5 day-of times, §4.2 run list, §4.3 gear check ──────────────────────────

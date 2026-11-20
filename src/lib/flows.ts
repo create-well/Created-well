@@ -275,16 +275,17 @@ export function compareWorkListTasks(a: Task, b: Task): number {
 }
 
 // ── Phase 2b: depanty queue, exit test, day-of helpers ─────────────────────
-// Spec: packet L (as amended A1–A7). The exit rule is a DRAFT
+// Spec: packet L (as amended A1–A7). The exit rule was a DRAFT
 // for Monny's adoption call after Phase 2 (packet F's
-// disposition): the queue computes against the draft and labels
-// itself draft until adoption. The whole rule lives behind
+// disposition); she ADOPTED it as a standing team rule on
+// 2026-11-19 (register 1681). The whole rule lives behind
 // depantyExitTest() — one named function — so an adoption
 // amendment changes exactly one place.
 
-/** The queue's draft label, rendered on the surface until the
-    exit rule is adopted. */
-export const DEPANTY_RULE_LABEL = 'Draft rule — adoption pending';
+/** The queue's rule label, rendered on the surface: the adopted
+    exit rule in short form (owner, numbers recorded, retro
+    filed). */
+export const DEPANTY_RULE_LABEL = 'Team rule: owner, numbers recorded, retro filed';
 
 /** An open Move whose title files it as depanty work ("Depanty — …"). */
 export function isDepantyMove(t: Task): boolean {
@@ -311,7 +312,7 @@ export interface DepantyExitResult {
 }
 
 /**
- * The depanty exit test (packet L §2, draft): a gathering's
+ * The depanty exit test (packet L §2, adopted 2026-11-19): a gathering's
  * close-out is finished when all three legs hold —
  *   1. Numbers recorded, in A7's mechanical form: the Pleasure
  *      rollups resolve AND (a non-zero value OR the Retro field

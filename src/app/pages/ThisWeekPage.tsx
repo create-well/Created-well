@@ -38,10 +38,6 @@ export function ThisWeekPage() {
     navigate(`/gatherings/${id}`);
   }
 
-  const forumNotesForView = data.forum.map(f => ({
-    id: f.id, author: f.author, content: f.content, created_at: f.created_at,
-  }));
-
   return (
     <ViewShell
       state={state}

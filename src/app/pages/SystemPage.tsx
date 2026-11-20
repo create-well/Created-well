@@ -49,7 +49,7 @@ const CONTENT_CHANNELS = [
 
 const ROUTE_ARCHITECTURE = [
   { path: '/',          label: 'Today',      emoji: '💧',
-    sources: 'MOVES (tasks) · PEOPLE (stations) · CONTENT (forum) · FLOWS (gatherings) · KV store (brain dumps · well notes · announcements · check-ins)' },
+    sources: 'MOVES (tasks) · PEOPLE (stations) · FLOWS (gatherings) · KV store (brain dumps · well notes · announcements · check-ins)' },
   { path: '/gatherings', label: 'Gatherings', emoji: '🎨',
     sources: 'FLOWS hub — all Types · workshops' },
   { path: '/making',    label: 'Making',     emoji: '🎙️',

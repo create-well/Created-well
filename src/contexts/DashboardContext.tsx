@@ -66,6 +66,10 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   // Legacy field name: successful payload reception, not source-sync time.
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [syncFreshness, setSyncFreshness] = useState<import('../lib/syncFreshnessLine').SyncFreshnessBlock | null>(null);
+  // Per-slice read failures named by the payload (kv:<key> / source
+  // name): a surface renders a degraded slice's failure instead of a
+  // calm empty (packet CC honesty leg).
+  const [sourceErrors, setSourceErrors] = useState<Record<string, string> | undefined>(undefined);
   const [peopleCare, setPeopleCare] = useState<{ total: number; consentGaps: number } | null>(null);
   const [openAsksCare, setOpenAsksCare] = useState<{ total: number; unanswered: number } | null>(null);
   const [statusClock, setStatusClock] = useState(Date.now);
@@ -173,6 +177,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         // it; the fallback path may not claim delivery state, so a
         // fallback load clears it rather than leaving a stale claim.
         setSyncFreshness(usedFallback ? null : (data.syncFreshness ?? null));
+        setSourceErrors(usedFallback ? undefined : data.sourceErrors);
         // PEOPLE care aggregate: same rule — only the primary payload
         // carries it; a fallback load clears it, never a stale count.
         setPeopleCare(usedFallback ? null : (data.peopleCare ?? null));
@@ -743,6 +748,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     wellNotes,
     money,
     decisions,
+    sourceErrors,
     syncStatus: computedSyncStatus,
     lastSynced,
     syncFreshness,

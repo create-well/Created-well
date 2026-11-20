@@ -1,12 +1,13 @@
 // M-1 (Money view): the normalizer projects Direction + Stage (M-1c),
 // signing follows Direction only, the net never absorbs an undirected
-// record, Recent Activity is the last 5 by date desc, and the quick-log
-// payload carries exactly the M-1b write shape (Kind unset in v1).
+// record, Recent Activity is the last 5 by date desc, the ledger is
+// every record in the same order, and the Needs Category queue holds
+// exactly the feed's 'Needs category' records (Phase 5, packet LL).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeMoney } from '../src/lib/notionNormalizer.ts';
 import {
-  moneyDirection, signedAmount, recentActivity, moneyTotals, buildMoneyPayload,
+  moneyDirection, signedAmount, recentActivity, moneyTotals, ledgerOrder, needsCategoryQueue,
 } from '../src/lib/moneyView.ts';
 
 const sel = name => ({ type: 'select', select: name ? { id: name, name, color: 'default' } : null });
@@ -72,14 +73,35 @@ test('recentActivity returns the last 5 by date desc, undated last', () => {
   assert.deepEqual(recentActivity(rows).length, 5);
 });
 
-test('buildMoneyPayload carries the M-1b write shape and no Kind', () => {
-  assert.deepEqual(
-    buildMoneyPayload({ label: 'Ticket sales', amount: 75, date: '2026-11-04', direction: 'in' }),
-    { name: 'Ticket sales', amount: 75, direction: 'In', actual: '2026-11-04', stage: 'Received' },
-  );
-  assert.deepEqual(
-    buildMoneyPayload({ label: 'Room rental', amount: 120, date: '2026-11-04', direction: 'out' }),
-    { name: 'Room rental', amount: 120, direction: 'Out', actual: '2026-11-04', stage: 'Paid' },
-  );
-  assert.equal('kind' in buildMoneyPayload({ label: 'x', amount: 1, date: '2026-11-04', direction: 'in' }), false);
+test('ledgerOrder returns every record newest first, with no cap', () => {
+  const rec = (id, date, created) => ({
+    id, name: id, amount: 1, kind: '', direction: 'In', stage: 'Received',
+    date, flowId: '', docUrl: '', notionPageId: id, created_at: created,
+  });
+  const rows = [
+    rec('a', '2026-10-01', '2026-10-01T00:00:00Z'),
+    rec('b', '2026-11-03', '2026-11-03T00:00:00Z'),
+    rec('c', '2026-10-20', '2026-10-20T00:00:00Z'),
+    rec('d', '', '2026-09-01T00:00:00Z'),
+    rec('e', '2026-11-01', '2026-11-01T00:00:00Z'),
+    rec('f', '2026-10-25', '2026-10-25T00:00:00Z'),
+    rec('g', '2026-10-10', '2026-10-10T00:00:00Z'),
+  ];
+  assert.deepEqual(ledgerOrder(rows).map(r => r.id), ['b', 'e', 'f', 'c', 'g', 'a', 'd']);
+  assert.equal(ledgerOrder(rows).length, rows.length);
+});
+
+test('needsCategoryQueue holds exactly the Needs category records, in ledger order', () => {
+  const rec = (id, date, kind) => ({
+    id, name: id, amount: 1, kind, direction: 'In', stage: 'Received',
+    date, flowId: '', docUrl: '', notionPageId: id, created_at: `${date}T00:00:00Z`,
+  });
+  const rows = [
+    rec('a', '2026-10-01', 'Needs category'),
+    rec('b', '2026-11-03', 'Ticket sales'),
+    rec('c', '2026-10-20', 'Needs category'),
+    rec('d', '2026-11-05', ''),
+  ];
+  assert.deepEqual(needsCategoryQueue(rows).map(r => r.id), ['c', 'a']);
+  assert.deepEqual(needsCategoryQueue([rows[1], rows[3]]), []);
 });

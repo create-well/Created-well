@@ -104,8 +104,6 @@ export interface DashboardActions {
   landWellNote: (id: number) => Promise<void>;
   deleteWellNote: (id: number) => Promise<void>;
 
-  addMoney: (m: import('../app/components/api').MoneyCreate) => Promise<void>;
-
   addDecision: (d: import('../app/components/api').DecisionCreate) => Promise<void>;
   updateDecision: (id: number, updates: Partial<DecisionRecord>) => Promise<void>;
   deleteDecision: (id: number) => Promise<void>;

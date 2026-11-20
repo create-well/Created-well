@@ -35,5 +35,8 @@ test('the small actions on both pages carry the 44px box', () => {
   const d = decisions.match(/minHeight: 44/g) || [];
   const m = money.match(/minHeight: 44/g) || [];
   assert.ok(d.length >= 7, `Decisions actions (${d.length})`);
-  assert.ok(m.length >= 4, `Money actions (${m.length})`);
+  // Honesty remainder (2026-11-19): the Quick Log form is retired, and
+  // its two 44px actions went with it — the Money count is the two
+  // Next-Move actions (Save, Clear).
+  assert.ok(m.length >= 2, `Money actions (${m.length})`);
 });

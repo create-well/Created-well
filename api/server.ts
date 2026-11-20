@@ -187,6 +187,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ── Generic CRUD for list resources ───────────────────────────────────────
     // D-1b: the decisions queue's vocabularies (client DecisionRecord).
     const DECISION_URGENCIES = ['now', 'this-week', 'when-clear'];
+    // Two-queue split (packets C/F): owner is an in-enum write when
+    // present; absent stays absent — the view derives unowned records
+    // to 'monny', so the server stores only what was actually filed.
+    const DECISION_OWNERS = ['monny', 'bingle'];
     // QA note (D-1 verdict): the DecisionRecord type union admits
     // 'deferred' for read compatibility, but no page partition renders
     // it, so it is NOT a writable status — defer is an urgency write
@@ -451,6 +455,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (typeof b.question !== 'string' || b.question.trim().length === 0) { res.status(400).json({ error: 'question is required' }); return; }
           if (!DECISION_URGENCIES.includes(b.urgency)) { res.status(400).json({ error: "urgency must be 'now', 'this-week', or 'when-clear'" }); return; }
           if (typeof b.context !== 'string') b.context = '';
+          if (b.owner !== undefined && !DECISION_OWNERS.includes(b.owner)) { res.status(400).json({ error: "owner must be 'monny' or 'bingle'" }); return; }
         }
         const list = await getList(kvKey);
         const item: Record<string, any> = { ...b, id: Date.now(), created_at: new Date().toISOString() };
@@ -477,6 +482,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (resource === 'decisions') {
           if ('urgency' in b && !DECISION_URGENCIES.includes(b.urgency)) { res.status(400).json({ error: "urgency must be 'now', 'this-week', or 'when-clear'" }); return; }
           if ('status' in b && !DECISION_STATUSES.includes(b.status)) { res.status(400).json({ error: "status must be 'pending' or 'decided' ('deferred' is not writable — defer is an urgency write)" }); return; }
+          if ('owner' in b && !DECISION_OWNERS.includes(b.owner)) { res.status(400).json({ error: "owner must be 'monny' or 'bingle'" }); return; }
         }
         const list = await getList(kvKey);
         const idx = list.findIndex((x: any) => String(x.id) === String(id));

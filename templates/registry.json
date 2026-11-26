@@ -244,6 +244,17 @@
         "library": "not published — the CMS Template Kit file was created 2026-11-25 in this build pass; library publish is a separate YES and was not in scope",
         "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
         "note": "Built 2026-11-25 (kit build pass, File B page \"Gatherings Detail\"). Single component: Cover story slot placeholder, DATE / TIME / LOCATION block, email capture row, save-my-spot CTA (height bound to touch/cta-height), RSVP-by line; Title / Date / Time / Location / RSVP by line as text properties. CORRECTED 2026-11-25 at origin/main 9bb6b64: the component_note above predates the current tree — an internal GatheringDetailPage DOES exist (src/app/pages/, route gatherings/:id, plus gatherings/:id/day-of); what does not exist is the PUBLIC detail route and component, so component stays null and status stays provisional."
+      },
+      "figma_site_architecture_kit": {
+        "component": "Gatherings Detail route frame (Detail Routes page), reusing the File B Gatherings Detail component by key import",
+        "fileKey": "sU5mvnqhQMxAxYE5IOFVuW",
+        "nodeId": "1-468",
+        "url": "https://www.figma.com/design/sU5mvnqhQMxAxYE5IOFVuW/CR8W-Site-Architecture-Kit?node-id=1-468",
+        "template": null,
+        "code_target": "src/app/pages/GatheringDetailPage.tsx (internal route gatherings/:id at origin/main 9bb6b64); the public detail component remains the intended BUILDER-B2 target",
+        "library": "not published — see dashboard-shell File C note",
+        "mapping": "none — Code Connect stays held until a real public repo component exists",
+        "note": "Built 2026-11-26 (kit build pass, File C, Detail Routes page). The frame annotates the internal route one-hop sources as coded (FLOWS coFlowDates, MOVES tasks) and flags the File B Gatherings Detail component as the design source for the public build. A sibling frame on the same page covers gatherings/:id/day-of (check-in writes the FLOWS Attended relation)."
       }
     },
     {
@@ -356,6 +367,17 @@
         "library": "published 2026-11-03 (one of 13 changes in the CR8W Design System library publish; file renamed from 'Untitled' the same pass)",
         "mapping": "LIVE — published 2026-11-04 on Monny's YES (main chat 2026-11-03); Dev Mode verified 2026-11-04: Connected, production snippet renders. Code Connect coverage: 5/5 published library components mapped and live-verified (Button 13-6, Card 13-7, Chip 13-11 as Badge, EventCard 14-2, NavHeader 14-14). Read-surface note: the Figma MCP get_code_connect_map returns {} for these nodes (connector gap of record); Dev Mode is the verification surface.",
         "note": "Honest-match binding: NavHeader binds to TopNav.tsx, a composed part of this shell entry (see component_note — the shell as built is ViewShell.tsx composed with TopNav.tsx and RootLayout.tsx). The entry's primary component stays ViewShell.tsx; this binding records the NavHeader leg only."
+      },
+      "figma_site_architecture_kit": {
+        "component": "App Shell frame (Shell page) + one annotated route frame per live route (route pages Today, Gatherings, Making, People, Money, Decisions, System; Detail Routes page; Public Surface page)",
+        "fileKey": "sU5mvnqhQMxAxYE5IOFVuW",
+        "nodeId": "1-76",
+        "url": "https://www.figma.com/design/sU5mvnqhQMxAxYE5IOFVuW/CR8W-Site-Architecture-Kit?node-id=1-76",
+        "template": null,
+        "code_target": "src/app/RootLayout.tsx + src/app/components/ViewShell.tsx + TopNav + SyncStatusBar composition (the shell as coded); route frames annotate src/app/routes.ts at origin/main 9bb6b64",
+        "library": "not published — the Site Architecture Kit file was created 2026-11-26 in this build pass; library publish is a separate YES and was not in scope",
+        "mapping": "none — no Code Connect claim for any File C frame; the shell NavHeader instance rides the existing File A NavHeader binding (14-14), which is unchanged",
+        "note": "Built 2026-11-26 (kit build pass, File C). 10 pages: Shell (App Shell frame 1-76 from a File A NavHeader instance by key import, SyncStatusBar strip with File B Freshness and Connection state chip instances, the four OS Frontend Spec view rules as spec text), one page per live route family with a route frame assembled from File A and File B components and an annotation frame naming the route one-hop Notion source and read path copied from the mirror map section 2, Detail Routes (four frames reusing File B detail patterns), Public Surface (holding page as-is, the /api/public-content projection as a spec diagram, the five Phase 0 redirects as one spec frame). Every visual value binds to File A variables and type styles by key import. Route set verified firsthand at origin/main 9bb6b64 (src/app/routes.ts): 11 live patterns plus 5 redirects."
       }
     },
     {

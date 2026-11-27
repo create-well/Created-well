@@ -204,7 +204,7 @@
         "nodeId": "2-97",
         "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=2-97",
         "template": null,
-        "code_target": "a public-payload card component in create-well/Created-well (intended, BUILDER-B1) — no repo component exists",
+        "code_target": "src/lib/publicContentCard.ts + src/app/components/PublicContentCard.tsx in create-well/Created-well (BUILDER-B1, landed on main via PR #127, merge 9bca1e76) — the repo component exists, unmounted by design; by the kit packet's sequence rule this template's Code Connect binding is now actionable (no binding made in this pass)",
         "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
         "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
         "note": "Built 2026-11-25 (kit build pass, File B page \"Gatherings Card\"). Component set with Status variants Published / Waitlist / Cancelled, a Cover slot placeholder, and Title / Time / Place / Tag / Spots left text properties; values bind to the CR8W Tokens variables subscribed from the CR8W Design System file. Slot placeholders are named frames: true SLOT nodes are not creatable through the Plugin API surface used (figma.createSlot absent), so slots land as labeled frames until a UI pass converts them. The File A EventCard composition binding stays under \"figma\" above; this set is the public card pattern of record. Status unchanged: bindings do not promote."
@@ -275,7 +275,7 @@
         "nodeId": "3-81",
         "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=3-81",
         "template": null,
-        "code_target": "the RSVP flow screens in create-well/Created-well (intended, BUILDER-B3) — no repo component or rsvp route exists; Partiful is the live RSVP door",
+        "code_target": "the RSVP flow screens in create-well/Created-well — unbuilt: no repo component or rsvp route exists, and no builder leg is assigned (corrected 2026-11-26 per AUDITOR-1: the earlier BUILDER-B3 attribution was a roster-sketch leftover; B3 built the connection-state chip, PR #129); Partiful is the live RSVP door",
         "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
         "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
         "note": "Built 2026-11-25 (kit build pass, File B page \"RSVP Flow\", node 3-81). Three screen frames: 01 Notice & Choose (3-98), 02 Tell Us Who (3-107), 03 You are In (3-122), composed from the shared form components on the same page. The letter checkbox ships unchecked in its component definition (Off variant first), carrying the kit rule that consent is never pre-ticked. Status unchanged: bindings do not promote."

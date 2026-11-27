@@ -197,6 +197,17 @@
           "Spots left"
         ],
         "note": "Companion Canva draft (Gatherings Card — CMS Template). Placeholders are visible text, not yet bound as data fields: autofill stays inert until the fields are bound in the Canva editor (Monny's hands, ACTION of record). Wiring of record: design-handoff-portable/canva-cms-wiring.md."
+      },
+      "figma_template_kit": {
+        "component": "Gatherings Card",
+        "fileKey": "3Wn9bW6sTeJzV24cmCfUyK",
+        "nodeId": "2-97",
+        "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=2-97",
+        "template": null,
+        "code_target": "a public-payload card component in create-well/Created-well (intended, BUILDER-B1) — no repo component exists",
+        "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
+        "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
+        "note": "Built 2026-11-25 (kit build pass, File B page \"Gatherings Card\"). Component set with Status variants Published / Waitlist / Cancelled, a Cover slot placeholder, and Title / Time / Place / Tag / Spots left text properties; values bind to the CR8W Tokens variables subscribed from the CR8W Design System file. Slot placeholders are named frames: true SLOT nodes are not creatable through the Plugin API surface used (figma.createSlot absent), so slots land as labeled frames until a UI pass converts them. The File A EventCard composition binding stays under \"figma\" above; this set is the public card pattern of record. Status unchanged: bindings do not promote."
       }
     },
     {
@@ -222,7 +233,29 @@
         "view": "next up"
       },
       "notion_view_note": "Same deck-named view as gatherings-card; not confirmed in the repo source map.",
-      "status": "provisional"
+      "status": "provisional",
+      "figma": {
+        "component": "Gatherings Detail",
+        "fileKey": "3Wn9bW6sTeJzV24cmCfUyK",
+        "nodeId": "2-143",
+        "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=2-143",
+        "template": null,
+        "code_target": "a public gatherings detail component (intended, BUILDER-B2) — no public repo component exists; the internal GatheringDetailPage at /gatherings/:id is a dashboard surface and the build starting point",
+        "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
+        "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
+        "note": "Built 2026-11-25 (kit build pass, File B page \"Gatherings Detail\"). Single component: Cover story slot placeholder, DATE / TIME / LOCATION block, email capture row, save-my-spot CTA (height bound to touch/cta-height), RSVP-by line; Title / Date / Time / Location / RSVP by line as text properties. CORRECTED 2026-11-25 at origin/main 9bb6b64: the component_note above predates the current tree — an internal GatheringDetailPage DOES exist (src/app/pages/, route gatherings/:id, plus gatherings/:id/day-of); what does not exist is the PUBLIC detail route and component, so component stays null and status stays provisional."
+      },
+      "figma_site_architecture_kit": {
+        "component": "Gatherings Detail route frame (Detail Routes page), reusing the File B Gatherings Detail component by key import",
+        "fileKey": "sU5mvnqhQMxAxYE5IOFVuW",
+        "nodeId": "1-468",
+        "url": "https://www.figma.com/design/sU5mvnqhQMxAxYE5IOFVuW/CR8W-Site-Architecture-Kit?node-id=1-468",
+        "template": null,
+        "code_target": "src/app/pages/GatheringDetailPage.tsx (internal route gatherings/:id at origin/main 9bb6b64); the public detail component remains the intended BUILDER-B2 target",
+        "library": "not published — see dashboard-shell File C note",
+        "mapping": "none — Code Connect stays held until a real public repo component exists",
+        "note": "Built 2026-11-26 (kit build pass, File C, Detail Routes page). The frame annotates the internal route one-hop sources as coded (FLOWS coFlowDates, MOVES tasks) and flags the File B Gatherings Detail component as the design source for the public build. A sibling frame on the same page covers gatherings/:id/day-of (check-in writes the FLOWS Attended relation)."
+      }
     },
     {
       "component": null,
@@ -235,7 +268,18 @@
       "kit_source_note": "RSVP Flow page: three screens (01 Notice & Choose — event summary + 'save my spot'; 02 Tell Us Who — first name, email, letter checkbox unticked, one ask per row; 03 You're In — confirmation restates date/time/place + add-to-calendar). Form fields and rules of record: Handoff Bundle page 6 (rsvp_form). Kit rules carried verbatim: RSVP saves a seat only; no account, no password; the button never hides.",
       "notion_view": null,
       "notion_view_note": "No Notion view: the deck assigns RSVP capture to the forms tool, with the consent ledger syncing back to PEOPLE nightly. No repo source-map entry exists for an RSVP intake view.",
-      "status": "provisional"
+      "status": "provisional",
+      "figma": {
+        "component": "Form / Letter checkbox (set 3-91) + Form / Text field (3-92) + Form / Primary button (3-96), RSVP Flow page",
+        "fileKey": "3Wn9bW6sTeJzV24cmCfUyK",
+        "nodeId": "3-81",
+        "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=3-81",
+        "template": null,
+        "code_target": "the RSVP flow screens in create-well/Created-well (intended, BUILDER-B3) — no repo component or rsvp route exists; Partiful is the live RSVP door",
+        "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
+        "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
+        "note": "Built 2026-11-25 (kit build pass, File B page \"RSVP Flow\", node 3-81). Three screen frames: 01 Notice & Choose (3-98), 02 Tell Us Who (3-107), 03 You are In (3-122), composed from the shared form components on the same page. The letter checkbox ships unchecked in its component definition (Off variant first), carrying the kit rule that consent is never pre-ticked. Status unchanged: bindings do not promote."
+      }
     },
     {
       "component": null,
@@ -248,7 +292,18 @@
       "kit_source_note": "The consent-aware pattern set: letter_opt_in checkbox, default off, never pre-ticked (stated three ways on the page); the consent ledger columns (email, letter_consent, consent_source, consent_at, unsubscribed_at); the letter platform imports only consent=yes rows with unsubscribed blank; an untick anywhere updates the ledger; the consent line is spoken aloud on the confirmation screen. Form specimen with the unticked letter checkbox also appears in the RSVP flow, Web UI Kit page 12, and the forms block, Web UI Kit page 3.",
       "notion_view": null,
       "notion_view_note": "Deck page 6: ledger rows sync back to PEOPLE in the Create Well OS, which stays the single source of truth for humans. No named view in the deck or the repo source map. Registry encoding: the writer schema carries notion_view as {source, view} or null; this entry's source is PEOPLE with no named view, so notion_view is null and the source is recorded in this note, not dropped.",
-      "status": "verified"
+      "status": "verified",
+      "figma": {
+        "component": "Consent / Consent line",
+        "fileKey": "3Wn9bW6sTeJzV24cmCfUyK",
+        "nodeId": "3-135",
+        "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=3-135",
+        "template": null,
+        "code_target": "the consent write side in create-well/Created-well (letter_opt_in) — does not exist in code; consent is read-side only today",
+        "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
+        "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
+        "note": "Built 2026-11-25 (kit build pass, File B page \"Consent Patterns\", 3-132). Family on the page: Consent / Consent line (3-135, unchecked box plus the full consent sentence as a text property), Consent / Ledger state chip set (3-144: On file / Not on file / Withdrawn), and review instances of the shared Form / Letter checkbox set (3-91, built on the RSVP Flow page). Every checkbox in the family defaults to unchecked in its definition. Status unchanged (verified refers to the pattern of record; the repo leg is still absent)."
+      }
     },
     {
       "component": null,
@@ -261,7 +316,18 @@
       "kit_source_note": "The wording family NOT CONNECTED -> VERIFYING -> LIVE -> UNREACHABLE (plus WRITES DISABLED as a companion chip state), 'never red'. Evidence: the filed overview capture's text layer and the 2026-10-30 examination of the OS Frontend Spec canvas; the native OS Spec PDF is image-only, so no native text layer carries the family.",
       "notion_view": null,
       "status": "capture-only",
-      "notion_view_note": "No Notion view: a wording family, not a content pattern — no OS source or view mirrors it. Named-unbound 2026-11-05 (registry completion pass)."
+      "notion_view_note": "No Notion view: a wording family, not a content pattern — no OS source or view mirrors it. Named-unbound 2026-11-05 (registry completion pass).",
+      "figma": {
+        "component": "Connection state chip",
+        "fileKey": "3Wn9bW6sTeJzV24cmCfUyK",
+        "nodeId": "3-181",
+        "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=3-181",
+        "template": null,
+        "code_target": "none — the kit family has no repo counterpart (zero matches in src/ at origin/main 9bb6b64, verified 2026-11-25)",
+        "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
+        "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
+        "note": "Built 2026-11-25 (kit build pass, File B page \"Connection States\"). Component set with the five kit states: NOT CONNECTED / VERIFYING / LIVE / UNREACHABLE / WRITES DISABLED. A second, separate set on the same page (Freshness chip, 3-188: Fresh / Aging / Stale) mirrors the dashboard family from SyncStatusBar + freshnessLabel.ts for side-by-side review; the two families are kept as separate sets and are not merged. Status stays capture-only: the Figma counterpart now exists, but the entry status tracks the repo leg, which is still absent."
+      }
     },
     {
       "component": "src/app/components/ViewShell.tsx",
@@ -271,16 +337,18 @@
         "paths": [
           "src/app/routes.ts",
           "src/app/pages/ThisWeekPage.tsx",
-          "src/app/pages/MovesPage.tsx",
-          "src/app/pages/CarePage.tsx",
           "src/app/pages/FlowsPage.tsx",
+          "src/app/pages/GatheringDetailPage.tsx",
+          "src/app/pages/GatheringDayOfPage.tsx",
           "src/app/pages/PodyapsPage.tsx",
-          "src/app/pages/WorkshopsPage.tsx",
+          "src/app/pages/MakingDetailPage.tsx",
+          "src/app/pages/PeoplePage.tsx",
+          "src/app/pages/PersonDetailPage.tsx",
           "src/app/pages/MoneyPage.tsx",
           "src/app/pages/DecisionsPage.tsx",
           "src/app/pages/SystemPage.tsx"
         ],
-        "note": "Rebind pass 2026-11-02, read firsthand from src/app/routes.ts: the shell hosts nine route pages under RootLayout — / (index) ThisWeekPage, /moves MovesPage, /care CarePage, /flows FlowsPage, /podyaps PodyapsPage, /workshops WorkshopsPage, /money MoneyPage, /decisions DecisionsPage, /system SystemPage. HubView, PersonView, GeyserView, WorkshopsView, CommunityEventsView, and ThemeProvider also confirmed present at src/app/components/ in this pass. This entry's status field records its evidence class as before; under the seed's D1 gate it remains provisional for build (binding does not promote)."
+        "note": "Rebind correction 2026-11-26 (mirror validation flag F2), read firsthand from src/app/routes.ts at production main 9bb6b64: the shell hosts eleven live route patterns under RootLayout: / (index) ThisWeekPage, /gatherings FlowsPage, /gatherings/:id GatheringDetailPage, /gatherings/:id/day-of GatheringDayOfPage, /making PodyapsPage, /making/:id MakingDetailPage, /people PeoplePage, /people/:id PersonDetailPage, /money MoneyPage, /decisions DecisionsPage, /system SystemPage. The 2026-11-02 list this replaces named MovesPage.tsx and WorkshopsPage.tsx, both deleted in cleanup leg C1 on 2026-11-19, and CarePage.tsx, which does not exist at this base; /moves, /workshops, and /care are redirects in the same routes.ts (/moves to /#waiting, /workshops to /gatherings?tab=workshops, /care to /people), as are /flows (to /gatherings) and /podyaps (to /making). The shell composition itself (RootLayout with ViewShell, TopNav, and SyncStatusBar) is named in this entry's component_note and File C binding. This entry's status field records its evidence class as before; under the seed's D1 gate it remains provisional for build (binding does not promote)."
       },
       "id": "dashboard-shell",
       "kit_source": {
@@ -301,6 +369,17 @@
         "library": "published 2026-11-03 (one of 13 changes in the CR8W Design System library publish; file renamed from 'Untitled' the same pass)",
         "mapping": "LIVE — published 2026-11-04 on Monny's YES (main chat 2026-11-03); Dev Mode verified 2026-11-04: Connected, production snippet renders. Code Connect coverage: 5/5 published library components mapped and live-verified (Button 13-6, Card 13-7, Chip 13-11 as Badge, EventCard 14-2, NavHeader 14-14). Read-surface note: the Figma MCP get_code_connect_map returns {} for these nodes (connector gap of record); Dev Mode is the verification surface.",
         "note": "Honest-match binding: NavHeader binds to TopNav.tsx, a composed part of this shell entry (see component_note — the shell as built is ViewShell.tsx composed with TopNav.tsx and RootLayout.tsx). The entry's primary component stays ViewShell.tsx; this binding records the NavHeader leg only."
+      },
+      "figma_site_architecture_kit": {
+        "component": "App Shell frame (Shell page) + one annotated route frame per live route (route pages Today, Gatherings, Making, People, Money, Decisions, System; Detail Routes page; Public Surface page)",
+        "fileKey": "sU5mvnqhQMxAxYE5IOFVuW",
+        "nodeId": "1-76",
+        "url": "https://www.figma.com/design/sU5mvnqhQMxAxYE5IOFVuW/CR8W-Site-Architecture-Kit?node-id=1-76",
+        "template": null,
+        "code_target": "src/app/RootLayout.tsx + src/app/components/ViewShell.tsx + TopNav + SyncStatusBar composition (the shell as coded); route frames annotate src/app/routes.ts at origin/main 9bb6b64",
+        "library": "not published — the Site Architecture Kit file was created 2026-11-26 in this build pass; library publish is a separate YES and was not in scope",
+        "mapping": "none — no Code Connect claim for any File C frame; the shell NavHeader instance rides the existing File A NavHeader binding (14-14), which is unchanged",
+        "note": "Built 2026-11-26 (kit build pass, File C). 10 pages: Shell (App Shell frame 1-76 from a File A NavHeader instance by key import, SyncStatusBar strip with File B Freshness and Connection state chip instances, the four OS Frontend Spec view rules as spec text), one page per live route family with a route frame assembled from File A and File B components and an annotation frame naming the route one-hop Notion source and read path copied from the mirror map section 2, Detail Routes (four frames reusing File B detail patterns), Public Surface (holding page as-is, the /api/public-content projection as a spec diagram, the five Phase 0 redirects as one spec frame). Every visual value binds to File A variables and type styles by key import. Route set verified firsthand at origin/main 9bb6b64 (src/app/routes.ts): 11 live patterns plus 5 redirects."
       }
     },
     {
@@ -314,7 +393,18 @@
       "kit_source_note": "PROVISIONAL — the Mobile Kit native file is NOT VERIFIED on this VM (see sources). Screen inventory as cross-checked from the Web UI Kit deck, page 1 ('Mobile — Six Core Screens') and page 6 ('05 — Mobile'): 01 Home, 02 Gatherings, 03 Event Detail, 04 Podcast, 05 Manifesto, plus a sixth screen not fully legible in the filed text. Mobile rules from the same pages: desktop columns become a stack, don't shrink; one column; the RSVP button stays in the thumb zone. The Mobile canvas itself (10 pp) additionally carries mobile foundations/components, the RSVP flow, and Notion + Framer configs per the inventory record — that layer rests on the overview capture only.",
       "notion_view": null,
       "status": "provisional",
-      "notion_view_note": "No Notion view: screens are surface structure, not content — no CONTENT view mirrors them. Named-unbound 2026-11-05 (registry completion pass). Entry stays provisional under A-18/D2."
+      "notion_view_note": "No Notion view: screens are surface structure, not content — no CONTENT view mirrors them. Named-unbound 2026-11-05 (registry completion pass). Entry stays provisional under A-18/D2.",
+      "figma": {
+        "component": "Mobile screens (six breakpoint frames, Mobile Screens page)",
+        "fileKey": "3Wn9bW6sTeJzV24cmCfUyK",
+        "nodeId": "3-212",
+        "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=3-212",
+        "template": null,
+        "code_target": "the mobile breakpoint of the public surfaces in create-well/Created-well — no named mobile components exist in code",
+        "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
+        "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
+        "note": "Built 2026-11-25 (kit build pass, File B page \"Mobile Screens\", 3-212). Six 390-wide frames composed from this kit’s own families: Home / This Week (3-215), Gatherings (3-222), Gathering detail (3-231), RSVP (3-240, unchecked letter checkbox instance, CTA last in thumb zone), Story (3-250), People (3-257, ledger chip instances). Named divergence: the deck inventory (Web UI Kit p.1) lists 04 Podcast and 05 Manifesto among its six; those two screens were not built in this pass, and the deck’s sixth screen was not fully legible in the source capture — the frames built are the six core public screens of this kit. Status unchanged: provisional."
+      }
     },
     {
       "id": "ui-button",
@@ -466,7 +556,18 @@
         "Pull quote",
         "Body"
       ],
-      "field_reduction_note": "REDUCED 2026-11-05 (allowlist call of record, register line 1170): the CMS connector's six-field allowlist (name, link, contentType, publishDate, where, tag) does not move. This entry's CMS-carried fields are trimmed to the six above, each riding its named payload slot; the payload carries the pointer to the story, not its body. Dek, Image, Pull quote, and Body are NOT CMS-carried: they live in the code template and the Canva companion only. content_fields keeps the template's full seven-field contract, unchanged."
+      "field_reduction_note": "REDUCED 2026-11-05 (allowlist call of record, register line 1170): the CMS connector's six-field allowlist (name, link, contentType, publishDate, where, tag) does not move. This entry's CMS-carried fields are trimmed to the six above, each riding its named payload slot; the payload carries the pointer to the story, not its body. Dek, Image, Pull quote, and Body are NOT CMS-carried: they live in the code template and the Canva companion only. content_fields keeps the template's full seven-field contract, unchanged.",
+      "figma": {
+        "component": "Story Feature",
+        "fileKey": "3Wn9bW6sTeJzV24cmCfUyK",
+        "nodeId": "2-199",
+        "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=2-199",
+        "template": null,
+        "code_target": "a story-feature component in create-well/Created-well (intended, BUILDER-B4 candidate) — no repo component exists",
+        "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
+        "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
+        "note": "Built 2026-11-25 (kit build pass, File B page \"Story Feature\"). The seven-field contract is drawn as six text properties (Eyebrow, Title, Dek, Pull quote, Body, CTA) plus an Image slot placeholder. The component spec frame marks the split of record: six fields ride the CMS payload (cms_carried_fields) and Dek, Image, Pull quote, Body live in the code template (not_cms_carried). Status unchanged: bindings do not promote."
+      }
     }
   ]
 }

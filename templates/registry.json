@@ -205,7 +205,7 @@
         "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=2-97",
         "template": null,
         "code_target": "a public-payload card component in create-well/Created-well (intended, BUILDER-B1) — no repo component exists",
-        "library": "not published — the CMS Template Kit file was created 2026-11-25 in this build pass; library publish is a separate YES and was not in scope",
+        "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
         "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
         "note": "Built 2026-11-25 (kit build pass, File B page \"Gatherings Card\"). Component set with Status variants Published / Waitlist / Cancelled, a Cover slot placeholder, and Title / Time / Place / Tag / Spots left text properties; values bind to the CR8W Tokens variables subscribed from the CR8W Design System file. Slot placeholders are named frames: true SLOT nodes are not creatable through the Plugin API surface used (figma.createSlot absent), so slots land as labeled frames until a UI pass converts them. The File A EventCard composition binding stays under \"figma\" above; this set is the public card pattern of record. Status unchanged: bindings do not promote."
       }
@@ -241,7 +241,7 @@
         "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=2-143",
         "template": null,
         "code_target": "a public gatherings detail component (intended, BUILDER-B2) — no public repo component exists; the internal GatheringDetailPage at /gatherings/:id is a dashboard surface and the build starting point",
-        "library": "not published — the CMS Template Kit file was created 2026-11-25 in this build pass; library publish is a separate YES and was not in scope",
+        "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
         "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
         "note": "Built 2026-11-25 (kit build pass, File B page \"Gatherings Detail\"). Single component: Cover story slot placeholder, DATE / TIME / LOCATION block, email capture row, save-my-spot CTA (height bound to touch/cta-height), RSVP-by line; Title / Date / Time / Location / RSVP by line as text properties. CORRECTED 2026-11-25 at origin/main 9bb6b64: the component_note above predates the current tree — an internal GatheringDetailPage DOES exist (src/app/pages/, route gatherings/:id, plus gatherings/:id/day-of); what does not exist is the PUBLIC detail route and component, so component stays null and status stays provisional."
       },
@@ -276,7 +276,7 @@
         "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=3-81",
         "template": null,
         "code_target": "the RSVP flow screens in create-well/Created-well (intended, BUILDER-B3) — no repo component or rsvp route exists; Partiful is the live RSVP door",
-        "library": "not published — the CMS Template Kit file was created 2026-11-25 in this build pass; library publish is a separate YES and was not in scope",
+        "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
         "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
         "note": "Built 2026-11-25 (kit build pass, File B page \"RSVP Flow\", node 3-81). Three screen frames: 01 Notice & Choose (3-98), 02 Tell Us Who (3-107), 03 You are In (3-122), composed from the shared form components on the same page. The letter checkbox ships unchecked in its component definition (Off variant first), carrying the kit rule that consent is never pre-ticked. Status unchanged: bindings do not promote."
       }
@@ -300,7 +300,7 @@
         "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=3-135",
         "template": null,
         "code_target": "the consent write side in create-well/Created-well (letter_opt_in) — does not exist in code; consent is read-side only today",
-        "library": "not published — the CMS Template Kit file was created 2026-11-25 in this build pass; library publish is a separate YES and was not in scope",
+        "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
         "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
         "note": "Built 2026-11-25 (kit build pass, File B page \"Consent Patterns\", 3-132). Family on the page: Consent / Consent line (3-135, unchecked box plus the full consent sentence as a text property), Consent / Ledger state chip set (3-144: On file / Not on file / Withdrawn), and review instances of the shared Form / Letter checkbox set (3-91, built on the RSVP Flow page). Every checkbox in the family defaults to unchecked in its definition. Status unchanged (verified refers to the pattern of record; the repo leg is still absent)."
       }
@@ -324,7 +324,7 @@
         "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=3-181",
         "template": null,
         "code_target": "none — the kit family has no repo counterpart (zero matches in src/ at origin/main 9bb6b64, verified 2026-11-25)",
-        "library": "not published — the CMS Template Kit file was created 2026-11-25 in this build pass; library publish is a separate YES and was not in scope",
+        "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
         "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
         "note": "Built 2026-11-25 (kit build pass, File B page \"Connection States\"). Component set with the five kit states: NOT CONNECTED / VERIFYING / LIVE / UNREACHABLE / WRITES DISABLED. A second, separate set on the same page (Freshness chip, 3-188: Fresh / Aging / Stale) mirrors the dashboard family from SyncStatusBar + freshnessLabel.ts for side-by-side review; the two families are kept as separate sets and are not merged. Status stays capture-only: the Figma counterpart now exists, but the entry status tracks the repo leg, which is still absent."
       }
@@ -399,7 +399,7 @@
         "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=3-212",
         "template": null,
         "code_target": "the mobile breakpoint of the public surfaces in create-well/Created-well — no named mobile components exist in code",
-        "library": "not published — the CMS Template Kit file was created 2026-11-25 in this build pass; library publish is a separate YES and was not in scope",
+        "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
         "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
         "note": "Built 2026-11-25 (kit build pass, File B page \"Mobile Screens\", 3-212). Six 390-wide frames composed from this kit’s own families: Home / This Week (3-215), Gatherings (3-222), Gathering detail (3-231), RSVP (3-240, unchecked letter checkbox instance, CTA last in thumb zone), Story (3-250), People (3-257, ledger chip instances). Named divergence: the deck inventory (Web UI Kit p.1) lists 04 Podcast and 05 Manifesto among its six; those two screens were not built in this pass, and the deck’s sixth screen was not fully legible in the source capture — the frames built are the six core public screens of this kit. Status unchanged: provisional."
       }
@@ -562,7 +562,7 @@
         "url": "https://www.figma.com/design/3Wn9bW6sTeJzV24cmCfUyK/CR8W-CMS-Template-Kit?node-id=2-199",
         "template": null,
         "code_target": "a story-feature component in create-well/Created-well (intended, BUILDER-B4 candidate) — no repo component exists",
-        "library": "not published — the CMS Template Kit file was created 2026-11-25 in this build pass; library publish is a separate YES and was not in scope",
+        "library": "published 2026-11-26 (CR8W CMS Template Kit published to the monnyteam team library, 10 components, on Monny's approval; file homed in monnyteam / monnyger / cr8w)",
         "mapping": "none — Code Connect is held for new patterns until a real repo component exists (kit packet rule; EventCard precedent)",
         "note": "Built 2026-11-25 (kit build pass, File B page \"Story Feature\"). The seven-field contract is drawn as six text properties (Eyebrow, Title, Dek, Pull quote, Body, CTA) plus an Image slot placeholder. The component spec frame marks the split of record: six fields ride the CMS payload (cms_carried_fields) and Dek, Image, Pull quote, Body live in the code template (not_cms_carried). Status unchanged: bindings do not promote."
       }

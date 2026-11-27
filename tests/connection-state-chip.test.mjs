@@ -147,3 +147,154 @@ test('source: the component builds no fetch, storage, or page/api coupling of an
   assert.ok(!src.includes('localStorage'), 'localStorage found');
   assert.doesNotMatch(src, /from '[^']*(pages|api\/)/, 'imports from pages or api found');
 });
+
+// ---------------------------------------------------------------------------
+// PR #129 fix leg (contrast and casing, 2026-11-26): QA scored two defects
+// at head 06f5be8 — three tone pairings under WCAG AA 4.5:1 at the chip's
+// 12px label size (cream on rust at 3.69:1, darkrust at 62% over cream at
+// 2.52:1, darkrust on camel 30% in cream at 4.14:1), and the shared span's
+// textTransform: 'uppercase' rendering the freshness family as FRESH /
+// AGING / STALE against its settled casing. The fix re-pairs live and
+// current to cream on var(--darkrust) (4.92:1), pending and aging to camel
+// 12% in cream (4.59:1), readonly to solid var(--darkrust) text (4.92:1),
+// and deletes the transform; the connection family renders byte-identically
+// because its labels are uppercase literals in CONNECTION_STATE_LABELS.
+
+// The record's token hexes (design-tokens-v1.1.json), bound here so the
+// pairings are computed, never assumed.
+const TOKEN_HEXES = {
+  rust: [0xC2, 0x5B, 0x38],     // #C25B38
+  darkrust: [0xA3, 0x4C, 0x2F], // #A34C2F
+  camel: [0xD4, 0xA7, 0x71],    // #D4A771
+  clay: [0xE8, 0xAF, 0x93],     // #E8AF93
+  peach: [0xFF, 0xDE, 0xC2],    // #FFDEC2
+  sand: [0xEA, 0xE3, 0xDB],     // #EAE3DB
+  cream: [0xF6, 0xEB, 0xDF],    // #F6EBDF
+};
+
+function relativeLuminance([r, g, b]) {
+  const channel = (value) => {
+    const c = value / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+function contrastRatio(fg, bg) {
+  const l1 = relativeLuminance(fg);
+  const l2 = relativeLuminance(bg);
+  const [hi, lo] = l1 >= l2 ? [l1, l2] : [l2, l1];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+// Channel-wise sRGB interpolation, mirroring color-mix(in srgb, A p%, B):
+// A contributes p%, B contributes the rest.
+function colorMix(tokenA, percentA, tokenB) {
+  return tokenA.map((channel, i) =>
+    Math.round(channel * (percentA / 100) + tokenB[i] * (1 - percentA / 100)),
+  );
+}
+
+// The eight fixed TONE_STYLES pairings, text against chip ground. The
+// readonly chip ground is transparent, so its text is measured over the
+// cream page. Grounds: a solid token, or a mix entry [token, percent,
+// baseToken]. The three re-paired tones also pin the brief's stated
+// ratios within 0.01.
+const PAIRINGS = [
+  { tone: 'idle', states: 'NOT CONNECTED', text: 'darkrust', ground: { solid: 'sand' } },
+  {
+    tone: 'pending',
+    states: 'VERIFYING',
+    text: 'darkrust',
+    ground: { mix: ['camel', 12, 'cream'] },
+    expected: 4.59,
+  },
+  {
+    tone: 'live',
+    states: 'LIVE',
+    text: 'cream',
+    ground: { solid: 'darkrust' },
+    expected: 4.92,
+  },
+  {
+    tone: 'unreachable',
+    states: 'UNREACHABLE',
+    text: 'darkrust',
+    ground: { mix: ['peach', 65, 'cream'] },
+  },
+  { tone: 'readonly', states: 'WRITES DISABLED', text: 'darkrust', ground: { solid: 'cream' }, expected: 4.92 },
+  {
+    tone: 'current',
+    states: 'Fresh',
+    text: 'cream',
+    ground: { solid: 'darkrust' },
+    expected: 4.92,
+  },
+  {
+    tone: 'aging',
+    states: 'Aging',
+    text: 'darkrust',
+    ground: { mix: ['camel', 12, 'cream'] },
+    expected: 4.59,
+  },
+  { tone: 'stale', states: 'Stale', text: 'darkrust', ground: { solid: 'sand' } },
+];
+
+function groundRgb(ground) {
+  if (ground.solid) return TOKEN_HEXES[ground.solid];
+  const [token, percent, base] = ground.mix;
+  return colorMix(TOKEN_HEXES[token], percent, TOKEN_HEXES[base]);
+}
+
+test('fix (contrast): every tone pairing computes at or above WCAG AA 4.5:1', () => {
+  for (const { tone, states, text, ground, expected } of PAIRINGS) {
+    const ratio = contrastRatio(TOKEN_HEXES[text], groundRgb(ground));
+    assert.ok(
+      ratio >= 4.5,
+      `${tone} (${states}): ${text} on ${JSON.stringify(ground)} computes ${ratio.toFixed(2)}:1, below 4.5:1`,
+    );
+    if (expected !== undefined) {
+      assert.ok(
+        Math.abs(ratio - expected) < 0.01,
+        `${tone} (${states}): computed ${ratio.toFixed(3)}:1 should match the record ${expected}:1 within 0.01`,
+      );
+    }
+  }
+});
+
+test('fix (source): the re-pairing is in the component — darkrust grounds, camel 12%, solid readonly text', () => {
+  const src = componentSource();
+  const darkrustGrounds = src.match(/background: 'var\(--darkrust\)', color: 'var\(--cream\)'/g) ?? [];
+  assert.equal(darkrustGrounds.length, 2, 'live and current entries pair cream text on a darkrust ground');
+  const camelMixes = src.match(/color-mix\(in srgb, var\(--camel\) 12%, var\(--cream\)\)/g) ?? [];
+  assert.equal(camelMixes.length, 2, 'pending and aging entries mix camel at 12%');
+  assert.match(src, /readonly:[\s\S]*?color: 'var\(--darkrust\)'/);
+});
+
+test('fix (source): the failed pairings are gone — no camel 30%, no darkrust 62%, no cream-on-rust entry', () => {
+  const src = componentSource();
+  assert.ok(!src.includes('var(--camel) 30%'), 'camel 30% mix still present');
+  assert.ok(!src.includes('var(--darkrust) 62%'), 'darkrust 62% text still present');
+  assert.doesNotMatch(
+    src,
+    /background: 'var\(--rust\)', color: 'var\(--cream\)'/,
+    'the old cream-on-rust live pairing is still present',
+  );
+});
+
+test('fix (casing): no textTransform anywhere in the component', () => {
+  const src = componentSource();
+  assert.ok(!src.includes('textTransform'), 'textTransform still present in the component');
+});
+
+test('fix (casing): connection labels are uppercase literals, so removing the transform changes nothing for that family', () => {
+  for (const [state, label] of Object.entries(CONNECTION_STATE_LABELS)) {
+    assert.equal(label, label.toUpperCase(), `${state} label is not an uppercase literal`);
+  }
+});
+
+test('fix (casing): freshness labels are not all-uppercase, so the render-casing fix has a model-side anchor', () => {
+  for (const band of FRESHNESS_BANDS) {
+    assert.notEqual(band, band.toUpperCase(), `${band} would render identically under a transform`);
+  }
+});

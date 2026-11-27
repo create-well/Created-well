@@ -28,13 +28,13 @@ const TONE_STYLES: Record<ConnectionChipTone, { chip: React.CSSProperties; dot: 
   },
   pending: {
     chip: {
-      background: 'color-mix(in srgb, var(--camel) 30%, var(--cream))',
+      background: 'color-mix(in srgb, var(--camel) 12%, var(--cream))',
       color: 'var(--darkrust)',
     },
     dot: 'var(--camel)',
   },
   live: {
-    chip: { background: 'var(--rust)', color: 'var(--cream)' },
+    chip: { background: 'var(--darkrust)', color: 'var(--cream)' },
     dot: 'var(--cream)',
   },
   unreachable: {
@@ -47,18 +47,18 @@ const TONE_STYLES: Record<ConnectionChipTone, { chip: React.CSSProperties; dot: 
   readonly: {
     chip: {
       background: 'transparent',
-      color: 'color-mix(in srgb, var(--darkrust) 62%, transparent)',
+      color: 'var(--darkrust)',
       border: '1px solid var(--clay)',
     },
     dot: 'var(--clay)',
   },
   current: {
-    chip: { background: 'var(--rust)', color: 'var(--cream)' },
+    chip: { background: 'var(--darkrust)', color: 'var(--cream)' },
     dot: 'var(--cream)',
   },
   aging: {
     chip: {
-      background: 'color-mix(in srgb, var(--camel) 30%, var(--cream))',
+      background: 'color-mix(in srgb, var(--camel) 12%, var(--cream))',
       color: 'var(--darkrust)',
     },
     dot: 'var(--camel)',
@@ -89,7 +89,6 @@ export function ConnectionStateChip({ input, className }: {
         fontSize: 'var(--type-label-size)',
         fontWeight: 'var(--type-label-weight)',
         letterSpacing: 'var(--type-label-tracking)',
-        textTransform: 'uppercase',
         ...tone.chip,
       }}
     >

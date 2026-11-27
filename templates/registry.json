@@ -337,16 +337,18 @@
         "paths": [
           "src/app/routes.ts",
           "src/app/pages/ThisWeekPage.tsx",
-          "src/app/pages/MovesPage.tsx",
-          "src/app/pages/CarePage.tsx",
           "src/app/pages/FlowsPage.tsx",
+          "src/app/pages/GatheringDetailPage.tsx",
+          "src/app/pages/GatheringDayOfPage.tsx",
           "src/app/pages/PodyapsPage.tsx",
-          "src/app/pages/WorkshopsPage.tsx",
+          "src/app/pages/MakingDetailPage.tsx",
+          "src/app/pages/PeoplePage.tsx",
+          "src/app/pages/PersonDetailPage.tsx",
           "src/app/pages/MoneyPage.tsx",
           "src/app/pages/DecisionsPage.tsx",
           "src/app/pages/SystemPage.tsx"
         ],
-        "note": "Rebind pass 2026-11-02, read firsthand from src/app/routes.ts: the shell hosts nine route pages under RootLayout — / (index) ThisWeekPage, /moves MovesPage, /care CarePage, /flows FlowsPage, /podyaps PodyapsPage, /workshops WorkshopsPage, /money MoneyPage, /decisions DecisionsPage, /system SystemPage. HubView, PersonView, GeyserView, WorkshopsView, CommunityEventsView, and ThemeProvider also confirmed present at src/app/components/ in this pass. This entry's status field records its evidence class as before; under the seed's D1 gate it remains provisional for build (binding does not promote)."
+        "note": "Rebind correction 2026-11-26 (mirror validation flag F2), read firsthand from src/app/routes.ts at production main 9bb6b64: the shell hosts eleven live route patterns under RootLayout: / (index) ThisWeekPage, /gatherings FlowsPage, /gatherings/:id GatheringDetailPage, /gatherings/:id/day-of GatheringDayOfPage, /making PodyapsPage, /making/:id MakingDetailPage, /people PeoplePage, /people/:id PersonDetailPage, /money MoneyPage, /decisions DecisionsPage, /system SystemPage. The 2026-11-02 list this replaces named MovesPage.tsx and WorkshopsPage.tsx, both deleted in cleanup leg C1 on 2026-11-19, and CarePage.tsx, which does not exist at this base; /moves, /workshops, and /care are redirects in the same routes.ts (/moves to /#waiting, /workshops to /gatherings?tab=workshops, /care to /people), as are /flows (to /gatherings) and /podyaps (to /making). The shell composition itself (RootLayout with ViewShell, TopNav, and SyncStatusBar) is named in this entry's component_note and File C binding. This entry's status field records its evidence class as before; under the seed's D1 gate it remains provisional for build (binding does not promote)."
       },
       "id": "dashboard-shell",
       "kit_source": {
